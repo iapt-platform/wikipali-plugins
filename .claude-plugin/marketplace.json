@@ -16,7 +16,7 @@
       "author": {
         "name": "visuddhinanda"
       },
-      "homepage": "https://github.com/visuddhinanda/mint/tree/development/plugins/wikipali",
+      "homepage": "https://github.com/iapt-platform/mint/tree/development/plugins/wikipali",
       "license": "MIT",
       "keywords": [
         "wikipali",
@@ -28,10 +28,10 @@
       ],
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/visuddhinanda/mint.git",
+        "url": "https://github.com/iapt-platform/mint.git",
         "path": "plugins/wikipali",
         "ref": "development",
-        "sha": "a02c5e24f709c3ee96325edbc2e2fd56a64bcd52"
+        "sha": "aaa85b31c4133791ca34dcbc3ff1326b93d5cb4a"
       }
     }
   ]
