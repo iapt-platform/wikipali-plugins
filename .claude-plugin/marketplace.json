@@ -11,8 +11,8 @@
   "plugins": [
     {
       "name": "wikipali",
-      "description": "WikiPali 巴利三藏平台的客户端：目前提供以 AI 模型身份写入句子的能力。查询类能力规划中。",
-      "version": "0.1.0",
+      "description": "WikiPali 巴利三藏平台的客户端：检索与阅读语料做研究（词形展开、全文检索、出处分布、按坐标取原文与译本），以及以 AI 模型身份写入句子。",
+      "version": "0.2.0",
       "author": {
         "name": "visuddhinanda"
       },
@@ -21,15 +21,17 @@
       "keywords": [
         "wikipali",
         "pali",
-        "translation",
-        "api-client"
+        "tipitaka",
+        "buddhist-studies",
+        "research",
+        "translation"
       ],
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/visuddhinanda/mint.git",
         "path": "plugins/wikipali",
         "ref": "development",
-        "sha": "e1c67fc332aac333cdbbf68aa37f31159d6a6352"
+        "sha": "a02c5e24f709c3ee96325edbc2e2fd56a64bcd52"
       }
     }
   ]
