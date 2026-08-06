@@ -18,12 +18,18 @@
       },
       "homepage": "https://github.com/visuddhinanda/mint/tree/development/plugins/wikipali-write",
       "license": "MIT",
-      "keywords": ["wikipali", "pali", "translation", "api-client"],
+      "keywords": [
+        "wikipali",
+        "pali",
+        "translation",
+        "api-client"
+      ],
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/visuddhinanda/mint.git",
         "path": "plugins/wikipali-write",
-        "ref": "development"
+        "ref": "development",
+        "sha": "c46cf64000d9357e9dce7058b44f636505409c14"
       }
     }
   ]
