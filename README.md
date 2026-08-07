@@ -47,6 +47,28 @@ claude plugin details wikipali          # 看版本号
 ls ~/.claude/plugins/cache/wikipali/wikipali/   # 看缓存里有哪些版本
 ```
 
+## 发版（维护者）
+
+改插件的流程：改 `iapt-platform/mint` 的 `plugins/wikipali/` → bump 那边的 `plugin.json` 的 `version` → PR 合并 → 回到本仓库更新 `marketplace.json` 的 `version` 与 `source.sha`（**完整 40 位**）→ 推。
+
+推之前跑：
+
+```bash
+./release-check.sh
+```
+
+五项检查，任一不过就退出码 1：
+
+| 检查 | 挡住什么 |
+|---|---|
+| `claude plugin validate` | 结构性错误，含短 sha |
+| `source.sha` 是 40 位十六进制 | 写短 sha |
+| **sha 是上游分支的祖先** | 只推到 fork、还没合并就钉过去——用户会装不上 |
+| 该 sha 上的 `plugin.json` 版本与目录一致 | 漏 bump 版本号——`plugin.json` 的 version 决定用户能否收到更新，不一致时 marketplace 标了新版也没用 |
+| `source.path` 在该 sha 上存在 | 路径写错或目录还没进上游 |
+
+第三项要用**祖先关系**判断，不能用「GitHub API 能按 sha 查到」：fork 与上游共享对象存储，只推到 fork 的提交在上游 API 上照样查得到。
+
 ## 这个仓库里为什么只有一个 json
 
 插件本体住在 [iapt-platform/mint](https://github.com/iapt-platform/mint) 里，跟它调用的 Laravel API 同仓演进——API 契约一改，插件在同一个提交里跟上，不会漂移。
