@@ -15,7 +15,7 @@
 
 | 插件 | 说明 |
 |---|---|
-| [`wikipali`](https://github.com/iapt-platform/mint/tree/development/plugins/wikipali) | 巴利三藏的检索与阅读：词形展开、按词形检索、出处分布（分本文/义注/复注）、章节目录与整章阅读、**本文↔义注↔复注段落对应**、多版本、词频统计、术语表、**平台上的二手文章与文集**；以及以 AI 模型身份写入句子。 |
+| [`wikipali`](https://github.com/iapt-platform/mint/tree/development/plugins/wikipali) | 巴利三藏的检索与阅读：**分类目录（按 tag 找书）**、词形展开、按词形检索、出处分布（分本文/义注/复注）、章节目录与**整章对读**、本文↔义注↔复注段落对应、多版本、词频统计、术语表、二手文章与文集；以及以 AI 模型身份写入句子。 |
 
 ## 更新
 
