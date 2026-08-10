@@ -1,20 +1,20 @@
 #!/bin/sh
-# 发版前自检：把今天踩过的坑都变成会失败的检查。
+# 发版前自检：把踩过的坑都变成会失败的检查。
 #
 #   ./release-check.sh
 #
-# 五项检查，全过才可以推 marketplace：
+# 插件源码与 marketplace 同仓（source 是相对路径，不钉 sha），所以检查全部在本地
+# 完成，不需要网络。以前那三项与 sha 有关的检查——40 位完整 sha、sha 是上游分支的
+# 祖先、path 在该 sha 上存在——随着 sha 一起作废了。
 #
 #   1. marketplace.json 能解析，且 claude plugin validate 通过
-#   2. source.sha 是完整 40 位（短 sha 会被 validate 拒绝：plugins.N.source: Invalid input）
-#   3. **该 sha 是上游分支的祖先** —— 不是「GitHub 能查到这个 sha」。fork 与上游共享
-#      对象存储，只推到 fork 的提交用上游 API 按 sha 也查得到，据此判断会把没合并的
-#      提交当成已发布，用户装不上
-#   4. 该 sha 上的 plugin.json version 与 marketplace 条目的 version 一致 —— plugin.json
-#      的 version 决定用户能否收到更新，两处不一致时 marketplace 标了新版也没用
-#   5. source.path 在该 sha 上确实存在
+#   2. marketplace 条目的 version 与 plugin.json 的 version 一致 —— 装的时候以
+#      plugin.json 为准，两处不一致时 marketplace 标了新版也没用
+#   3. source 指向的目录存在，且带 .claude-plugin/plugin.json
+#   4. bin/ 下的程序有可执行位 —— 丢了 x 位，命令进了 PATH 也跑不起来
+#   5. lib/ 与 bin/ 的 Python 能编译
 #
-# 只用 sh + python3（标准库），不需要克隆 mint，也不需要网络以外的任何依赖。
+# 只用 sh + python3（标准库）。
 
 set -eu
 
@@ -31,24 +31,17 @@ else
     echo "▸ claude 不在 PATH，跳过 validate（其余检查照常）"
 fi
 
-python3 - "$MANIFEST" <<'PY'
-import json, re, sys, urllib.error, urllib.request
+python3 - "$MANIFEST" "$DIR" <<'PY'
+import json
+import os
+import py_compile
+import stat
+import sys
+import tempfile
 
-manifest = json.load(open(sys.argv[1], encoding='utf-8'))
+manifest_path, root = sys.argv[1], sys.argv[2]
+manifest = json.load(open(manifest_path, encoding='utf-8'))
 fails = []
-
-
-def api(path):
-    req = urllib.request.Request('https://api.github.com/' + path,
-                                 headers={'Accept': 'application/vnd.github+json'})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as f:
-            return json.load(f), None
-    except urllib.error.HTTPError as e:
-        return None, e.code
-    except Exception as e:  # 网络不通等
-        return None, str(e)
-
 
 for entry in manifest.get('plugins', []):
     name = entry.get('name', '?')
@@ -56,64 +49,70 @@ for entry in manifest.get('plugins', []):
     src = entry.get('source')
     print(f"\n▸ {name} {version}")
 
-    if not isinstance(src, dict) or src.get('source') != 'git-subdir':
-        print('  · 非 git-subdir 源，跳过 sha 相关检查')
+    if not isinstance(src, str):
+        fails.append(f'{name}: source 不是相对路径字符串（当前 {src!r}）。'
+                     '同仓插件应写成 "./plugins/<名字>"')
         continue
 
-    sha = src.get('sha', '')
-    ref = src.get('ref', 'HEAD')
-    path = src.get('path', '')
-    repo = re.sub(r'^https://github\.com/|\.git$', '', src.get('url', ''))
-
-    # 2. sha 长度
-    if re.fullmatch(r'[0-9a-f]{40}', sha or ''):
-        print(f'  ✔ sha 40 位  {sha[:12]}…')
-    else:
-        fails.append(f'{name}: sha 不是完整 40 位十六进制（现在是 {sha!r}）')
-        print('  ✘ sha 不是完整 40 位')
+    plugin_dir = os.path.normpath(os.path.join(root, src))
+    if not os.path.isdir(plugin_dir):
+        fails.append(f'{name}: source 指向的目录不存在：{src}')
         continue
+    print(f'  ✔ 目录存在 {src}')
 
-    # 3. sha 是不是 ref 的祖先（而不是「能查到」）
-    cmp_, err = api(f'repos/{repo}/compare/{ref}...{sha}')
-    if cmp_ is None:
-        fails.append(f'{name}: 无法比较 {ref}...{sha[:12]}（{err}）')
-        print(f'  ✘ 比较失败：{err}')
+    # 2 + 3：plugin.json 必须在，且版本要对得上
+    plugin_json = os.path.join(plugin_dir, '.claude-plugin', 'plugin.json')
+    if not os.path.isfile(plugin_json):
+        fails.append(f'{name}: 缺 .claude-plugin/plugin.json')
+        continue
+    declared = json.load(open(plugin_json, encoding='utf-8')).get('version')
+    if declared != version:
+        fails.append(f'{name}: marketplace 写 {version}，plugin.json 写 {declared}。'
+                     '装的时候以 plugin.json 为准，两者必须一致')
     else:
-        status = cmp_.get('status')
-        if status in ('identical', 'behind'):
-            print(f'  ✔ sha 已在 {repo}@{ref} 上（{status}）')
-        else:
-            fails.append(f'{name}: sha 不在 {repo}@{ref} 上（status={status}，'
-                         f'落后 {cmp_.get("behind_by")} / 领先 {cmp_.get("ahead_by")}）'
-                         '——多半是只推到了 fork，还没合并进上游')
-            print(f'  ✘ sha 不在 {ref} 上（status={status}）')
+        print(f'  ✔ 版本一致 {declared}')
 
-    # 4/5. 该 sha 上的 plugin.json
-    r, err = api(f'repos/{repo}/contents/{path}/.claude-plugin/plugin.json?ref={sha}')
-    if r is None:
-        fails.append(f'{name}: 在 {sha[:12]} 上取不到 {path}/.claude-plugin/plugin.json（{err}）')
-        print(f'  ✘ 该 sha 上没有 {path}/.claude-plugin/plugin.json（{err}）')
+    # 4：可执行位
+    bin_dir = os.path.join(plugin_dir, 'bin')
+    if os.path.isdir(bin_dir):
+        for f in sorted(os.listdir(bin_dir)):
+            path = os.path.join(bin_dir, f)
+            if not os.path.isfile(path):
+                continue
+            if not os.stat(path).st_mode & stat.S_IXUSR:
+                fails.append(f'{name}: bin/{f} 没有可执行位，chmod +x')
+            else:
+                print(f'  ✔ bin/{f} 可执行')
+
+    # 5：Python 能编译
+    bad = []
+    for sub in ('lib', 'bin'):
+        d = os.path.join(plugin_dir, sub)
+        if not os.path.isdir(d):
+            continue
+        for f in sorted(os.listdir(d)):
+            path = os.path.join(d, f)
+            if not os.path.isfile(path):
+                continue
+            if sub == 'lib' and not f.endswith('.py'):
+                continue
+            with open(path, 'rb') as fh:
+                if sub == 'bin' and b'python' not in fh.readline():
+                    continue
+            try:
+                with tempfile.NamedTemporaryFile(suffix='.pyc', delete=True) as out:
+                    py_compile.compile(path, cfile=out.name, doraise=True)
+            except py_compile.PyCompileError as e:
+                bad.append(f'{sub}/{f}: {e.msg.strip().splitlines()[-1]}')
+    if bad:
+        fails.extend(f'{name}: {b}' for b in bad)
     else:
-        import base64
-        remote = json.loads(base64.b64decode(r['content']))
-        if remote.get('version') == version:
-            print(f'  ✔ plugin.json 与目录版本一致（{version}）')
-        else:
-            fails.append(f'{name}: plugin.json 是 {remote.get("version")}，'
-                         f'marketplace 写的是 {version} —— 版本不一致时用户收不到更新')
-            print(f'  ✘ 版本不一致：plugin.json={remote.get("version")} '
-                  f'marketplace={version}')
+        print('  ✔ Python 全部可编译')
 
 print()
 if fails:
-    print('✘ 发版检查未通过：')
     for f in fails:
-        print('  ·', f)
+        print(f'✘ {f}')
     sys.exit(1)
-
-print('✔ 全部通过，可以推 marketplace。')
-print('\n用户升级命令（发版公告里贴这个）：')
-print('    claude plugin marketplace update wikipali')
-print('    claude plugin update wikipali@wikipali')
-print('    # 然后重启会话')
+print('全部通过，可以推。')
 PY

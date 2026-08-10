@@ -15,7 +15,7 @@
 
 | 插件 | 说明 |
 |---|---|
-| [`wikipali`](https://github.com/iapt-platform/mint/tree/development/plugins/wikipali) | **Library（无需登录）**：分类目录、词形展开、检索、出处分布、章节目录与整章阅读、本文↔义注↔复注段落对应、多版本、词频、术语表、公开文章与文集。**Workspace（需登录）**：以 AI 模型身份写入句子、模型身份 token 与撤销、channel 与 access token。 |
+| [`wikipali`](plugins/wikipali) | **Library（无需登录）**：分类目录、词形展开、检索、出处分布、章节目录与整章阅读、本文↔义注↔复注段落对应、多版本、词频、术语表、公开文章与文集。**Workspace（需登录）**：以 AI 模型身份写入句子、模型身份 token 与撤销、channel 与 access token。 |
 
 ## 更新
 
@@ -28,7 +28,7 @@ claude plugin update wikipali@wikipali        # 再升插件
 
 然后**重启会话**（PATH 注入和 skill 加载都在启动时完成）。
 
-**两步顺序不能省。** marketplace 目录是克隆到本地的副本，会过期；不先刷新目录，本地记的还是旧版本的 commit sha，直接 `plugin update` 什么都不会发生——连"卸载再重装"也会装回旧版。
+**两步顺序不能省。** marketplace 目录是克隆到本地的副本，会过期；不先刷新目录，本地拿到的还是旧版本的插件文件，直接 `plugin update` 什么都不会发生——连"卸载再重装"也会装回旧版。
 
 ### 在 Claude Desktop 里
 
@@ -49,7 +49,11 @@ ls ~/.claude/plugins/cache/wikipali/wikipali/   # 看缓存里有哪些版本
 
 ## 发版（维护者）
 
-改插件的流程：改 `iapt-platform/mint` 的 `plugins/wikipali/` → bump 那边的 `plugin.json` 的 `version` → PR 合并 → 回到本仓库更新 `marketplace.json` 的 `version` 与 `source.sha`（**完整 40 位**）→ 推。
+插件源码就在本仓库的 `plugins/wikipali/`，marketplace 用相对路径引它，**不钉 sha**。所以发版只有三步：
+
+1. 改 `plugins/wikipali/` 下的代码
+2. bump `plugins/wikipali/.claude-plugin/plugin.json` 的 `version`，并把 `.claude-plugin/marketplace.json` 里那条改成同一个版本号
+3. PR 合进 `iapt-platform/wikipali-plugins` 的 `main`
 
 推之前跑：
 
@@ -57,23 +61,27 @@ ls ~/.claude/plugins/cache/wikipali/wikipali/   # 看缓存里有哪些版本
 ./release-check.sh
 ```
 
-五项检查，任一不过就退出码 1：
-
 | 检查 | 挡住什么 |
 |---|---|
-| `claude plugin validate` | 结构性错误，含短 sha |
-| `source.sha` 是 40 位十六进制 | 写短 sha |
-| **sha 是上游分支的祖先** | 只推到 fork、还没合并就钉过去——用户会装不上 |
-| 该 sha 上的 `plugin.json` 版本与目录一致 | 漏 bump 版本号——`plugin.json` 的 version 决定用户能否收到更新，不一致时 marketplace 标了新版也没用 |
-| `source.path` 在该 sha 上存在 | 路径写错或目录还没进上游 |
+| `claude plugin validate` | 结构性错误 |
+| `marketplace.json` 与 `plugin.json` 版本一致 | 漏 bump——**装的时候以 `plugin.json` 为准**，两处不一致时 marketplace 标了新版也没用 |
+| `source` 指向的目录存在，且带 `.claude-plugin/plugin.json` | 路径写错 |
+| `bin/` 下的程序有可执行位 | 丢了 x 位，插件命令进了 PATH 也跑不起来 |
+| `lib/` 与 `bin/` 的 Python 能编译 | 语法错误被推上去 |
 
-第三项要用**祖先关系**判断，不能用「GitHub API 能按 sha 查到」：fork 与上游共享对象存储，只推到 fork 的提交在上游 API 上照样查得到。
+合并方式**不限**——squash 也可以。以前必须用 merge commit，是因为 marketplace 钉着 mint 的 commit sha，squash 会让那个 sha 失效；现在没有 sha 了。
 
-## 这个仓库里为什么只有一个 json
+## 这个仓库里有什么
 
-插件本体住在 [iapt-platform/mint](https://github.com/iapt-platform/mint) 里，跟它调用的 Laravel API 同仓演进——API 契约一改，插件在同一个提交里跟上，不会漂移。
+```
+plugins/wikipali/   插件本体（bin / lib / skills / references）
+docs/               设计文档与功能覆盖清单
+.claude-plugin/     marketplace 目录文件
+```
 
-本仓库只放目录文件，是因为 `/plugin marketplace add` 会**完整克隆** marketplace 仓库，而 mint 是个几百 MB 的 monorepo。插件本身用 `git-subdir` 源，Claude Code 会**稀疏克隆**，只取 `plugins/wikipali/` 那一个目录。所以你装插件时下载的是几十 KB，不是几百 MB。
+插件曾经住在 [iapt-platform/mint](https://github.com/iapt-platform/mint) 里，用 `git-subdir` 稀疏克隆取出来——那是为了不让用户为几十 KB 的插件下载一个几百 MB 的 monorepo。现在插件自己就在这个小仓库里，`/plugin marketplace add` 完整克隆也只有几百 KB，稀疏克隆和 sha 钉桩都不再需要。
+
+代价是插件的 `references/api-*.md` 记的是 [mint](https://github.com/iapt-platform/mint) 那边 Laravel API 的行为，两者不再同仓——**改 API 时要记得回这里更新文档**。
 
 ## 安全
 
