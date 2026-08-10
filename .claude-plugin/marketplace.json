@@ -11,8 +11,8 @@
   "plugins": [
     {
       "name": "wikipali",
-      "description": "WikiPali 巴利三藏平台的客户端：检索与阅读语料做研究（分类目录、词形展开、检索、出处分布、章节目录与整章对读、本文↔义注↔复注对应、多版本、词频、术语表、二手文章），以及以 AI 模型身份写入句子。",
-      "version": "0.7.0",
+      "description": "WikiPali 巴利三藏平台的客户端。Library（无需登录）：分类目录、词形展开、检索、出处分布、章节目录与整章阅读、本文↔义注↔复注对应、多版本、词频、术语表、公开文章。Workspace（需登录）：以 AI 模型身份写入句子、模型身份 token 与撤销、channel 与 access token。",
+      "version": "0.8.2",
       "author": {
         "name": "visuddhinanda"
       },
@@ -31,7 +31,7 @@
         "url": "https://github.com/iapt-platform/mint.git",
         "path": "plugins/wikipali",
         "ref": "development",
-        "sha": "1d1a4f0c5c2e8b23a0390f3f244a3bd7b2fd8ecb"
+        "sha": "34a30aca786a4fe531f5929206fba43d0ba3be93"
       }
     }
   ]
