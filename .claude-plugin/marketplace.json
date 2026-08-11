@@ -12,7 +12,7 @@
     {
       "name": "wikipali",
       "description": "WikiPali 巴利三藏平台的客户端。Library（无需登录）：分类目录、词形展开、检索、出处分布、章节目录与整章阅读、本文↔义注↔复注对应、多版本、词频、术语表、公开文章。Workspace（需登录）：以 AI 模型身份写入句子、模型身份 token 与撤销、channel 与 access token。",
-      "version": "0.8.4",
+      "version": "0.8.5",
       "author": {
         "name": "visuddhinanda"
       },
