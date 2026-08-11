@@ -18,7 +18,7 @@ metadata:
 
 ⚠ **刚装好或刚更新插件时，这两个命令可能还不在 PATH 上**——PATH 注入在会话启动时完成，装完要重启会话。若 `command -v wikipali` 为空，改用 `${CLAUDE_PLUGIN_ROOT}/bin/wikipali`，并提醒用户重启会话。
 
-**坐标、引用格式、译文来源判定、凭据规矩见 `references/conventions.md`——那是所有 skill 共用的，必须遵守。** 端点细节见 `references/api-write.md`。
+**坐标、引用格式、术语链接与注释、译文来源判定、凭据规矩见 `references/conventions.md`——那是所有 skill 共用的，必须遵守。** 端点细节见 `references/api-write.md`。
 
 ## 铁律
 
@@ -76,6 +76,16 @@ wikipali channels
 ```
 
 或直接是句子数组（此时用 `--channel` 指定目标）。`content_type` 可省略，默认 `markdown`；`channel_uid` 可以逐句给，用于跨 channel 批量写。
+
+译文**默认用现代汉语**（通顺易读的书面语，不要古汉语、不要半文半白、不要译经腔），
+**默认正常翻译、不加注释**。用户明确要求时才用这两种标记，格式见 conventions.md：
+
+- **术语标记**：巴利术语写成 `[[词根]]`（`[[seyyasaka]]`），用词典形而非变格形
+- **注释**：紧跟被注释词、反引号包裹、不能换行，来源要标出——
+  ``不乐于`**义注**：被欲贪的热恼所烧，但**并非希求还俗**`修习 [[brahmacariya]]``
+
+**硬约束**：译义注、复注时，其中的**被解释词**（义注的黑体引自本文，复注的引自义注）
+必须与所注文本在同一 channel 里逐字同译，否则读者看不出这条注在注哪个词。
 
 ```bash
 wikipali write sentences.json --channel <uid或名字片段> --dry-run   # 先看回显
