@@ -15,7 +15,7 @@
 
 | 插件 | 说明 |
 |---|---|
-| [`wikipali`](plugins/wikipali) | **Library（无需登录）**：分类目录、词形展开、检索、出处分布、章节目录与整章阅读、本文↔义注↔复注段落对应、多版本、词频、术语表、公开文章与文集。**Workspace（需登录）**：以 AI 模型身份写入句子、模型身份 token 与撤销、channel 与 access token。 |
+| [`wikipali`](plugins/wikipali) | **Library（无需登录）**：分类目录、词形展开、检索、出处分布、章节目录、段落清单与整章阅读、本文↔义注↔复注段落对应、多版本、词频、术语表、公开文章与文集。**Workspace（需登录）**：以 AI 模型身份写入句子、模型身份 token 与撤销、channel 与 access token。 |
 
 ## 更新
 

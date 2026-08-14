@@ -94,6 +94,36 @@ word_start, word_end, editor, channel, updated_at}`。按 `word_start` 排序拼
 
 行字段：`book` / `paragraph` / `toc`（巴利标题）/ `level`（1–7，1 为顶层）。
 
+## 7b. 段落清单 —— `GET /v2/palitext?view=paragraphs-info&book={book}&para={para}`
+
+`para` 给**章节起始段**，返回该章节辖区内**每一段**一行（含各级子标题与正文段），
+按段号升序，行数 == 该章节的 `chapter_len`。给正文段则只回它自己一行。
+
+```
+data.rows[] = { book, paragraph, toc, level, lenght, chapter_len }
+```
+
+| 字段 | 说明 |
+|---|---|
+| `level` | **< 8 是标题**（实测取 1/2/4，层级之间会跳号），正文段一律 **100** |
+| `toc` | 标题文本；正文段为空串 |
+| `lenght` | **该段的字符数**（服务端就是这个拼写）。巴利原文的长度，不含译文 |
+| `chapter_len` | 该行辖区的段数。正文段为 1——与 §8 同一个坑，判断「是不是章节」要看 **> 1** |
+
+一次调用就拿到「整章有多少段、每段多长、标题怎么嵌套」，**不取正文**：一部 1072 段的
+书回 45 KB，而整章正文是几十万字符。规划翻译/校对工作量、决定分批边界靠它。
+
+标题行的辖区是 `[自己, 自己 + chapter_len)`，嵌套关系由此得出；对某标题求和它辖区内
+各行的 `lenght`，等于 §8 给出的 `chapter_strlen`（**含标题自身的字数**，实测 93:12
+两边都是 3194）。
+
+⚠ 数据里有 `toc` 为 `(empty)` 的行：level < 8（被归为标题）却挂着上千字符的正文
+（如 185:75）。照实呈现即可，不要当成解析出错。
+
+⚠ **只在最新版代码上**，且没有部署到所有站点——实测 `next.wikipali.org` 可用，
+`www` 与 `next.wikipali.cc` 返回 **500**（框架错误页，不是 404）。客户端遇 5xx 要提示
+切站，不要当成「该章节没有段落」。坐标不存在时是 **400** + `message: "no paragraph"`。
+
 ## 8. 段落与章节元信息 —— `GET /v2/palitext/{book}-{paragraph}`
 
 ⚠ 是 **path 参数**（`/palitext/216-481`），不是 query。`data` 是**单个对象**，不是 rows。

@@ -85,6 +85,14 @@ def build_parser():
     p.add_argument('--all', action='store_true', help='显示整套丛书而不只当前这本')
     p.set_defaults(func=cmd_read.cmd_toc)
 
+    p = add('paras', '章节内全部段落的清单：标题层级 + 每段字符数（不取正文）')
+    p.add_argument('coord', help='book:paragraph，正文段也行，会自动向上找章节')
+    p.add_argument('--body', action='store_true', help='连每个正文段的字符数一起列出')
+    p.add_argument('--depth', type=int, default=9, help='最多显示到第几层标题，默认全部')
+    p.add_argument('--here', action='store_true',
+                   help='给正文段时不向上找章节，只报这一段')
+    p.set_defaults(func=cmd_read.cmd_paras)
+
     p = add('chapter', '先报体量，再按需取整章')
     p.add_argument('coord', help='book:paragraph，正文段也行，会自动向上找章节')
     p.add_argument('--fetch', action='store_true', help='确认要读全文时加这个；不加只报体量')

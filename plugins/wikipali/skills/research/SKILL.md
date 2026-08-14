@@ -172,6 +172,7 @@ wikipali search --lemma parivāsa --tags vinaya --limit 200
 ```bash
 wikipali get 216:35 216:36 216:41       # 按坐标精确取，缺省是巴利原文
 wikipali toc 216:512                    # 看这本书的章节结构
+wikipali paras 216:512                  # 章内逐段清单：标题层级 + 每段多长（不取正文）
 wikipali chapter 216:512                # 只报体量：章节范围、段数、字符数
 wikipali chapter 216:512 --fetch        # 确认要读全章时才加 --fetch
 wikipali chapter 216:512 --fetch --channel <uid>   # 读某一个译本（一次一个）
@@ -180,6 +181,15 @@ wikipali chapter 216:512 --fetch --text            # 纯文本，更省
 
 `chapter` 给正文段也行，会自动向上找到所属章节。**不加 `--fetch` 就只报体量**——
 这是上下文预算的闸门，先看清多大再决定读不读。
+
+`paras` 是同一个闸门的细化版：`chapter` 只给一个总字符数，`paras` 给的是**分布**——
+每一级子标题各辖多少段、多少字符，加 `--body` 连每个正文段的字符数一起列。要把
+一章分批读、或规划翻译/校对的工作量时用它决定从哪里断开，`--depth N` 控制只看到
+第几层标题。它同样**不取正文**，一部千余段的书也只有几十 KB。给正文段会自动向上
+找章节，`--here` 则只报那一段。
+
+⚠ 这个端点只在最新版代码上，实测只有 `next.wikipali.org` 有；`www` 与
+`next.wikipali.cc` 会 500，命令会提示切站（`wikipali --api next paras …`）。
 
 取文时每句只保留 **id + 正文**，服务端原始返回的十分之一左右。**句子 id 就是引用坐标**
 （`139-861-9-12` = book-para-wordStart-wordEnd），读到什么就能直接引用什么。

@@ -331,6 +331,107 @@ def cmd_toc(args):
 
 
 # ---------------------------------------------------------------------------
+# paras —— 章节内逐段的清单：哪些是标题、每段多长
+# ---------------------------------------------------------------------------
+
+# level < 8 是标题（实测取 1/2/4，层级之间会跳号），正文段一律 100。
+HEADING_LEVEL = 8
+
+
+def row_len(row):
+    """段落字符数。服务端的字段名拼成了 lenght，只在这一处迁就它。"""
+    return int(row.get('lenght') or 0)
+
+
+def fetch_paragraphs_info(client, book, para):
+    try:
+        data = client.call('GET', 'v2/palitext',
+                           query={'view': 'paragraphs-info', 'book': book, 'para': para},
+                           timeout=READ_TIMEOUT)
+    except ApiError as exc:
+        if exc.status and exc.status >= 500:
+            # 稳定版站点没有这个 view，落到框架的 500 页而不是 404
+            raise WpError(
+                f'取 {book}:{para} 的段落清单失败（HTTP {exc.status}）。\n'
+                'view=paragraphs-info 只在最新版代码上，稳定版站点会 500。\n'
+                '请切到最新版再试：wikipali endpoint next，或本次调用加 --api next。'
+            )
+        if exc.status == 400 and 'paragraph' in str(exc):
+            raise WpError(f'{book}:{para} 这个坐标不存在（服务端：{exc}）。')
+        raise explain_api_error(exc, f'取 {book}:{para} 的段落清单')
+    return (data or {}).get('rows') or []
+
+
+def cmd_paras(args):
+    client = make_client(args)
+    book, para = parse_coord(args.coord)
+    rows = fetch_paragraphs_info(client, book, para)
+
+    # 给正文段时服务端只回它自己一行——那不是清单。向上找到所属章节再要一次，
+    # 与 chapter 的行为一致。--here 保留「就看这一段」的用法。
+    climbed = None
+    if len(rows) <= 1 and not args.here:
+        meta, _ = resolve_chapter(client, book, para)
+        start = int(meta['paragraph']) if meta and meta.get('paragraph') is not None else None
+        if start is not None and start != para:
+            rows = fetch_paragraphs_info(client, book, start)
+            climbed = start
+    if not rows:
+        raise WpError(f'{book}:{para} 没有段落信息。')
+
+    is_head = [int(r.get('level') or 100) < HEADING_LEVEL for r in rows]
+    # 每个标题的辖区是 [自己, 自己+chapter_len)，逐个求和是 O(标题数×段数)，
+    # 用前缀和一次算完。
+    char_sum, body_cnt = [0], [0]
+    for i, r in enumerate(rows):
+        char_sum.append(char_sum[-1] + row_len(r))
+        body_cnt.append(body_cnt[-1] + (0 if is_head[i] else 1))
+
+    levels = sorted({int(r.get('level')) for i, r in enumerate(rows) if is_head[i]})
+    depth_of = {lv: n for n, lv in enumerate(levels)}
+
+    def render():
+        start = int(rows[0]['paragraph'])
+        end = int(rows[-1]['paragraph'])
+        heads = len(rows) - body_cnt[-1]
+        title = rows[0].get('toc') or ''
+        print(f'章节   : {title}' if title else f'章节   : （{book}:{start} 不是标题段）')
+        print(f'范围   : {book}:{start} – {book}:{end}（{len(rows)} 段：'
+              f'{heads} 标题 / {body_cnt[-1]} 正文），约 {char_sum[-1]} 字符')
+        if climbed:
+            print(f'（{book}:{para} 是正文段，已向上取它所属的章节 {book}:{climbed}；'
+                  f'只看这一段加 --here）')
+        print()
+
+        for i, r in enumerate(rows):
+            p = int(r['paragraph'])
+            if not is_head[i]:
+                # 没有任何标题时（--here，或整段范围就是正文），不列正文就什么都不剩了
+                if args.body or not levels:
+                    print(f'{"  " * (len(levels) + 1)}{book}:{p:<7}{row_len(r):>6} 字符')
+                continue
+            depth = depth_of[int(r.get('level'))]
+            if depth + 1 > args.depth:
+                continue
+            span = min(i + int(r.get('chapter_len') or 1), len(rows))
+            left = f'{"  " * depth}{book}:{p:<7}{r.get("toc") or ""}'
+            if len(left) > 54:
+                left = left[:53] + '…'
+            print(f'{left:<56}{body_cnt[span] - body_cnt[i]:>5} 段 '
+                  f'{char_sum[span] - char_sum[i]:>8} 字符')
+
+        print(f'\n字符数是巴利原文的长度（含标题自身），与 chapter 报的体量同一口径，'
+              f'不含任何译文。')
+        if levels and not args.body:
+            print('每个正文段各多长：加 --body。')
+        print(f'取整章：wikipali chapter {book}:{start} --fetch　　'
+              f'取单段：wikipali get {book}:{start}')
+
+    emit(args, rows, render)
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # chapter —— 先报体量，再取整章
 # ---------------------------------------------------------------------------
 
