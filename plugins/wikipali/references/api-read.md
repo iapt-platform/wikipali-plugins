@@ -94,27 +94,31 @@ word_start, word_end, editor, channel, updated_at}`。按 `word_start` 排序拼
 
 行字段：`book` / `paragraph` / `toc`（巴利标题）/ `level`（1–7，1 为顶层）。
 
-## 7b. 段落清单 —— `GET /v2/palitext?view=paragraphs-info&book={book}&para={para}`
+## 7b. 段落清单 —— `GET /v2/para-info?book={book}&para={para}`
+
+旧路由 `GET /v2/palitext?view=paragraphs-info&book={book}&para={para}` 仍在部分站点上
+（`staging`），字段除 `lenght`/`length` 外相同；新路由 404 时可回退。
 
 `para` 给**章节起始段**，返回该章节辖区内**每一段**一行（含各级子标题与正文段），
 按段号升序，行数 == 该章节的 `chapter_len`。给正文段则只回它自己一行。
 
 ```
-data.rows[] = { book, paragraph, toc, level, lenght, chapter_len }
+data.rows[] = { book, paragraph, toc, level, length, chapter_len, book_name, cs_para }
 ```
 
 | 字段 | 说明 |
 |---|---|
 | `level` | **< 8 是标题**（实测取 1/2/4，层级之间会跳号），正文段一律 **100** |
 | `toc` | 标题文本；正文段为空串 |
-| `lenght` | **该段的字符数**（服务端就是这个拼写）。巴利原文的长度，不含译文 |
+| `length` | **该段的字符数**。巴利原文的长度，不含译文。旧路由拼作 `lenght` |
+| `book_name` / `cs_para` | 新路由才有：该段对应的 CST 书名与段号，标题段可能为 null |
 | `chapter_len` | 该行辖区的段数。正文段为 1——与 §8 同一个坑，判断「是不是章节」要看 **> 1** |
 
 一次调用就拿到「整章有多少段、每段多长、标题怎么嵌套」，**不取正文**：一部 1072 段的
 书回 45 KB，而整章正文是几十万字符。规划翻译/校对工作量、决定分批边界靠它。
 
 标题行的辖区是 `[自己, 自己 + chapter_len)`，嵌套关系由此得出；对某标题求和它辖区内
-各行的 `lenght`，等于 §8 给出的 `chapter_strlen`（**含标题自身的字数**，实测 93:12
+各行的 `length`，等于 §8 给出的 `chapter_strlen`（**含标题自身的字数**，实测 93:12
 两边都是 3194）。
 
 ⚠ 数据里有 `toc` 为 `(empty)` 的行：level < 8（被归为标题）却挂着上千字符的正文

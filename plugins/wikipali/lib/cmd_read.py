@@ -339,27 +339,41 @@ HEADING_LEVEL = 8
 
 
 def row_len(row):
-    """段落字符数。服务端的字段名拼成了 lenght，只在这一处迁就它。"""
-    return int(row.get('lenght') or 0)
+    """段落字符数。老接口把字段名拼成了 lenght，只在这一处迁就它。"""
+    return int(row.get('length') or row.get('lenght') or 0)
 
 
 def fetch_paragraphs_info(client, book, para):
+    """先用 v2/para-info；老站点还没有这个路由（404），回退到 palitext 的旧 view。"""
     try:
-        data = client.call('GET', 'v2/palitext',
+        data = client.call('GET', 'v2/para-info',
+                           query={'book': book, 'para': para}, timeout=READ_TIMEOUT)
+    except ApiError as exc:
+        if exc.status == 404:
+            data = fetch_paragraphs_info_legacy(client, book, para)
+        elif exc.status == 400 and 'paragraph' in str(exc):
+            raise WpError(f'{book}:{para} 这个坐标不存在（服务端：{exc}）。')
+        else:
+            raise explain_api_error(exc, f'取 {book}:{para} 的段落清单')
+    return (data or {}).get('rows') or []
+
+
+def fetch_paragraphs_info_legacy(client, book, para):
+    try:
+        return client.call('GET', 'v2/palitext',
                            query={'view': 'paragraphs-info', 'book': book, 'para': para},
                            timeout=READ_TIMEOUT)
     except ApiError as exc:
-        if exc.status and exc.status >= 500:
-            # 稳定版站点没有这个 view，落到框架的 500 页而不是 404
+        if exc.status and (exc.status >= 500 or exc.status == 422):
+            # 更旧的站点两个接口都没有：新路由 404，旧 view 落到 422（view 不合法）或框架的 500 页
             raise WpError(
                 f'取 {book}:{para} 的段落清单失败（HTTP {exc.status}）。\n'
-                'view=paragraphs-info 只在最新版代码上，稳定版站点会 500。\n'
+                '这个站点还没有段落清单接口（v2/para-info 与 view=paragraphs-info 都没有）。\n'
                 '请切到最新版再试：wikipali endpoint next，或本次调用加 --api next。'
             )
         if exc.status == 400 and 'paragraph' in str(exc):
             raise WpError(f'{book}:{para} 这个坐标不存在（服务端：{exc}）。')
         raise explain_api_error(exc, f'取 {book}:{para} 的段落清单')
-    return (data or {}).get('rows') or []
 
 
 def cmd_paras(args):
