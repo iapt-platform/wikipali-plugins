@@ -188,8 +188,9 @@ wikipali chapter 216:512 --fetch --text            # 纯文本，更省
 第几层标题。它同样**不取正文**，一部千余段的书也只有几十 KB。给正文段会自动向上
 找章节，`--here` 则只报那一段。
 
-⚠ 这个端点只在最新版代码上，实测只有 `next.wikipali.org` 有；`www` 与
-`next.wikipali.cc` 会 500，命令会提示切站（`wikipali --api next paras …`）。
+⚠ 这个端点只在较新的代码上。命令先请求新路由 `v2/para-info`（实测只有
+`next.wikipali.org` 有），404 时自动回退到旧的 `view=paragraphs-info`（`staging` 有）。
+两个都没有的站点（`www`、`next.wikipali.cc`）会提示切站（`wikipali --api next paras …`）。
 
 取文时每句只保留 **id + 正文**，服务端原始返回的十分之一左右。**句子 id 就是引用坐标**
 （`139-861-9-12` = book-para-wordStart-wordEnd），读到什么就能直接引用什么。
