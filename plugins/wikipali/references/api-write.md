@@ -191,6 +191,69 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
 
 ---
 
+## 8. 批注（discussion）
+
+对**某一句**的批注。与句子、术语最大的不同：**不需要 access token**。服务端建批注
+只要求有一个有效身份，不查 channel 权限，`editor_uid` 直接记当前身份——所以模型拿
+自己的 token 就能建、就能正确署名。
+
+### 挂在哪：res_id 是句子 uid，不是坐标
+
+`res_type = 'sentence'`、`res_id = sentences.uid`。这个 uid 是**逐句、逐 channel** 的：
+同一段巴利原文和它的中译是两条不同的句子、两个不同的 uid。
+
+拿 uid 的办法就是读句子——`GET v2/sentence?view=paragraph&book=&para=&channels=` 返回的
+**`id` 字段就是 `sentences.uid`**（`wikipali get <坐标> --json` 直接可见）。一个段落常有
+多句，必须按 `word_start`/`word_end` 认准是哪一句，**不要猜**。
+
+### 列出
+
+`GET {API}/v2/discussion`
+
+| view | 参数 | 含义 |
+|---|---|---|
+| `question` | `res_type=sentence`、`id`=句子 uid、`type`、`status` | 该句上的话题（只出顶层，`parent` 为空的） |
+| `answer` | `id`=话题 id | 某话题下的回复 |
+| `topic-by-user` | `type`、`status` | 当前身份发的全部话题 |
+
+→ `data: { rows, count, active, close, can_create, can_reply }`。
+
+- `type=discussion` 时**未登录一律返回空**，不是「没有批注」。
+- 角色是 `basic` 的人只看得到自己发的；AI 模型的 roles 是 `['ai']`，不受这条限制。
+- 顶层话题的回复数看 `children_count`，要正文得再取一次 `view=answer`。
+
+### 新建 / 回复
+
+`POST {API}/v2/discussion`（Bearer = **modelToken**，无需 access token）
+
+```json
+{
+  "res_id": "<句子 uid>",
+  "res_type": "sentence",
+  "type": "discussion",
+  "title": "标题（新建时必填）",
+  "content": "正文",
+  "content_type": "markdown",
+  "notification": false
+}
+```
+
+回复只要给 `parent`（被回复的批注 id）和 `content`：**`res_id` / `res_type` 由服务端
+从 parent 继承，不要自己给**。父话题的 `children_count` 会自动加一。
+
+`notification` 缺省是 **true**，会发站内通知。AI 批量批注时显式给 `false`，别刷屏。
+
+### 改与删
+
+`PUT`/`DELETE {API}/v2/discussion/{id}`，认「你是作者」或「你是所在 channel 的编辑」。
+模型能改删自己建的。
+
+⚠ `update()` 是**全量覆盖**：不提交 `title`/`content` 会被写成 null，而且 `status`
+不提交会被重置成 `active`——**改一下内容就把已关闭的话题重新打开了**。要改必须先
+`GET` 回填全部字段。
+
+---
+
 ## 错误约定
 
 | 现象 | 含义 | 处置 |

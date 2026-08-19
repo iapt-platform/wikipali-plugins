@@ -7,6 +7,7 @@
 import argparse
 import sys
 
+import cmd_discuss
 import cmd_read
 import cmd_site
 import cmd_terms
@@ -214,6 +215,40 @@ def build_parser():
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true')
     p.set_defaults(func=cmd_terms.cmd_term_edit)
+
+    p = add('discuss', '列出某一句上的批注')
+    p.add_argument('coord', nargs='?', help='book:paragraph；也可改用 --sent 直接给句子 uid')
+    p.add_argument('--sent', help='句子 uid（v2/sentence 返回的 id），给了就不再按坐标解析')
+    p.add_argument('--channel', help='取哪个版本的句子（uid 或名字片段）；缺省取巴利原文')
+    p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
+    p.add_argument('--status', default='active', choices=['active', 'close'])
+    p.add_argument('--limit', type=int, default=50)
+    p.add_argument('--offset', type=int, default=0)
+    p.set_defaults(func=cmd_discuss.cmd_discuss_list)
+
+    p = add('discuss-add', '给某一句加批注（AI 身份）', needs_json=False)
+    p.add_argument('coord', nargs='?', help='book:paragraph；也可改用 --sent')
+    p.add_argument('--sent', help='句子 uid，给了就不再按坐标解析')
+    p.add_argument('--channel', help='批注挂在哪个版本的句子上；缺省是巴利原文')
+    p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
+    p.add_argument('--title', required=True, help='标题（服务端必填）')
+    p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
+    p.add_argument('--content-file', dest='content_file', help='从文件读正文')
+    p.add_argument('--content-type', dest='content_type', default='markdown')
+    p.add_argument('--notify', action='store_true', help='发站内通知（默认不发）')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true', help='跳过交互确认（非交互环境必须显式给）')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_add)
+
+    p = add('discuss-reply', '回复一条批注（AI 身份）', needs_json=False)
+    p.add_argument('id', help='被回复的批注 id，用 wikipali discuss 查')
+    p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
+    p.add_argument('--content-file', dest='content_file', help='从文件读正文')
+    p.add_argument('--content-type', dest='content_type', default='markdown')
+    p.add_argument('--notify', action='store_true', help='发站内通知（默认不发）')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_reply)
 
     p = add('write', '写入句子', needs_json=False)
     p.add_argument('file', help='句子 JSON 文件，- 表示从 stdin 读')

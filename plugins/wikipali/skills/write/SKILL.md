@@ -1,13 +1,13 @@
 ---
 name: write
-description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms): listing, creating, and editing entries in a channel. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
+description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries, or to read / write / reply to 批注 / discussions / annotations on a sentence, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
 metadata:
   author: mint
 ---
 
 # WikiPali 写入
 
-把句子和术语写进 WikiPali，**署名为 AI 模型身份**（`editor_uid` = 模型 uid），而不是操作者本人。
+把句子、术语和批注写进 WikiPali，**署名为 AI 模型身份**（`editor_uid` = 模型 uid），而不是操作者本人。
 
 只依赖 Python 标准库，直接跑，不要建虚拟环境：
 
@@ -49,24 +49,27 @@ metadata:
    告诉用户「这条得你自己在网站上改」，不要换着法子重试。
 7. **术语冲突时服务端拒绝而不是覆盖**（与句子相反）。报「已存在」就去 `my-terms` 找到
    那条的 guid 用 `term-edit` 改，不要改个 tag 绕过去建重复条目。
+8. **批注必须确认挂在哪一句上。** `res_id` 是**逐句、逐 channel** 的句子 uid，不是坐标；
+   一个段落常有多句，原文和各译本又各有各的 uid。命令在多义时会拒绝并列出候选，
+   **不要随手挑一个了事**——挂错地方的批注几乎不会被发现。写前看回显里那句正文对不对。
 
 ### 译文内容
 
-8. **坐标不能编造。** 写之前用 `wikipali get <book>-<para> --json` 取真实句子，
+9. **坐标不能编造。** 写之前用 `wikipali get <book>-<para> --json` 取真实句子，
    把要写的 `(book_id, paragraph, word_start, word_end)` 与之做集合比对，确认
    无编造、无遗漏；写完独立读回，不要只信 `write` 自报的条数。
-9. **默认现代汉语。** 通顺易读的书面语。不要古汉语，不要半文半白，不要译经腔——
+10. **默认现代汉语。** 通顺易读的书面语。不要古汉语，不要半文半白，不要译经腔——
    「尔时」「复次」「者……也」「谓」「如是」这类仿古句式一概不用。用户指定风格时
    才改。
-10. **术语标记默认不用。** 用户明确要求时才把巴利术语写成 `[[词根]]`；必须用**词典形**
+11. **术语标记默认不用。** 用户明确要求时才把巴利术语写成 `[[词根]]`；必须用**词典形**
    而非原文的变格形，且**写前用 `wikipali forms <词>` 验证**——展不出词形的不是有效
    词根，链接会落空。普通名词不算术语（`asuci` 就是「不净」，不加标记）。
-11. **注释默认不加。** 用户明确要求时才加，且必须：紧跟被注释词、反引号包裹、
+12. **注释默认不加。** 用户明确要求时才加，且必须：紧跟被注释词、反引号包裹、
    **不能换行**、**标出来源**（`**义注**：`、`**复注**：`）。注释内容只能取自
    `wikipali related` 找到的义注复注，**不许自己发挥**；注释里的巴利词不再加 `[[ ]]`。
-12. **被解释词必须与所注文本逐字同译。** 义注的黑体引自本文、复注的引自义注；
+13. **被解释词必须与所注文本逐字同译。** 义注的黑体引自本文、复注的引自义注；
     同一 channel 内译法不一致，读者就看不出这条注在注哪个词。这条可机械核查。
-13. **文献层次必须标明**，本文、义注、复注不能混——把义注的解释当成经律本身的
+14. **文献层次必须标明**，本文、义注、复注不能混——把义注的解释当成经律本身的
     说法是学术错误，不是措辞问题。**机器生成的译文必须显式标注。**
 
 ## 首次准备
@@ -150,6 +153,25 @@ wikipali term-edit <guid> --meaning 念住          # 只改给出的字段，�
 - `--dry-run` 先看回显，确认无误再真跑；用户没明确同意本次写入之前不要加 `-y`。
 - 改动是**增量**的：没给的字段保持原值，不会被清空。
 - 译名应与社区术语表（`wikipali terms`）一致；不一致时要在 `--note` 里说明理由。
+
+## 批注
+
+对某一句的批注（discussion）。与句子、术语不同，**不需要 access token** —— 模型拿自己的
+token 直接建，署名就是模型。
+
+```bash
+wikipali discuss 216:35 --words 2-17            # 看这一句上已有的批注与回复
+wikipali discuss-add 216:35 --words 2-17 \
+    --title '关于 tajjanīyakamma 的译名' --content '此处 tajjanīya 作「呵责」解。'
+wikipali discuss-reply <批注id> --content '补充：义注中以 codanā 释之。'
+```
+
+- **挂点要确认**，见铁律第 8 条。`--channel` 缺省是巴利原文；要批注某个译本就给它。
+  一段多句时命令会列出候选、要求用 `--words 起-止` 或 `--sent <句子uid>` 指明。
+- `discuss-add` 必须有 `--title`（服务端必填）；`discuss-reply` 只要 `--content`。
+- 正文也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
+- **默认不发站内通知**，`--notify` 才发 —— 批量批注不要刷别人的通知。
+- 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条话题。
 
 ## 站点
 
