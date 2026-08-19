@@ -7,8 +7,10 @@
 import argparse
 import sys
 
+import cmd_discuss
 import cmd_read
 import cmd_site
+import cmd_terms
 import cmd_write
 from client import DEFAULT_BATCH
 from errors import WpError
@@ -122,6 +124,17 @@ def build_parser():
     p.add_argument('--refresh', action='store_true', help='强制重新拉取（全表有缓存）')
     p.set_defaults(func=cmd_read.cmd_terms)
 
+    p = add('my-terms', '自己的术语表：列出 studio / channel 名下的术语（与只读的 terms 不同）')
+    p.add_argument('keyword', nargs='?', help='按词/释义过滤（服务端前缀匹配）')
+    p.add_argument('--channel', help='只看某个 channel（uid / 序号 / 名字片段）')
+    p.add_argument('--studio', help='只看某个 studio（studio 名）')
+    p.add_argument('--tag', help='按 tag 过滤（本地过滤）')
+    p.add_argument('--order', default='updated_at')
+    p.add_argument('--dir', default='desc', choices=['asc', 'desc'])
+    p.add_argument('--limit', type=int, default=50)
+    p.add_argument('--offset', type=int, default=0)
+    p.set_defaults(func=cmd_terms.cmd_my_terms)
+
     p = add('related', '本文 ↔ 义注 ↔ 复注的段落对应')
     p.add_argument('coord', help='book:paragraph')
     p.set_defaults(func=cmd_read.cmd_related)
@@ -178,6 +191,64 @@ def build_parser():
     p.add_argument('--book', type=int, default=0, help='限定 book，0 表示不限（默认）')
     p.add_argument('--force', action='store_true', help='即使缓存未过期也重新签发')
     p.set_defaults(func=cmd_write.cmd_grant)
+
+    p = add('term-add', '新建术语（AI 身份，必须指定 channel）', needs_json=False)
+    p.add_argument('word', help='巴利词')
+    p.add_argument('meaning', help='译名')
+    p.add_argument('--channel', help='目标 channel（uid / 序号 / 名字片段）；省略则交互选择')
+    p.add_argument('--other-meaning', dest='other_meaning', help='备选译名，逗号分隔')
+    p.add_argument('--note', help='注解（markdown）')
+    p.add_argument('--tag')
+    p.add_argument('--language', help='缺省跟随 channel 的语言')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true', help='跳过交互确认（非交互环境必须显式给）')
+    p.set_defaults(func=cmd_terms.cmd_term_add)
+
+    p = add('term-edit', '修改术语（AI 身份，只能改 channel 内的术语）', needs_json=False)
+    p.add_argument('guid', help='术语 guid，用 my-terms 查')
+    p.add_argument('--word')
+    p.add_argument('--meaning')
+    p.add_argument('--other-meaning', dest='other_meaning')
+    p.add_argument('--note')
+    p.add_argument('--tag')
+    p.add_argument('--language')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true')
+    p.set_defaults(func=cmd_terms.cmd_term_edit)
+
+    p = add('discuss', '列出某一句上的批注')
+    p.add_argument('coord', nargs='?', help='book:paragraph；也可改用 --sent 直接给句子 uid')
+    p.add_argument('--sent', help='句子 uid（v2/sentence 返回的 id），给了就不再按坐标解析')
+    p.add_argument('--channel', help='取哪个版本的句子（uid 或名字片段）；缺省取巴利原文')
+    p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
+    p.add_argument('--status', default='active', choices=['active', 'close'])
+    p.add_argument('--limit', type=int, default=50)
+    p.add_argument('--offset', type=int, default=0)
+    p.set_defaults(func=cmd_discuss.cmd_discuss_list)
+
+    p = add('discuss-add', '给某一句加批注（AI 身份）', needs_json=False)
+    p.add_argument('coord', nargs='?', help='book:paragraph；也可改用 --sent')
+    p.add_argument('--sent', help='句子 uid，给了就不再按坐标解析')
+    p.add_argument('--channel', help='批注挂在哪个版本的句子上；缺省是巴利原文')
+    p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
+    p.add_argument('--title', required=True, help='标题（服务端必填）')
+    p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
+    p.add_argument('--content-file', dest='content_file', help='从文件读正文')
+    p.add_argument('--content-type', dest='content_type', default='markdown')
+    p.add_argument('--notify', action='store_true', help='发站内通知（默认不发）')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true', help='跳过交互确认（非交互环境必须显式给）')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_add)
+
+    p = add('discuss-reply', '回复一条批注（AI 身份）', needs_json=False)
+    p.add_argument('id', help='被回复的批注 id，用 wikipali discuss 查')
+    p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
+    p.add_argument('--content-file', dest='content_file', help='从文件读正文')
+    p.add_argument('--content-type', dest='content_type', default='markdown')
+    p.add_argument('--notify', action='store_true', help='发站内通知（默认不发）')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_reply)
 
     p = add('write', '写入句子', needs_json=False)
     p.add_argument('file', help='句子 JSON 文件，- 表示从 stdin 读')

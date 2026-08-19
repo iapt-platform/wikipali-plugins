@@ -79,6 +79,7 @@ wikipali forms parivāsa
 ```bash
 wikipali word parivāsa          # 释义 + 形态分析，确认词根选对了
 wikipali terms parivāsa         # 术语表：该词的权威中文译名
+                                # （自己 channel 名下的术语是 my-terms，见 write skill）
 ```
 
 **产出里的译名应与术语表一致**，不一致要说明理由。别自己从构词法编译名——实测
