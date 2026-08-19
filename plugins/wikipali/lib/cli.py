@@ -9,6 +9,7 @@ import sys
 
 import cmd_read
 import cmd_site
+import cmd_terms
 import cmd_write
 from client import DEFAULT_BATCH
 from errors import WpError
@@ -122,6 +123,17 @@ def build_parser():
     p.add_argument('--refresh', action='store_true', help='强制重新拉取（全表有缓存）')
     p.set_defaults(func=cmd_read.cmd_terms)
 
+    p = add('my-terms', '自己的术语表：列出 studio / channel 名下的术语（与只读的 terms 不同）')
+    p.add_argument('keyword', nargs='?', help='按词/释义过滤（服务端前缀匹配）')
+    p.add_argument('--channel', help='只看某个 channel（uid / 序号 / 名字片段）')
+    p.add_argument('--studio', help='只看某个 studio（studio 名）')
+    p.add_argument('--tag', help='按 tag 过滤（本地过滤）')
+    p.add_argument('--order', default='updated_at')
+    p.add_argument('--dir', default='desc', choices=['asc', 'desc'])
+    p.add_argument('--limit', type=int, default=50)
+    p.add_argument('--offset', type=int, default=0)
+    p.set_defaults(func=cmd_terms.cmd_my_terms)
+
     p = add('related', '本文 ↔ 义注 ↔ 复注的段落对应')
     p.add_argument('coord', help='book:paragraph')
     p.set_defaults(func=cmd_read.cmd_related)
@@ -178,6 +190,30 @@ def build_parser():
     p.add_argument('--book', type=int, default=0, help='限定 book，0 表示不限（默认）')
     p.add_argument('--force', action='store_true', help='即使缓存未过期也重新签发')
     p.set_defaults(func=cmd_write.cmd_grant)
+
+    p = add('term-add', '新建术语（AI 身份，必须指定 channel）', needs_json=False)
+    p.add_argument('word', help='巴利词')
+    p.add_argument('meaning', help='译名')
+    p.add_argument('--channel', help='目标 channel（uid / 序号 / 名字片段）；省略则交互选择')
+    p.add_argument('--other-meaning', dest='other_meaning', help='备选译名，逗号分隔')
+    p.add_argument('--note', help='注解（markdown）')
+    p.add_argument('--tag')
+    p.add_argument('--language', help='缺省跟随 channel 的语言')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true', help='跳过交互确认（非交互环境必须显式给）')
+    p.set_defaults(func=cmd_terms.cmd_term_add)
+
+    p = add('term-edit', '修改术语（AI 身份，只能改 channel 内的术语）', needs_json=False)
+    p.add_argument('guid', help='术语 guid，用 my-terms 查')
+    p.add_argument('--word')
+    p.add_argument('--meaning')
+    p.add_argument('--other-meaning', dest='other_meaning')
+    p.add_argument('--note')
+    p.add_argument('--tag')
+    p.add_argument('--language')
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true')
+    p.set_defaults(func=cmd_terms.cmd_term_edit)
 
     p = add('write', '写入句子', needs_json=False)
     p.add_argument('file', help='句子 JSON 文件，- 表示从 stdin 读')

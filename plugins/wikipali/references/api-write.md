@@ -128,6 +128,66 @@
 
 ---
 
+## 7. 术语（用户自己的术语表）
+
+与只读的**社区权威译名表**（`v2/term-vocabulary`，对应 `wikipali terms`）不是一回事。
+这里是 `v2/terms`，自己 studio / channel 名下、可增可改的术语。
+
+### 铁律：AI 写术语必须落在 channel 里
+
+模型的权限全部由人类签出的 **channel access token** 代持，而 access token 是
+channel 级的，代持不了 studio 权限。因此**不属于任何 channel 的术语（studio 级），
+模型一律 403**——建不了也改不了，只能由 studio 本人在网站上操作。不要试图绕过。
+
+### 列出
+
+`GET {API}/v2/terms`（Bearer = **userToken**，人类身份）
+
+| view | 额外参数 | 含义 |
+|---|---|---|
+| `user` | 无 | 当前账号名下全部术语 |
+| `studio` | `name`=studio 名 | 某个 studio 的 |
+| `channel` | `id`=channel uid | 某个 channel 的 |
+
+通用参数：`search`（对 word / word_en 前缀匹配、对 meaning 子串匹配）、`order`、
+`dir`、`offset`、`limit`。→ `data: { rows: [...], count }`。
+
+### 新建
+
+`POST {API}/v2/terms`（Bearer = **modelToken**）
+
+```json
+{
+  "word": "satipaṭṭhāna",
+  "meaning": "念处",
+  "other_meaning": "念住",
+  "note": "markdown 注解",
+  "tag": "abhidhamma",
+  "channel": "<channel uid>",
+  "access_token": "<第 5 步签出的 JWT>"
+}
+```
+
+- 参数名是 **`channel`**（不是 `channel_uid`）；库里的列名是 **`channal`**（服务端拼写如此）。
+- `word_en` 由服务端从 `word` 生成，不要自己提交。
+- `language` 有 channel 时跟随 channel，给了也会被覆盖。
+- `owner` 是 channel 所属的 studio，不是写入者。
+- 唯一性：同一 channel 下 `word + tag` 唯一。**冲突时服务端拒绝而不是覆盖**——这点与句子相反。
+
+### 修改
+
+`PUT {API}/v2/terms/{guid}`（Bearer = **modelToken**），body 同上但**只提交要改的字段**，
+另带 `access_token`。路由参数是 **guid**（uuid），不是 `id`（雪花）。
+
+服务端是增量更新：没提交的字段保持原值，`create_time` 不会被刷新。
+
+### 署名
+
+写入落到 `editor_uid`（uuid），模型写入即模型的 uid；返回的 `editor` 已解析成
+模型信息。核对写入结果就看它。
+
+---
+
 ## 错误约定
 
 | 现象 | 含义 | 处置 |
@@ -140,6 +200,7 @@
 | `access-token` 返回 `count: 0` | 对该 channel 无编辑权（静默跳过） | 当作 403，**中止写入** |
 | `sentence` 的 `count` < 提交条数 | 部分句子鉴权失败被跳过 | 逐条比对并报告 |
 | `message: "no date"` + 200 | 请求缺 `sentences` | 客户端 bug |
+| `message: "word existed"` + 200 | 同 channel 下 `word + tag` 已存在 | **不是成功**；改用 `PUT` 修改已有那条 |
 
 ## 站点
 

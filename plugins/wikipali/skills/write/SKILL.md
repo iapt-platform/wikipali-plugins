@@ -1,13 +1,13 @@
 ---
 name: write
-description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
+description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms): listing, creating, and editing entries in a channel. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
 metadata:
   author: mint
 ---
 
 # WikiPali 写入
 
-把句子写进 WikiPali 句子库，**署名为 AI 模型身份**（`editor_uid` = 模型 uid），而不是操作者本人。
+把句子和术语写进 WikiPali，**署名为 AI 模型身份**（`editor_uid` = 模型 uid），而不是操作者本人。
 
 只依赖 Python 标准库，直接跑，不要建虚拟环境：
 
@@ -44,24 +44,29 @@ metadata:
 3. **绝不打印 token 全文**（`~/.wikipali/credentials.json` 里的任何值）。脚本自己会打码，不要 `cat` 那个文件。
 4. **`count` 不等于提交条数就是有句子没写进去**，必须如实报告给用户，不要说「已全部写入」。
 5. **收到 401 不要自动重试**，按脚本的提示走。
+6. **术语只能写进 channel。** 不属于任何 channel 的 studio 级术语，模型一律无权建、
+   无权改（access token 是 channel 级的，代持不了 studio 权限）。撞上这种情况就如实
+   告诉用户「这条得你自己在网站上改」，不要换着法子重试。
+7. **术语冲突时服务端拒绝而不是覆盖**（与句子相反）。报「已存在」就去 `my-terms` 找到
+   那条的 guid 用 `term-edit` 改，不要改个 tag 绕过去建重复条目。
 
 ### 译文内容
 
-6. **坐标不能编造。** 写之前用 `wikipali get <book>-<para> --json` 取真实句子，
+8. **坐标不能编造。** 写之前用 `wikipali get <book>-<para> --json` 取真实句子，
    把要写的 `(book_id, paragraph, word_start, word_end)` 与之做集合比对，确认
    无编造、无遗漏；写完独立读回，不要只信 `write` 自报的条数。
-7. **默认现代汉语。** 通顺易读的书面语。不要古汉语，不要半文半白，不要译经腔——
+9. **默认现代汉语。** 通顺易读的书面语。不要古汉语，不要半文半白，不要译经腔——
    「尔时」「复次」「者……也」「谓」「如是」这类仿古句式一概不用。用户指定风格时
    才改。
-8. **术语标记默认不用。** 用户明确要求时才把巴利术语写成 `[[词根]]`；必须用**词典形**
+10. **术语标记默认不用。** 用户明确要求时才把巴利术语写成 `[[词根]]`；必须用**词典形**
    而非原文的变格形，且**写前用 `wikipali forms <词>` 验证**——展不出词形的不是有效
    词根，链接会落空。普通名词不算术语（`asuci` 就是「不净」，不加标记）。
-9. **注释默认不加。** 用户明确要求时才加，且必须：紧跟被注释词、反引号包裹、
+11. **注释默认不加。** 用户明确要求时才加，且必须：紧跟被注释词、反引号包裹、
    **不能换行**、**标出来源**（`**义注**：`、`**复注**：`）。注释内容只能取自
    `wikipali related` 找到的义注复注，**不许自己发挥**；注释里的巴利词不再加 `[[ ]]`。
-10. **被解释词必须与所注文本逐字同译。** 义注的黑体引自本文、复注的引自义注；
+12. **被解释词必须与所注文本逐字同译。** 义注的黑体引自本文、复注的引自义注；
     同一 channel 内译法不一致，读者就看不出这条注在注哪个词。这条可机械核查。
-11. **文献层次必须标明**，本文、义注、复注不能混——把义注的解释当成经律本身的
+13. **文献层次必须标明**，本文、义注、复注不能混——把义注的解释当成经律本身的
     说法是学术错误，不是措辞问题。**机器生成的译文必须显式标注。**
 
 ## 首次准备
@@ -119,6 +124,32 @@ wikipali write sentences.json --channel <uid或名字片段>            # 再真
 `write` 会自动完成：解析校验 → 确定 channel → 回显确认 → 按需签发/复用 access token → 每 50 条一批提交 → 核对 `count` 并报告漏写的句子。
 
 **写入是覆盖式的**：相同 `(book_id, paragraph, word_start, word_end, channel_uid)` 的已有句子会被替换。回显里那行警告要转达给用户。
+
+## 术语表
+
+用户自己的术语表（`v2/terms`），与只读的社区权威译名表（`wikipali terms`）**不是一回事**——
+后者是全网通用的译名对照，这里是用户自己 channel 名下、可增可改的条目。
+
+```bash
+wikipali my-terms                      # 当前账号名下全部
+wikipali my-terms --channel <名字片段>  # 只看某个 channel
+wikipali my-terms satipa               # 按词/释义过滤
+```
+
+列出走人类身份（只读）；建和改走模型身份 + access token，和写句子同一条链路：
+
+```bash
+wikipali term-add satipaṭṭhāna 念处 --channel <名字片段> \
+    --other-meaning 念住 --note '注解（markdown）' --tag abhidhamma --dry-run
+wikipali term-edit <guid> --meaning 念住          # 只改给出的字段，其余保持原值
+```
+
+- `term-add` / `term-edit` **必须有 channel**，见铁律第 6 条。`term-edit` 的 channel
+  从术语本身读出，不用给。
+- guid 用 `my-terms` 查（输出行首是 guid 前 8 位，`--json` 拿完整值）。
+- `--dry-run` 先看回显，确认无误再真跑；用户没明确同意本次写入之前不要加 `-y`。
+- 改动是**增量**的：没给的字段保持原值，不会被清空。
+- 译名应与社区术语表（`wikipali terms`）一致；不一致时要在 `--note` 里说明理由。
 
 ## 站点
 
