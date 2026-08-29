@@ -16,7 +16,7 @@
 /plugin install wikipali@wikipali
 ```
 
-桌面版在 **Code** 标签页里点 `+` → **Plugins** → **Add plugin** 也可以装。
+**必须在 Claude Code 里装**——Claude Desktop 的 **Add plugin** 只能搜到官方 marketplace。用 Claude Code 装好后，插件在 Claude Desktop 的 **Plugins** 列表里能看到、能用，但升级仍要回 Claude Code 跑命令，所以只用桌面版的用户需要单独装一份 [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)。
 
 不走 marketplace 的话，克隆本仓库后跑 `plugins/wikipali/install.sh --user`。
 
