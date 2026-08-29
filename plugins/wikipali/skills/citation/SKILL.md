@@ -60,10 +60,12 @@ wikipali cite 'မဟာဋီ-၂-၄၀၁' 'ပြည်-ဝိသုဒ္�
 版面标记），与正文里 `<code>M2.241</code>` 的位置是同一份数据。手工查：
 
 ```bash
-zgrep -P '^M2\\.0241\\t' ${CLAUDE_PLUGIN_ROOT}/references/citation-pages.tsv.gz
+zgrep -P '^M2\.0241\t' ${CLAUDE_PLUGIN_ROOT}/references/citation-pages.tsv.gz
 ```
 
 ## 命令解析不了时，手工按这个来
+
+⚠ **用 `grep` 取需要的那一行，别把表整个读进上下文。** 两张表合起来 40KB、三百多行缅文，整读一遍既占地方又容易看错字——正常路径下这些数据是 Python 读的，模型只该看到结果。
 
 1. **缅文数字转阿拉伯数字**：`၀၁၂၃၄၅၆၇၈၉` = `0123456789`。
 2. **按分隔符切开**：`၊`（缅文逗号）、`။`、`-`、`、`、`,`、`.`、空格都用过，同一份文献里
@@ -74,7 +76,8 @@ zgrep -P '^M2\\.0241\\t' ${CLAUDE_PLUGIN_ROOT}/references/citation-pages.tsv.gz
    只有一个数字就是不分册的书（如 `ပဋိသံ၊၅၂` 无碍解道第 52 页）。
 5. **版本前缀**要认出来：`ပြည်` 是「卑谬版」，属于版本而非书名的一部分。
 6. 拿书名查 `citation-abbrev.tsv` 的 `abbrev_my`（多种写法用 `|` 分隔）或 `aliases`
-   （罗马化，去变音符后小写比对），得到候选 book。
+   （罗马化，去变音符后小写比对），得到候选 book——`grep 'ဝိသုဒ္ဓိ' references/citation-abbrev.tsv`
+   取那一行就够。
 7. 在页码索引里查 `M<册>.<页补足四位>`，**限定在候选 book 内**——同一个标记在别的书里
    也有（每部著作各有自己的一套页码）。命中的 `book` + `paragraph` 就是答案。
 
