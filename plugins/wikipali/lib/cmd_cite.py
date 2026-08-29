@@ -1,12 +1,13 @@
-"""cite —— 把缅文/罗马化的引用缩写解析成 WikiPali 的书。
+"""cite —— 把缅文/罗马化的引用缩写解析成 WikiPali 的坐标。
 
-**纯离线**：只读插件自带的两张表，不发任何请求、不需要凭据。
+**纯离线**：只读插件自带的三个数据文件，不发任何请求、不需要凭据。
 
-引用里的数字是**缅甸版页码**，不是 WikiPali 的段落号，两者不是一回事。
-本命令只做到「是哪本书」——把页码换成段落号要读正文里的 <code>M册.页</code>
-标记，那是下一步的事，这里不猜。
+引用里的数字是**缅甸版页码**，不是段落号。换算靠 `citation-pages.tsv.gz`——
+它是 WikiPali 正文里那些页码标记（`M2.0241` 这类）的索引，一条标记落在一个
+段落上，所以「清净道论第 2 册第 241 页」能直接定到 `65:1461`。
 """
 
+import gzip
 import json
 import os
 import re
@@ -17,12 +18,15 @@ from errors import WpError
 REF_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'references')
 ABBREV_TSV = os.path.join(REF_DIR, 'citation-abbrev.tsv')
 BOOKS_TSV = os.path.join(REF_DIR, 'citation-books.tsv')
+PAGES_GZ = os.path.join(REF_DIR, 'citation-pages.tsv.gz')
 
 # 缅文数字 ၀-၉
 MY_DIGITS = {chr(0x1040 + i): str(i) for i in range(10)}
 # 引用里用过的分隔符：缅文逗号/句号、各种横线、顿号、全角逗号、点、空白。
 # 括号一并吃掉——脚注里的引用多半是括起来的，(ဝိသုဒ္ဓိ၊၂၊၂၄၁) 要能直接查。
-SEPARATORS = re.compile("[\u104a\u104b\\-\u2010-\u2015\u3001\uff0c,.\\s\u00b7\u30fb()\uff08\uff09\\[\\]\u3010\u3011\u3014\u3015\u300a\u300b\u300c\u300d'\"]+")
+SEPARATORS = re.compile("[၊။\\-‐-―、，,.\\s·・"
+                        "()（）\\[\\]【】〔〕《》"
+                        "「」'\"]+")
 
 
 def _load_tsv(path):
@@ -64,9 +68,7 @@ def _index(rows):
     """名字 → 行。缅文写法、巴利书名、中文名、人工别名都进索引。"""
     idx = {}
     for row in rows:
-        keys = set()
-        for ab in row['abbrev_my'].split('|'):
-            keys.add(ab.strip())
+        keys = {ab.strip() for ab in row['abbrev_my'].split('|')}
         for extra in (row['work_pali'], row['work_zh']):
             if extra:
                 keys.add(_fold(extra))
@@ -87,8 +89,7 @@ def lookup(name, rows):
     # 「ပြည်-ဝိသုဒ္ဓိမဂ်နိဿယ」这种更具体的写法。
     folded = _fold(name)
     if len(folded) > 3:
-        hits = [(k, r) for k, r in idx.items()
-                if len(k) > 3 and (folded in k or k in folded)]
+        hits = [(k, r) for k, r in idx.items() if len(k) > 3 and (folded in k or k in folded)]
         if hits:
             return max(hits, key=lambda kv: len(kv[0]))[1], 'fuzzy'
     return None, None
@@ -97,13 +98,12 @@ def lookup(name, rows):
 def parse_volmap(spec):
     """`1=96;2=97;3=98` 或 `2=173:1155` → {册: [(book, para 或 None), …]}。
 
-    有些书组的页码标记里根本没有册号（缅甸版论藏义注三册都标成 M0.x），
-    这时只能靠这张人工核定的册 → 著作对照表定册，再用页码定册内的哪一部。
+    有些书组的页码标记里没有册号（缅甸版论藏义注三册都标成 M0.xxxx），
+    这时只能靠这张人工核定的册 → 著作对照表把册定下来。
     """
     out = {}
     for part in (spec or '').split(';'):
-        part = part.strip()
-        if not part or '=' not in part:
+        if '=' not in part:
             continue
         vol, targets = part.split('=', 1)
         if not vol.strip().isdigit():
@@ -120,71 +120,68 @@ def parse_volmap(spec):
     return out
 
 
-def pick_work(row, works, vol, page):
-    """在候选著作里按缅甸版册·页定位。返回 (命中, 候选, 说明)。
+def find_pages(words, books):
+    """在页码索引里查这些标记，限定在候选 book 内。返回 {标记: [(book, para), …]}。
 
-    候选的单位是**著作**不是书——一本 book 里可能收好几部（book 98 收了五论义注
-    中的五部），页码在一册之内跨著作连续编下去。
+    索引 6 万余行、解压后 1 MB，整扫一遍是毫秒级，不值得再建更复杂的结构。
     """
-    ids = [int(x) for x in row['books'].split(',') if x.strip()]
-    cands = [b for b in works if int(b['book']) in ids]
-    if not cands:
-        return None, [], '该书在 WikiPali 里没有对应'
+    if not os.path.exists(PAGES_GZ):
+        raise WpError(f'缺少页码索引 {PAGES_GZ}——插件没装全，重装一次。')
+    found = {w: [] for w in words}
+    with gzip.open(PAGES_GZ, 'rt', encoding='utf-8') as fh:
+        for line in fh:
+            word, book, para = line.rstrip('\n').split('\t')
+            if word in found and int(book) in books:
+                found[word].append((int(book), int(para)))
+    return found
 
-    scoped, mapped = cands, False
+
+def scope_works(row, works, vol):
+    """候选著作：先按缩写给的 book 列表，再按册号对照表收窄。"""
+    ids = [int(x) for x in row['books'].split(',') if x.strip()]
+    cands = [w for w in works if int(w['book']) in ids]
     vmap = parse_volmap(row.get('vol_map'))
     if vol is not None and vol in vmap:
         want = vmap[vol]
-        scoped = [b for b in cands
-                  if (int(b['book']), int(b['para'])) in want or (int(b['book']), None) in want]
-        mapped = True
-        if not scoped:
-            return None, cands, f'册号对照表里第 {vol} 册指向的著作不在候选里'
+        scoped = [w for w in cands
+                  if (int(w['book']), int(w['para'])) in want or (int(w['book']), None) in want]
+        if scoped:
+            return scoped, cands, True
+    return cands, cands, False
 
+
+def work_of(book, para, works):
+    """段落落在哪一部著作里——同一本书内起始段不大于它的最后一部。"""
+    inside = [w for w in works if int(w['book']) == book and int(w['para']) <= para]
+    return max(inside, key=lambda w: int(w['para'])) if inside else None
+
+
+def resolve(row, works, vol, page):
+    """返回 (命中列表, 用到的标记, 说明)。命中是 (book, para, 著作行)。"""
+    scoped, cands, mapped = scope_works(row, works, vol)
+    if not scoped:
+        return [], '', '该书在 WikiPali 里没有对应'
     if page is None:
-        if len(scoped) == 1:
-            return scoped[0], cands, ''
-        return None, scoped, '引用里没有页码，定不到具体是哪一部'
+        return [], '', '引用里没有页码，定不到位置'
 
-    ranged = [b for b in scoped if b['m_first']]
-    if not ranged:
-        if len(scoped) == 1:
-            return scoped[0], cands, ''
-        return None, scoped, '这些著作没有缅甸版页码标记，无法按页定位'
+    books = {int(w['book']) for w in scoped}
+    # 分册的著作标记成 M<册>.<页>，不分册的标记成 M0.<页>；页码在索引里补足四位。
+    primary = 'M%d.%04d' % (vol, page) if vol is not None else None
+    fallback = 'M0.%04d' % page
+    words = [w for w in (primary, fallback) if w]
+    found = find_pages(words, books)
 
-    if mapped:
-        pool = ranged            # 册已由对照表定死，不再比对 m_vol
-    else:
-        same_vol = [b for b in ranged
-                    if vol is not None and b['m_vol'] and int(b['m_vol']) == vol]
-        pool = same_vol or (ranged if vol is None else [])
-        # 不分册的著作页码标记记作 M0.x。引用给了册号而候选只有这么一部时，
-        # 按同一部算，别因为 0≠1 就判定找不到。
-        if not pool and len(ranged) == 1 and ranged[0]['m_vol'] in ('0', ''):
-            pool = ranged
-        if not pool:
-            return None, cands, f'候选著作里没有缅甸版第 {vol} 册'
-
-    # 页码在一册之内跨著作连续编下去，所以「起始页不大于该页的最后一部」就是答案。
-    # 不靠 m_last——末尾几章没有页码标记的著作，m_last 本来就取不到。
-    pool = sorted(pool, key=lambda b: int(b['m_first']))
-    before = [b for b in pool if int(b['m_first']) <= page]
-    if not before:
-        return None, pool, f"页码 {page} 比这一册最早的一部（起于第 {pool[0]['m_first']} 页）还靠前"
-    hit = before[-1]
-    if hit['m_last'] and page > int(hit['m_last']):
-        # 同一册里还有没抓到页码的著作时，越界就不能硬断——真正的答案很可能
-        # 就是那几部之一。宁可报不确定，也不要指到一部明显装不下这一页的著作上。
-        blind = [b for b in scoped if not b['m_first']]
-        if blind:
-            return None, pool + blind, (
-                f"页码 {page} 超出 {hit['toc'][:24]} 的区间（止于第 {hit['m_last']} 页），"
-                f"而同册另有 {len(blind)} 部没有页码数据")
-        if hit is pool[-1]:
-            return hit, cands, ''      # 该册最后一部，上界只是没扫到，不算越界
-        return None, pool, (f"页码 {page} 落在 {hit['toc'][:24]}（止于第 {hit['m_last']} 页）"
-                            f"与下一部之间的接缝上")
-    return hit, cands, ''
+    for word in words:
+        hits = []
+        for book, para in found[word]:
+            work = work_of(book, para, works)
+            # vol_map 收窄过的，命中还要落在被指到的那几部里
+            if mapped and (work is None or work not in scoped):
+                continue
+            hits.append((book, para, work))
+        if hits:
+            return hits, word, ''
+    return [], words[0], f'页码索引里没有 {words[0]}——这一页在候选著作里没有标记'
 
 
 def cmd_cite(args):
@@ -206,6 +203,7 @@ def cmd_cite(args):
         elif nums:
             page = nums[0]
             page_end = nums[1] if len(nums) >= 2 else None
+
         item = {'input': raw, 'name': name, 'vol': vol, 'page': page,
                 'page_end': page_end, 'match': how}
         if not row:
@@ -215,17 +213,28 @@ def cmd_cite(args):
 
         item.update({'work_pali': row['work_pali'], 'work_zh': row['work_zh'],
                      'kind': row['kind'], 'note': row['note']})
-        hit, cands, why = pick_work(row, works, vol, page)
-        item['candidates'] = [{'book': int(b['book']), 'para': int(b['para']), 'toc': b['toc'],
-                               'm': f"{b['m_vol']}.{b['m_first']}-{b['m_last']}" if b['m_vol'] else ''}
-                              for b in cands]
-        if hit:
-            item['book'] = int(hit['book'])
-            item['toc'] = hit['toc']
-            item['work_start'] = int(hit['para'])
-            item['m_range'] = f"M{hit['m_vol']}.{hit['m_first']}–{hit['m_last']}"
+        hits, word, why = resolve(row, works, vol, page)
+        item['marker'] = word
+        if len(hits) == 1:
+            book, para, work = hits[0]
+            item.update({'book': book, 'paragraph': para,
+                         'toc': work['toc'] if work else '',
+                         'work_start': int(work['para']) if work else None})
+            if page_end:
+                tail, _, _ = resolve(row, works, vol, page_end)
+                if len(tail) == 1:
+                    item['paragraph_end'] = tail[0][1]
         else:
-            item['why'] = why
+            item['why'] = why or '多部著作的同册同页都有标记，定不到唯一一处'
+            if hits:
+                item['candidates'] = [{'book': b, 'para': p,
+                                       'toc': (w or {}).get('toc', '')} for b, p, w in hits]
+            else:
+                scoped = scope_works(row, works, vol)[0]
+                item['candidates'] = [
+                    {'book': int(w['book']), 'para': int(w['para']), 'toc': w['toc'],
+                     'm': f"{w['m_vol']}.{w['m_first']}-{w['m_last']}" if w['m_vol'] else ''}
+                    for w in scoped]
         results.append(item)
 
     if getattr(args, 'json', False):
@@ -240,7 +249,7 @@ def cmd_cite(args):
             loc.append(f"第 {r['vol']} 册")
         if r['page'] is not None:
             loc.append(f"缅甸版第 {r['page']}{'–' + str(r['page_end']) if r['page_end'] else ''} 页")
-        print(f"{r['input']}")
+        print(r['input'])
         print(f"  缩写   : {r['name']}   {'  '.join(loc) if loc else '（没有册页）'}")
         if r.get('error'):
             print(f"  ✗ {r['error']}——不在 references/citation-abbrev.tsv 里，别猜。")
@@ -249,20 +258,25 @@ def cmd_cite(args):
         if r.get('note'):
             print(f"  说明   : {r['note']}")
         if r.get('book'):
-            print(f"  → 书名 : {r['toc']}　（缅甸版 {r.get('m_range', '')}，起于 "
-                  f"{r['book']}:{r['work_start']}）")
-            print(f"  → 坐标 : {r['book']}-<段落号>　（段落号未解析：引用给的是页码，不是段落）")
+            coords = f"{r['book']}:{r['paragraph']}"
+            shown = f"{r['book']}-{r['paragraph']}"
+            if r.get('paragraph_end') and r['paragraph_end'] != r['paragraph']:
+                shown += f" … {r['book']}-{r['paragraph_end']}"
+                coords += f" {r['book']}:{r['paragraph_end']}"
+            print(f"  → 书名 : {r['toc']}")
+            print(f"  → 坐标 : {shown}　（页码标记 {r['marker']} 落在这一段）")
+            print(f"  取原文 : wikipali get {coords}")
         elif r['kind'] in ('nissaya', 'burmese'):
             print('  → WikiPali 无对应：这是缅文著作，库里收的是巴利文献。'
                   '册页也不能换算——缅文本的分册与巴利本不是一回事。')
         else:
-            print(f"  ✗ 定不到具体哪一本：{r.get('why', '')}")
+            print(f"  ✗ 定不到位置：{r.get('why', '')}")
             for c in r.get('candidates', [])[:14]:
-                print(f"      {c['book']}:{c['para']:<6} {c['toc'][:42]:<44}"
-                      f"{('M' + c['m']) if c['m'] else '（无页码标记）'}")
+                tail = f"  M{c['m']}" if c.get('m') else ''
+                print(f"      {c['book']}:{c['para']:<6} {c['toc'][:44]}{tail}")
         if r.get('match') == 'fuzzy':
             print('  ⚠ 缩写是模糊匹配上的，核对一下是不是这部书。')
 
-    print('\n引用里的数字是缅甸版页码。页码 → 段落号要读正文里的 <code>M册.页</code> 标记，'
-          '本命令不做这一步。')
+    print('\n页码是缅甸版的，段落号由 references/citation-pages.tsv.gz 里的页码标记换算而来；'
+          '标记指的是**该页起始处**，所引内容可能延续到后面几段。')
     return 0

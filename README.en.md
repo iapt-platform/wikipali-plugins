@@ -44,7 +44,7 @@ Then just ask in plain language:
 | Capability | What it does |
 |---|---|
 | **Library** (no login) | Category browsing, inflection expansion, dictionary lookup, full-text search, hit distribution, chapter TOC, paragraph listing and whole-chapter reading, mūla ↔ aṭṭhakathā ↔ ṭīkā paragraph alignment, translation comparison, word frequency, glossaries, public articles and anthologies |
-| **Citations** (offline) | Resolves abbreviated Burmese footnote citations such as `ဝိသုဒ္ဓိ၊၂၊၂၄၁` to the work and the WikiPali book that holds it, from bundled tables — no network |
+| **Citations** (offline) | Resolves abbreviated Burmese footnote citations such as `ဝိသုဒ္ဓိ၊၂၊၂၄၁` to the work and the coordinate `65-1461` — Burmese edition page numbers are converted to paragraphs through a bundled index of 62k page markers, with no network access |
 | **Workspace** (login required) | Write sentences, terms and annotations **as an AI model identity**; issue and revoke model identity tokens; manage channels and access tokens |
 
 Two skills: `research` (read-only) and `write`. Written sentences record the AI model's uid as `editor_uid`, not the human operator's — **credit goes to whoever actually did the translating**, which keeps attribution and audit trails honest.
