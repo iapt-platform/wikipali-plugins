@@ -232,9 +232,12 @@ def cmd_cite(args):
 
         # 数字怎么读取决于这部书分不分册：不分册的书（如无碍解道），
         # 「ပဋိသံ၊၅၂-၅၃」的两个数字是页码范围，不是册号和页码。
+        # 认不出这部书时**不猜**——哪个是册哪个是页都无从判断，原样报出去。
         volumed = bool(row) and (row['vols_seen'] or '-') != '-'
         vol = page = page_end = None
-        if volumed and len(nums) >= 2:
+        if not row:
+            pass
+        elif volumed and len(nums) >= 2:
             vol, page = nums[0], nums[1]
             page_end = nums[2] if len(nums) >= 3 else None
         elif nums:
@@ -244,6 +247,7 @@ def cmd_cite(args):
         item = {'input': raw, 'name': name, 'vol': vol, 'page': page,
                 'page_end': page_end, 'match': how}
         if not row:
+            item['numbers'] = nums
             item['error'] = '表里没有这个缩写'
             results.append(item)
             continue
@@ -294,6 +298,9 @@ def cmd_cite(args):
         print(r['input'])
         print(f"  缩写   : {r['name']}   {'  '.join(loc) if loc else '（没有册页）'}")
         if r.get('error'):
+            if r.get('numbers'):
+                print(f"  数字   : {'、'.join(str(n) for n in r['numbers'])}"
+                      f"（认不出这部书，哪个是册、哪个是页无从判断）")
             print(f"  ✗ {r['error']}——不在 references/citation-abbrev.tsv 里，别猜。")
             continue
         print(f"  著作   : {r['work_pali']}　{r['work_zh']}　（{r['kind']}）")
