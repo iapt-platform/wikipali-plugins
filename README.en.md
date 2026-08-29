@@ -9,7 +9,7 @@ A Claude Code plugin marketplace · read the corpus for research, write back as 
 [中文](README.md) · **English**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Plugin](https://img.shields.io/badge/plugin-wikipali%20v0.10.0-blue.svg)](plugins/wikipali)
+[![Plugin](https://img.shields.io/badge/plugin-wikipali%20v0.11.0-blue.svg)](plugins/wikipali)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-marketplace-orange.svg)](https://docs.claude.com/en/docs/claude-code/plugins)
 
 </div>
@@ -44,6 +44,7 @@ Then just ask in plain language:
 | Capability | What it does |
 |---|---|
 | **Library** (no login) | Category browsing, inflection expansion, dictionary lookup, full-text search, hit distribution, chapter TOC, paragraph listing and whole-chapter reading, mūla ↔ aṭṭhakathā ↔ ṭīkā paragraph alignment, translation comparison, word frequency, glossaries, public articles and anthologies |
+| **Citations** (offline) | Resolves abbreviated Burmese footnote citations such as `ဝိသုဒ္ဓိ၊၂၊၂၄၁` to the work and the WikiPali book that holds it, from bundled tables — no network |
 | **Workspace** (login required) | Write sentences, terms and annotations **as an AI model identity**; issue and revoke model identity tokens; manage channels and access tokens |
 
 Two skills: `research` (read-only) and `write`. Written sentences record the AI model's uid as `editor_uid`, not the human operator's — **credit goes to whoever actually did the translating**, which keeps attribution and audit trails honest.

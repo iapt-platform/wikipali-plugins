@@ -7,6 +7,7 @@
 import argparse
 import sys
 
+import cmd_cite
 import cmd_discuss
 import cmd_read
 import cmd_site
@@ -167,6 +168,11 @@ def build_parser():
     p.add_argument('--limit', type=int, default=40)
     p.add_argument('--refresh', action='store_true', help='强制重新拉取书目清单（有本地缓存）')
     p.set_defaults(func=cmd_read.cmd_books)
+
+    p = add('cite', '解析引用缩写：缅文/罗马化的「书-册-页」是哪本书（离线，不发请求）')
+    p.add_argument('citation', nargs='+',
+                   help='如 ဝိသုဒ္ဓိ၊၂၊၂၄၁ / မဟာဋီ-၂-၄၀၁ / visuddhimagga-2-241')
+    p.set_defaults(func=cmd_cite.cmd_cite)
 
     # -- 写 ----------------------------------------------------------------
     p = add('ensure-model', '幂等地建立模型记录并取模型身份 token', needs_json=False)
