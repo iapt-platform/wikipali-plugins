@@ -13,7 +13,9 @@ import os
 import re
 import unicodedata
 
-from errors import WpError
+from client import make_client
+from cmd_read import PALI_CHANNEL, strip_markup
+from errors import ApiError, WpError, explain_api_error
 
 REF_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'references')
 ABBREV_TSV = os.path.join(REF_DIR, 'citation-abbrev.tsv')
@@ -184,6 +186,41 @@ def resolve(row, works, vol, page):
     return [], words[0], f'页码索引里没有 {words[0]}——这一页在候选著作里没有标记'
 
 
+def page_span(book, vol, page):
+    """本页覆盖的段落区间。下一页的起始段就是本页的末段——页的分界落在段中间，
+    那一段被两页共享。取不到下一页（该部最后一页）时只回起始段。"""
+    nxt = 'M%d.%04d' % (vol if vol is not None else 0, page + 1)
+    rows = find_pages([nxt], {book}).get(nxt) or []
+    if not rows and vol is not None:
+        alt = 'M0.%04d' % (page + 1)
+        rows = find_pages([alt], {book}).get(alt) or []
+    return rows[0][1] if rows else None
+
+
+def fetch_page_text(args, book, start, end):
+    """取这一页的巴利原文与章节路径。**唯一联网的地方**，只有 --text 才会走到。"""
+    client = make_client(args)
+    try:
+        meta = client.call('GET', f'v2/palitext/{book}-{start}', timeout=60) or {}
+    except ApiError as exc:
+        raise explain_api_error(exc, f'取 {book}:{start} 的章节路径')
+    path = meta.get('path')
+    if isinstance(path, str):
+        try:
+            path = json.loads(path)
+        except ValueError:
+            path = []
+
+    paras = list(range(start, (end if end and end >= start else start) + 1))
+    query = {'view': 'paragraph', 'book': book, 'para': ','.join(str(p) for p in paras),
+             'channels': PALI_CHANNEL, 'limit': 500}
+    try:
+        data = client.call('GET', 'v2/sentence', query=query, timeout=60) or {}
+    except ApiError as exc:
+        raise explain_api_error(exc, f'取 {book}:{start}-{paras[-1]} 的原文')
+    return path or [], (data.get('rows') or [])
+
+
 def cmd_cite(args):
     abbrevs = _load_tsv(ABBREV_TSV)
     works = _load_tsv(BOOKS_TSV)
@@ -224,6 +261,11 @@ def cmd_cite(args):
                 tail, _, _ = resolve(row, works, vol, page_end)
                 if len(tail) == 1:
                     item['paragraph_end'] = tail[0][1]
+            if getattr(args, 'text', False):
+                last = item.get('paragraph_end') or para
+                span_end = page_span(book, vol, page_end or page)
+                item['span_end'] = span_end if span_end and span_end >= last else last
+                item['path'], item['rows'] = fetch_page_text(args, book, para, item['span_end'])
         else:
             item['why'] = why or '多部著作的同册同页都有标记，定不到唯一一处'
             if hits:
@@ -265,7 +307,11 @@ def cmd_cite(args):
                 coords += f" {r['book']}:{r['paragraph_end']}"
             print(f"  → 书名 : {r['toc']}")
             print(f"  → 坐标 : {shown}　（页码标记 {r['marker']} 落在这一段）")
-            print(f"  取原文 : wikipali get {coords}")
+            if item_path := r.get('path'):
+                names = ' › '.join(str(x.get('title') or '') for x in item_path)
+                print(f"  章节路径: {names}")
+            if r.get('rows') is None:
+                print(f"  取原文 : wikipali get {coords}　（加 --text 直接取这一页）")
         elif r['kind'] in ('nissaya', 'burmese'):
             print('  → WikiPali 无对应：这是缅文著作，库里收的是巴利文献。'
                   '册页也不能换算——缅文本的分册与巴利本不是一回事。')
@@ -276,6 +322,18 @@ def cmd_cite(args):
                 print(f"      {c['book']}:{c['para']:<6} {c['toc'][:44]}{tail}")
         if r.get('match') == 'fuzzy':
             print('  ⚠ 缩写是模糊匹配上的，核对一下是不是这部书。')
+        if r.get('rows') is not None:
+            span = f"{r['book']}:{r['paragraph']}–{r['span_end']}"
+            print(f"\n  ── 缅甸版第 {r['page']} 页原文（{span}，{len(r['rows'])} 句）──")
+            if not r['rows']:
+                print('  该区间取不到巴利原文。')
+            current = None
+            for row_ in r['rows']:
+                if row_.get('paragraph') != current:
+                    current = row_.get('paragraph')
+                    print(f"  [{r['book']}:{current}]")
+                print('    ' + strip_markup(row_.get('content')))
+            print('  末段与下一页共享——本页在其中某处结束，不是整段都属于这一页。')
 
     print('\n页码是缅甸版的，段落号由 references/citation-pages.tsv.gz 里的页码标记换算而来；'
           '标记指的是**该页起始处**，所引内容可能延续到后面几段。')

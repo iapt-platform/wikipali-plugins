@@ -172,6 +172,8 @@ def build_parser():
     p = add('cite', '解析引用缩写：缅文/罗马化的「书-册-页」是哪本书（离线，不发请求）')
     p.add_argument('citation', nargs='+',
                    help='如 ဝိသုဒ္ဓိ၊၂၊၂၄၁ / မဟာဋီ-၂-၄၀၁ / visuddhimagga-2-241')
+    p.add_argument('--text', action='store_true',
+                   help='连这一页的巴利原文与章节路径一起取（这一项要联网）')
     p.set_defaults(func=cmd_cite.cmd_cite)
 
     # -- 写 ----------------------------------------------------------------
