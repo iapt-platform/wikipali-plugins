@@ -63,7 +63,7 @@ data.rows[] = { pcdBookId, count, book, paragraph, paliTitle, tags: [{name}] }
 `search-pali-wbw` 的 `count`。实测 `parivāsa`：词次 449、段落 281。方法论陈述里
 写错这两个数是硬伤。
 
-`tags` 含 `mūla` / `aṭṭhakathā` / `ṭīkā`，用来区分本文、义注、复注。
+`tags` 含 `mūla` / `aṭṭhakathā` / `ṭīkā`，用来区分根本、义注、复注。
 
 ## 5. 取文 —— `GET /v2/sentence`
 

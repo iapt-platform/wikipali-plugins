@@ -90,7 +90,7 @@ count: 281 段落。rows 每项：
 | Vinayālaṅkāra-ṭīkā | 40 | ṭīkā, vinaya |
 | (SP) Cūḷavagga-aṭṭhakathā | 28 | vinaya, aṭṭhakathā, samantapāsādikā |
 
-tags 里的 `mūla` / `aṭṭhakathā` / `ṭīkā` 让 agent 能直接区分**本文、义注、复注**——步骤 5 的「分析出处分布」和步骤 8 的分类都要靠它。
+tags 里的 `mūla` / `aṭṭhakathā` / `ṭīkā` 让 agent 能直接区分**根本、义注、复注**——步骤 5 的「分析出处分布」和步骤 8 的分类都要靠它。
 
 **这条链路对步骤 3/4 有个更好的做法**：用户原方案是「取前 50，靠黑体加权让义注的名词解释排前面」。但既然有 `bold=on`，可以直接**只取黑体命中**（本例 13 条），那正是被注释书当作词条标出来的地方——比靠排序精准，而且省 90% 的上下文。
 
@@ -286,7 +286,7 @@ plugins/wikipali/
 | `forms <词>` | 1 | `case` 展开：候选 lemma + 全部实际词形（带 count/bold）。**检索的必经前置** |
 | `word <词>` | 1 | `dict` 释义 + 形态分析（词根、词性、语法），用于确认选对了 lemma |
 | `search <词形…>` | 2、5 | `search-pali-wbw`；`--bold` 只取黑体（定义）、`--book`/`--tags` 限范围 |
-| `dist <词形…>` | 5 | 出处分布，带 tags（`mūla`/`aṭṭhakathā`/`ṭīkā`）便于区分本文与注疏 |
+| `dist <词形…>` | 5 | 出处分布，带 tags（`mūla`/`aṭṭhakathā`/`ṭīkā`）便于区分根本与注疏 |
 | `get <坐标…>` | 6 | 按坐标批量取文，可指定 channel |
 | `chapter <book> <para>` | 7 | 展开整章，先报体量再取 |
 | `versions <坐标>` | 10 | 该坐标有哪些语言/译本，明确列出「没有的」 |

@@ -50,7 +50,7 @@ def fmt_path(path, sep=' › ', max_items=4):
 
 
 def text_layer(tags):
-    """按 tags 判断文献层次：本文 / 义注 / 复注。引用时必须标明，混用是学术错误。"""
+    """按 tags 判断文献层次：根本 / 义注 / 复注。引用时必须标明，混用是学术错误。"""
     names = {t.get('name') for t in (tags or []) if isinstance(t, dict)}
     if 'ṭīkā' in names:
         return 'ṭīkā'

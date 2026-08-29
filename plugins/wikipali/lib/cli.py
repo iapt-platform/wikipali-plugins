@@ -135,7 +135,7 @@ def build_parser():
     p.add_argument('--offset', type=int, default=0)
     p.set_defaults(func=cmd_terms.cmd_my_terms)
 
-    p = add('related', '本文 ↔ 义注 ↔ 复注的段落对应')
+    p = add('related', '根本 ↔ 义注 ↔ 复注的段落对应')
     p.add_argument('coord', help='book:paragraph')
     p.set_defaults(func=cmd_read.cmd_related)
 
