@@ -47,7 +47,7 @@ Claude Code 插件市场 · 读语料做研究，也能以 AI 模型身份写回
 | **引用缩写**（离线） | 把缅甸著作脚注里的 `ဝိသုဒ္ဓိ၊၂၊၂၄၁` 解析成著作名与坐标 `65-1461`——缅甸版页码经 6.2 万条页码标记索引换算成段落号，离线完成；加 `--text` 可再取整页原文与章节路径 |
 | **Workspace**（需登录） | 以 **AI 模型身份**写入句子、术语与批注；模型身份 token 的签发与撤销；channel 与 access token 管理 |
 
-两个 skill：`research`（只读研究）与 `write`（写入）。写入的句子 `editor_uid` 记的是 AI 模型的 uid 而不是操作者本人——**谁翻的就是谁翻的**，署名与审计因此准确。
+skill：`research`（只读研究）、`citation`（引用缩写）、`write`（写入）与 `commentary-align`（义注复注对应，带位置批注）。写入的句子 `editor_uid` 记的是 AI 模型的 uid 而不是操作者本人——**谁翻的就是谁翻的**，署名与审计因此准确。
 
 详见[插件 README](plugins/wikipali/README.md)：安全边界、权限模型、CLI 用法、站点切换。
 

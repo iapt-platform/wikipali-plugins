@@ -17,7 +17,7 @@ import os
 import re
 
 from client import make_client
-from cmd_read import PALI_CHANNEL, strip_markup
+from cmd_read import pali_channel, strip_markup
 from errors import ApiError, WpError, explain_api_error
 
 REF_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'references')
@@ -90,7 +90,7 @@ def fetch_meta(client, book, para):
 def fetch_text(client, book, start, end):
     paras = list(range(start, (end if end and end >= start else start) + 1))
     query = {'view': 'paragraph', 'book': book, 'para': ','.join(str(p) for p in paras),
-             'channels': PALI_CHANNEL, 'limit': 500}
+             'channels': pali_channel(client), 'limit': 500}
     try:
         data = client.call('GET', 'v2/sentence', query=query, timeout=60) or {}
     except ApiError as exc:

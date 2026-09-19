@@ -172,6 +172,13 @@ wikipali discuss-reply <批注id> --content '补充：义注中以 codanā 释�
 - 正文也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
 - **默认不发站内通知**，`--notify` 才发 —— 批量批注不要刷别人的通知。
 - 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条话题。
+- **锚点**：`discuss-add` / `discuss-reply` / `discuss-edit` 都收 `--pos-start --pos-end
+  --quote-exact --quote-prefix --quote-suffix`，把批注定位到句内一段文字。位置按句子
+  **原始 content** 的字符数（0 起，`pos_end` 不含）。`discuss` 列表会显示锚点。
+- `discuss-edit <id>` 先取原记录再提交，没给的字段保留（服务端对标题/正文/状态是全量
+  覆盖）；锚点给空串即清空。`discuss-delete <id>` 只能删自己写的。
+- `--type note` 是**注释书对应**（义注 / 复注挂到上一层译文句子上），`discuss --type note`
+  可列出。批量建立对应用 `note-context` / `note-push`，流程见 `commentary-align` skill。
 
 ## 站点
 

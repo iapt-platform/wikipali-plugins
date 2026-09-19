@@ -238,6 +238,20 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
 }
 ```
 
+可选的**锚点字段**（W3C Web Annotation 的 TextPosition / TextQuote 选择器），新建与回复都收：
+
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `pos_start` / `pos_end` | 非负整数，可空 | 锚点在句子**原始 content** 里的字符位（0 起，`mb_strlen` 口径，`pos_end` 不含） |
+| `quote_exact` | 字符串，可空 | 被锚定文本的原样摘录 |
+| `quote_prefix` / `quote_suffix` | 字符串，可空 | 摘录前后的上下文（建议 32~64 字符），抗文本位移 |
+
+`type` 除 `discussion` 外还有 **`note`**：注释书对应——`res_id` 是上一层（根本 / 义注）
+某句**译文**的 uid，`content` 是下一层句子模板 `{{book-para-start-end}}`（不是译文；
+一个片段由多句解释时并列多个模板 `{{…}}{{…}}`，仍是一条记录），
+阅读页渲染时在 `pos_end` 处插入该义注 / 复注的译文边注。只用 `pos_end` 定插入点，位置
+越界时挂到句尾。写法见 `note-push` 与 `skills/commentary-align`。
+
 回复只要给 `parent`（被回复的批注 id）和 `content`：**`res_id` / `res_type` 由服务端
 从 parent 继承，不要自己给**。父话题的 `children_count` 会自动加一。
 
@@ -250,7 +264,10 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
 
 ⚠ `update()` 是**全量覆盖**：不提交 `title`/`content` 会被写成 null，而且 `status`
 不提交会被重置成 `active`——**改一下内容就把已关闭的话题重新打开了**。要改必须先
-`GET` 回填全部字段。
+`GET` 回填全部字段（`wikipali discuss-edit` 就是这样做的）。锚点五个字段例外：**出现才改**，
+没提交的原样保留，显式给 `null` 即清空。
+
+⚠ 现行 `destroy()` 只认作者本人，channel 编辑删不了别人的。
 
 ---
 
