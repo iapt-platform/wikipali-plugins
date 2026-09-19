@@ -9,12 +9,23 @@ import sys
 
 import cmd_page
 import cmd_discuss
+import cmd_notes
 import cmd_read
 import cmd_site
 import cmd_terms
 import cmd_write
 from client import DEFAULT_BATCH
 from errors import WpError
+
+
+def add_anchor_args(p, editing=False):
+    """批注锚点（W3C TextPosition / TextQuote 选择器），字符位按句子原始 content 计。"""
+    tail = '；给空串清空' if editing else ''
+    p.add_argument('--pos-start', dest='pos_start', help='锚点起始字符位（0 起）' + tail)
+    p.add_argument('--pos-end', dest='pos_end', help='锚点结束字符位（不含）' + tail)
+    p.add_argument('--quote-exact', dest='quote_exact', help='被锚定文本的原样摘录')
+    p.add_argument('--quote-prefix', dest='quote_prefix', help='摘录前的上下文')
+    p.add_argument('--quote-suffix', dest='quote_suffix', help='摘录后的上下文')
 
 
 def build_parser():
@@ -236,6 +247,8 @@ def build_parser():
     p.add_argument('--channel', help='取哪个版本的句子（uid 或名字片段）；缺省取巴利原文')
     p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
     p.add_argument('--status', default='active', choices=['active', 'close'])
+    p.add_argument('--type', default='discussion', choices=['discussion', 'note'],
+                   help='discussion＝普通批注（默认），note＝注释书对应')
     p.add_argument('--limit', type=int, default=50)
     p.add_argument('--offset', type=int, default=0)
     p.set_defaults(func=cmd_discuss.cmd_discuss_list)
@@ -245,7 +258,10 @@ def build_parser():
     p.add_argument('--sent', help='句子 uid，给了就不再按坐标解析')
     p.add_argument('--channel', help='批注挂在哪个版本的句子上；缺省是巴利原文')
     p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
-    p.add_argument('--title', required=True, help='标题（服务端必填）')
+    p.add_argument('--type', default='discussion', choices=['discussion', 'note'],
+                   help='discussion＝普通批注（默认），note＝注释书对应（正文为 {{book-para-start-end}}）')
+    p.add_argument('--title', help='标题（服务端必填；--type note 时缺省用正文）')
+    add_anchor_args(p)
     p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
     p.add_argument('--content-file', dest='content_file', help='从文件读正文')
     p.add_argument('--content-type', dest='content_type', default='markdown')
@@ -262,7 +278,41 @@ def build_parser():
     p.add_argument('--notify', action='store_true', help='发站内通知（默认不发）')
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true')
+    add_anchor_args(p)
     p.set_defaults(func=cmd_discuss.cmd_discuss_reply)
+
+    p = add('discuss-edit', '修改一条批注 / 对应：标题、正文、状态、锚点（AI 身份）', needs_json=False)
+    p.add_argument('id', help='批注 id，用 wikipali discuss 查')
+    p.add_argument('--title')
+    p.add_argument('--content', help='新正文；给 - 表示从 stdin 读；不给则保留原文')
+    p.add_argument('--content-file', dest='content_file')
+    p.add_argument('--status', choices=['active', 'close'])
+    add_anchor_args(p, editing=True)
+    p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
+    p.add_argument('-y', '--yes', action='store_true')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_edit)
+
+    p = add('discuss-delete', '删除自己写的一条批注 / 对应', needs_json=False)
+    p.add_argument('id')
+    p.add_argument('--dry-run', action='store_true')
+    p.add_argument('-y', '--yes', action='store_true')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_delete)
+
+    p = add('note-context', '注释书对应的素材：某 CS 锚点下 根本/义注/复注 各句的巴利原文 + 译文')
+    p.add_argument('book_name', help='CST 书名，如 an6、dn1')
+    p.add_argument('cs_para', type=int, help='CST 段号')
+    p.add_argument('--channel', required=True, help='译文所在的 channel（uid 或名字片段）')
+    p.add_argument('--layers', help='只取某几层，逗号分隔：mula,att,tika')
+    p.add_argument('--refresh-books', dest='refresh_books', action='store_true', help='刷新本地书目缓存')
+    p.set_defaults(func=cmd_notes.cmd_note_context)
+
+    p = add('note-push', '写入注释书对应（type=note）：本工具按摘录数位置、校验、去重')
+    p.add_argument('file', help='对应 JSONL 文件（一行一条），- 表示从 stdin 读')
+    p.add_argument('--channel', required=True, help='target 译文句子所在的 channel')
+    p.add_argument('--replace', action='store_true', help='同一句已有同一 note 时删掉旧的重写（默认跳过）')
+    p.add_argument('--dry-run', action='store_true', help='只定位与校验，不写')
+    p.add_argument('-y', '--yes', action='store_true')
+    p.set_defaults(func=cmd_notes.cmd_note_push)
 
     p = add('write', '写入句子', needs_json=False)
     p.add_argument('file', help='句子 JSON 文件，- 表示从 stdin 读')

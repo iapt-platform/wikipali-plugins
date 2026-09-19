@@ -3,6 +3,24 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.13.0] - 2026-09-19
+
+### 新增
+- **commentary-align skill**：注释书对应。给定 CST 书名 + 段号 + 译文 channel，对照巴利原文与译文，
+  把义注（复注）句子锚定到根本（义注）译文的具体片段上，作为带位置的批注（`type=note`）写回 WikiPali。
+  - 新命令 `wikipali note-context <book_name> <cs_para> --channel C`：取该 CS 锚点下根本 / 义注 / 复注
+    各句的巴利原文与译文。
+  - 新命令 `wikipali note-push <文件> --channel C`：读 JSONL（一行一条，坏行只丢一行），按摘录在译文
+    原始 content 里数出字符位、补前后缀，校验句子真实存在、去重后写入。一个片段由多句解释时
+    `note` 给数组，仍写成一条记录（content 并列 `{{…}}{{…}}`）。
+- 批注锚点字段：`discuss-add` / `discuss-reply` 支持 `--pos-start --pos-end --quote-exact
+  --quote-prefix --quote-suffix`；`discuss` 列表显示锚点，`--type note` 列注释书对应。
+- 新命令 `wikipali discuss-edit <id>`（先取原记录再提交，未改字段原样保留）与 `discuss-delete <id>`。
+
+### 修复
+- 巴利原文 channel 不再写死线上 uid：开发机与自定义站点按名字 `_System_Pali_VRI_` 查本站 uid 并按站点缓存。
+  之前在本地站点 `get` / `page` / `discuss` 取不到原文。
+
 ## [0.12.0] - 2026-09-19
 
 ### 新增

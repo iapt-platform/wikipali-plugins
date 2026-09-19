@@ -47,7 +47,7 @@ Then just ask in plain language:
 | **Citations** (offline) | Resolves abbreviated Burmese footnote citations such as `ဝိသုဒ္ဓိ၊၂၊၂၄၁` to the work and the coordinate `65-1461` — Burmese edition page numbers are converted to paragraphs through a bundled index of 62k page markers, offline; `--text` additionally fetches the full page of Pali and its chapter path |
 | **Workspace** (login required) | Write sentences, terms and annotations **as an AI model identity**; issue and revoke model identity tokens; manage channels and access tokens |
 
-Two skills: `research` (read-only) and `write`. Written sentences record the AI model's uid as `editor_uid`, not the human operator's — **credit goes to whoever actually did the translating**, which keeps attribution and audit trails honest.
+Skills: `research` (read-only), `citation`, `write`, and `commentary-align` (anchors aṭṭhakathā / ṭīkā sentences onto the translated text they comment on, as positioned notes). Written sentences record the AI model's uid as `editor_uid`, not the human operator's — **credit goes to whoever actually did the translating**, which keeps attribution and audit trails honest.
 
 See the [plugin README](plugins/wikipali/README.md) (in Chinese) for the security boundary, permission model, CLI usage and endpoint switching.
 

@@ -13,14 +13,15 @@ uid 是逐句、逐 channel 的——同一段巴利原文和它的中译是两�
 import json
 
 from client import WRITE_TIMEOUT, make_client
-from cmd_read import PALI_CHANNEL, READ_TIMEOUT, strip_markup
+from cmd_read import READ_TIMEOUT, pali_channel, strip_markup
 from cmd_write import confirm, pick_channel, refresh_model_token
 from coords import fmt_coord, parse_coord
 from errors import ApiError, WpError, explain_api_error
 
 RES_TYPE = 'sentence'
-# qa / help 是文章场景，句子批注固定用 discussion
+# qa / help 是文章场景；句子上用 discussion（普通批注）或 note（注释书对应，见 cmd_notes）
 DISCUSS_TYPE = 'discussion'
+ANCHOR_FIELDS = ['pos_start', 'pos_end', 'quote_exact', 'quote_prefix', 'quote_suffix']
 
 
 def emit(args, payload, render):
@@ -53,7 +54,7 @@ def call_as_model(client, method, path, what, body=None, query=None, timeout=REA
 def resolve_channel(client, given):
     """把 --channel 的值化成 uid。uuid 直接用，否则按可编辑列表里的名字找。"""
     if not given:
-        return PALI_CHANNEL, '巴利原文'
+        return pali_channel(client), '巴利原文'
     if len(given) >= 32 and given.count('-') == 4:
         return given, None
     return pick_channel(client, given)
@@ -131,7 +132,7 @@ def cmd_discuss_list(args):
 
     data = call_as_model(client, 'GET', 'v2/discussion', '列出批注',
                          query={'view': 'question', 'res_type': RES_TYPE, 'id': sent_uid,
-                                'type': DISCUSS_TYPE, 'status': args.status,
+                                'type': args.type, 'status': args.status,
                                 'limit': args.limit, 'offset': args.offset})
     rows = (data or {}).get('rows') or []
     for row in rows:
@@ -151,6 +152,8 @@ def cmd_discuss_list(args):
             print(f'  id     : {row.get("id")}')
             print(f'  标题   : {row.get("title")}')
             print(f'  作者   : {who(row)}   {row.get("status")}   {row.get("created_at", "")[:10]}')
+            if fmt_anchor(row):
+                print(f'  锚点   : {fmt_anchor(row)}')
             for line in (row.get('content') or '').splitlines():
                 print(f'  | {line}')
             for reply in row['replies']:
@@ -164,6 +167,39 @@ def cmd_discuss_list(args):
     return 0
 
 
+def fmt_anchor(row):
+    if row.get('pos_start') is None and row.get('pos_end') is None and not row.get('quote_exact'):
+        return ''
+    text = f'[{row.get("pos_start")}-{row.get("pos_end")}]'
+    if row.get('quote_exact'):
+        text += f' 「{row.get("quote_exact")}」'
+    return text
+
+
+def anchor_body(args):
+    """命令行给出的锚点字段。只收显式给了的——编辑时没给的字段要原样保留。"""
+    body = {}
+    for field in ANCHOR_FIELDS:
+        value = getattr(args, field, None)
+        if value is None:
+            continue
+        if field.startswith('pos_'):
+            if value == '':
+                value = None
+            else:
+                try:
+                    value = int(value)
+                except ValueError:
+                    raise WpError(f'--{field.replace("_", "-")} 要给非负整数（给空串表示清空）')
+                if value < 0:
+                    raise WpError(f'--{field.replace("_", "-")} 不能为负')
+        body[field] = value
+    start, end = body.get('pos_start'), body.get('pos_end')
+    if start is not None and end is not None and start > end:
+        raise WpError('pos_start 不能大于 pos_end')
+    return body
+
+
 def who(row):
     editor = row.get('editor') or {}
     name = editor.get('nickName') or editor.get('userName') or '(未知)'
@@ -175,7 +211,7 @@ def who(row):
 # ---------------------------------------------------------------------------
 
 
-def create(client, args, body, header_lines, what):
+def create(client, args, body, header_lines, what, method='POST', path='v2/discussion'):
     print('=' * 72)
     print(f'API      : {client.api_note()}')
     model = client.model
@@ -185,6 +221,8 @@ def create(client, args, body, header_lines, what):
     print('-' * 72)
     if body.get('title'):
         print(f'  标题 : {body["title"]}')
+    if fmt_anchor(body):
+        print(f'  锚点 : {fmt_anchor(body)}')
     for line in (body.get('content') or '').splitlines():
         print(f'  | {line}')
     print('-' * 72)
@@ -198,8 +236,7 @@ def create(client, args, body, header_lines, what):
         print('已取消，未写入任何内容。')
         return 1
 
-    saved = call_as_model(client, 'POST', 'v2/discussion', what,
-                          body=body, timeout=WRITE_TIMEOUT)
+    saved = call_as_model(client, method, path, what, body=body, timeout=WRITE_TIMEOUT)
     print('-' * 72)
     print(f'已提交：{saved.get("id")}')
     print(f'署名核对：editor = {who(saved)}')
@@ -215,13 +252,16 @@ def cmd_discuss_add(args):
     body = {
         'res_id': sent_uid,
         'res_type': RES_TYPE,
-        'type': DISCUSS_TYPE,
-        'title': args.title,
+        'type': args.type,
+        'title': args.title or (content.strip() if args.type == 'note' else None),
         'content': content,
         'content_type': args.content_type,
         'notification': bool(args.notify),
     }
-    header = [f'批注对象 : {desc}', f'句子 uid : {sent_uid}']
+    if not body['title']:
+        raise WpError('--title 必填（服务端要求）；只有 --type note 时缺省用正文作标题。')
+    body.update(anchor_body(args))
+    header = [f'批注对象 : {desc}', f'句子 uid : {sent_uid}', f'类型     : {args.type}']
     return create(client, args, body, header, '新建批注')
 
 
@@ -236,9 +276,62 @@ def cmd_discuss_reply(args):
         'content_type': args.content_type,
         'notification': bool(args.notify),
     }
+    body.update(anchor_body(args))
     # res_id / res_type 由服务端从 parent 继承，不用（也不该）自己给
     header = [f'回复      : {args.id}']
     return create(client, args, body, header, '回复批注')
+
+
+def cmd_discuss_edit(args):
+    """改一条批注 / 对应。
+
+    服务端 update 对 title / content / status 是**整体覆盖**（没传就清成默认值），
+    所以先取原记录，把没改的字段原样带上；锚点字段服务端按「出现才改」处理，只传改了的。
+    """
+    client = make_client(args)
+    client.model
+    old = call_as_model(client, 'GET', f'v2/discussion/{args.id}', '取批注')
+    if not old:
+        raise WpError(f'找不到批注 {args.id}')
+    body = {
+        'title': args.title if args.title is not None else old.get('title'),
+        'content': (read_content(args) if (args.content or args.content_file)
+                    else old.get('content')),
+        'status': args.status or old.get('status') or 'active',
+    }
+    anchors = anchor_body(args)
+    merged = {f: anchors.get(f, old.get(f)) for f in ANCHOR_FIELDS}
+    if (merged['pos_start'] is not None and merged['pos_end'] is not None
+            and merged['pos_start'] > merged['pos_end']):
+        raise WpError('改完后 pos_start 大于 pos_end')
+    body.update(anchors)
+    changed = [k for k in ('title', 'content', 'status') if body[k] != old.get(k)] + list(anchors)
+    if not changed:
+        print('没有要改的字段。')
+        return 0
+    header = [f'修改      : {args.id}（{old.get("type")}）',
+              f'原锚点    : {fmt_anchor(old) or "（无）"}',
+              f'改动字段  : {", ".join(changed)}']
+    return create(client, args, body, header, '修改批注', method='PUT', path=f'v2/discussion/{args.id}')
+
+
+def cmd_discuss_delete(args):
+    client = make_client(args)
+    client.model
+    old = call_as_model(client, 'GET', f'v2/discussion/{args.id}', '取批注')
+    print(f'删除 {args.id}（{old.get("type")}）  作者 {who(old)}')
+    print(f'  标题 : {old.get("title")}')
+    if fmt_anchor(old):
+        print(f'  锚点 : {fmt_anchor(old)}')
+    if args.dry_run:
+        print('--dry-run：未发送任何请求。')
+        return 0
+    if not args.yes and not confirm('确认删除？'):
+        print('已取消。')
+        return 1
+    call_as_model(client, 'DELETE', f'v2/discussion/{args.id}', '删除批注', timeout=WRITE_TIMEOUT)
+    print('已删除。（服务端只允许作者本人删除）')
+    return 0
 
 
 def read_content(args):

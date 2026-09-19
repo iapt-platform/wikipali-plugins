@@ -15,6 +15,38 @@ from errors import ApiError, WpError, explain_api_error
 # 巴利原文本身就是一个 channel（_System_Pali_VRI_）。取原文、取译文、取逐词解析
 # 是同一个调用换 channel。
 PALI_CHANNEL = '00b577c0-13b9-11ee-a05a-b7307efd9ee6'
+PALI_CHANNEL_NAME = '_System_Pali_VRI_'
+
+
+def pali_channel(client):
+    """本站点的巴利原文 channel uid。
+
+    PALI_CHANNEL 只对线上四站（共用一个库）成立；开发机与自定义地址是另一个库，
+    系统 channel 的 uid 不同，拿线上的 uid 去查只会得到「没有内容」。所以非线上站点
+    按名字从 v2/channel?view=system 查一次，按站点分桶缓存。
+    """
+    if client.bucket_name == 'online':
+        return PALI_CHANNEL
+    import os
+    path = cache_path(client, 'pali-channel.json')
+    try:
+        with open(path, encoding='utf-8') as fh:
+            return json.load(fh)['uid']
+    except (OSError, ValueError, KeyError):
+        pass
+    try:
+        data = client.call('GET', 'v2/channel', query={'view': 'system', 'limit': 500},
+                           timeout=READ_TIMEOUT)
+    except ApiError as exc:
+        raise explain_api_error(exc, '查本站的巴利原文 channel')
+    uid = next((r.get('uid') for r in (data or {}).get('rows') or []
+                if r.get('name') == PALI_CHANNEL_NAME), None)
+    if not uid:
+        raise WpError(f'该站点的系统 channel 里没有 {PALI_CHANNEL_NAME}，取不了巴利原文。')
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as fh:
+        json.dump({'uid': uid}, fh)
+    return uid
 
 # 靠 channel 名字判断机器译文很脆弱：库里既有名字含 "AI" 的，也有直接用模型名命名的
 # （deepseek / qwen-max / grok-简体中文 / gemini / 豆包 / ChatGPT），后者不含 "ai"。
@@ -264,7 +296,7 @@ def cmd_dist(args):
 def cmd_get(args):
     client = make_client(args)
     grouped = parse_coords(args.coords)
-    channels = ','.join(args.channel) if args.channel else PALI_CHANNEL
+    channels = ','.join(args.channel) if args.channel else pali_channel(client)
 
     collected = []
     for book, paras in grouped.items():
