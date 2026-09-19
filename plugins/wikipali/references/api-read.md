@@ -45,8 +45,19 @@ data.words[].words[] = {
 | ~~`view`~~ / ~~`type`~~ | **实测无影响**，源码也没读，可省略 |
 
 ```
-data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle, highlight } ] }
+data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle, highlight, link, ref } ] }
 ```
+
+- `link` 是该段的网页阅读地址（`…/library/tipitaka/{book}-{章节起始段}/read#{paragraph}`），
+  给用户核对原文时直接给它；
+- `ref` 是**各印本的页码**，`[{type, page, title}]`：
+  - `WP`：`title` 是 WikiPali 的书名缩写（如 `dī.ni.ṭī.2.`），`page` **就是段落号**，不是页码；
+  - `My`（缅甸第六次结集版）/ `PTS` / `VRI` / `Thai`：该段所在的印本页码，`title` 是
+    该版的书名缩写（如 PTS `DnT II`、缅 `dī-ṭī 2`），VRI 常为 `null`；
+  - 哪些版本有，逐段不同，**没有就是没有，不要推算**。与正文里 `[M2.241]` 这类标记同源。
+- **只有检索结果带 `ref`**，没有「段落 → 页码」的接口。`wikipali ref` / `get --ref` 的做法：
+  `palitext/{book}-{para}` 取 `pcd_book_id` 与正文，拿段里最长的词限定本书检索，从结果里挑出
+  这一段。每段约 2 次请求；段落太短、词不在索引里时取不到，如实报「取不到」。
 
 - `rank` = `sum(weight)`，黑体权重更高；
 - `path` 是章节路径数组，每项 `{book, paragraph, title, level}`；
@@ -63,7 +74,7 @@ data.rows[] = { pcdBookId, count, book, paragraph, paliTitle, tags: [{name}] }
 `search-pali-wbw` 的 `count`。实测 `parivāsa`：词次 449、段落 281。方法论陈述里
 写错这两个数是硬伤。
 
-`tags` 含 `mūla` / `aṭṭhakathā` / `ṭīkā`，用来区分本文、义注、复注。
+`tags` 含 `mūla` / `aṭṭhakathā` / `ṭīkā`，用来区分根本、义注、复注。
 
 ## 5. 取文 —— `GET /v2/sentence`
 
@@ -260,6 +271,40 @@ PTS 页码是西方巴利学界的标准引用依据，别丢。
 `GET /v2/chapter/{book}-{para}` 与 `GET /v2/palitext/{book}-{para}` **返回完全一致**
 （实测字段与取值逐一相同，两个版本的站点上都是 200）。本项目用 `palitext`，没有偏好上的
 理由，换用 `chapter` 亦可。
+
+## 13. 版本页码 → 坐标 —— `GET /v2/nav-page/{版本}-{pcd_book_id}-{册}-{页}`
+
+按**印本页码**定位，如 `nav-page/M-71-2-241`（缅甸版 第 2 册 第 241 页）：
+
+```json
+{"curr":{"type":"M","volume":2,"page":241,"book":65,"paragraph":1461,"wid":6,"pcd_book_id":71},
+ "prev":{"page":240,"paragraph":1450,…},"next":{"page":242,…}}
+```
+
+- **书用 `pcd_book_id`，不是 `book`**（`_` 分隔可给多个）。两者的对应关系在
+  `palitext/{book}-{para}` 的 `pcd_book_id` 字段里，也在 `page_numbers` 表里。
+- `curr` + `next` 就是**这一页的段落区间**：页的分界落在段中间，所以 `next.paragraph`
+  那一段是两页共享的，`wid` 给出页在段内的起始词。
+- 版本：`M`=缅甸版、`V`=VRI、`P`=PTS、`T`=泰版、`O`。数据源是 `page_numbers` 表
+  （M 6.3 万条 / V 5.1 万 / P 3.2 万 / T 2.2 万），与正文里 `<code>M2.241</code>`
+  标记同源，也与 `wbw_templates` 里 `type='.ctl.'` 的控制词一致。
+
+本插件的 `wikipali page` 就是调这个端点（四个版本都支持）。
+
+## 14. 章节路径（面包屑）—— `palitext/{book}-{para}` 的 `path`
+
+`GET /v2/palitext/{book}-{paragraph}` 的返回里有 `path`，是从丛书到本段所在小节的
+完整层级：
+
+```json
+[{"book":71,"paragraph":71,"title":"visuddhimagga","level":0},
+ {"book":65,"paragraph":2,"title":"Visuddhimaggo(Dutiyo bhāgo)","level":"1"},
+ {"book":65,"paragraph":1459,"title":"20. Maggāmaggañāṇadassanavisuddhiniddeso","level":"2"},
+ {"book":65,"paragraph":1460,"title":"Sammasanañāṇakathā","level":"3"}]
+```
+
+**引用时的章节路径直接取它，不要自己拼。** `search-pali-wbw` 与 `related` 的返回里
+也带同一个 `path`（都取自 `pali_texts.path`）。
 
 ## 已知故障
 

@@ -39,6 +39,31 @@ def fmt_coord(book, paragraph):
     return f"{book}:{paragraph}"
 
 
+# 检索结果 ref[].type → 显示名；WP 另行处理（它的 page 就是段落号）
+REF_EDITIONS = (('My', '缅'), ('PTS', 'PTS'), ('VRI', 'VRI'), ('Thai', '泰'))
+
+
+def fmt_cite(book, paragraph, refs, link=None):
+    """出处 = citation + WikiPali 链接，合成一个 Markdown 链接：
+
+        [dī.ni.ṭī.2. 186:1411; 缅 dī-ṭī 2 p.340; PTS DnT II p.429](https://…/read#1411)
+
+    citation 取自检索结果的 ref：WP 缩写 + 坐标，再加该段真有的印本页码。没有链接时
+    只给 citation 文字，不自己拼链接。
+    """
+    by_type = {r.get('type'): r for r in (refs or []) if isinstance(r, dict)}
+    wp = by_type.get('WP')
+    head = f"{wp['title']} " if wp and wp.get('title') else ''
+    parts = [f"{head}{book}:{paragraph}"]
+    for key, label in REF_EDITIONS:
+        r = by_type.get(key)
+        if r and r.get('page') is not None:
+            title = f" {r['title']}" if r.get('title') else ''
+            parts.append(f"{label}{title} p.{r['page']}")
+    text = '; '.join(parts)
+    return f'[{text}]({link})' if link else text
+
+
 def fmt_path(path, sep=' › ', max_items=4):
     """把检索结果的 path 数组压成一行章节路径。"""
     if not path:
@@ -50,7 +75,7 @@ def fmt_path(path, sep=' › ', max_items=4):
 
 
 def text_layer(tags):
-    """按 tags 判断文献层次：本文 / 义注 / 复注。引用时必须标明，混用是学术错误。"""
+    """按 tags 判断文献层次：根本 / 义注 / 复注。引用时必须标明，混用是学术错误。"""
     names = {t.get('name') for t in (tags or []) if isinstance(t, dict)}
     if 'ṭīkā' in names:
         return 'ṭīkā'

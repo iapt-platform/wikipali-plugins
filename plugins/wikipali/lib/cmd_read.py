@@ -9,7 +9,7 @@ import re
 import sys
 
 from client import make_client, note
-from coords import fmt_coord, fmt_path, parse_coord, parse_coords, text_layer
+from coords import fmt_coord, fmt_path, fmt_cite, parse_coord, parse_coords, text_layer
 from errors import ApiError, WpError, explain_api_error
 
 # 巴利原文本身就是一个 channel（_System_Pali_VRI_）。取原文、取译文、取逐词解析
@@ -207,9 +207,11 @@ def cmd_search(args):
         for idx, r in enumerate(rows, 1 + args.offset):
             coord = fmt_coord(r.get('book'), r.get('paragraph'))
             print(f'[{idx}] {coord}  {fmt_path(r.get("path"))}   rank {r.get("rank")}')
+            print(f'     出处 {fmt_cite(r.get("book"), r.get("paragraph"), r.get("ref"), r.get("link"))}')
             print(f'     {snippet(strip_markup(r.get("highlight")), args.width, "【")}')
-        print(f'\n引用时用坐标 book:paragraph，取原文用：wikipali get {rows[0].get("book")}:'
-              f'{rows[0].get("paragraph")}')
+        print('\n引用时照抄「出处」那一行（citation 与 WikiPali 链接已合成 Markdown 链接），'
+              '不要自己拼。')
+        print(f'取原文：wikipali get {rows[0].get("book")}:{rows[0].get("paragraph")}')
 
     emit(args, {'count': total, 'rows': rows}, render)
     return 0
@@ -248,7 +250,7 @@ def cmd_dist(args):
         for layer in ('mūla', 'aṭṭhakathā', 'ṭīkā', ''):
             if layer in by_layer:
                 print(f'  {layer or "未标层次"} {by_layer[layer]}', end='')
-        print('\n引用时必须标明层次——把义注的解释当成本文的说法是学术错误。')
+        print('\n引用时必须标明层次——把义注的解释当成根本的说法是学术错误。')
 
     emit(args, {'rows': rows}, render)
     return 0
@@ -295,8 +297,21 @@ def cmd_get(args):
             text = strip_markup(r.get('content'))
             print(f'  [{r.get("word_start")}-{r.get("word_end")}] {text}')
         print(f'\n共 {len(collected)} 句。')
+        for book, para in refs:
+            r = refs[(book, para)]
+            line = (fmt_cite(book, para, r['ref'], r.get('link')) if r
+                    else f'{fmt_coord(book, para)}  ⚠ 取不到出处，不要推算页码、不要自己拼链接')
+            print(f'出处 {line}')
 
-    emit(args, collected, render)
+    refs = {}
+    if args.ref:
+        for book, paras in grouped.items():
+            for para in paras:
+                refs[(book, para)] = lookup_ref(client, book, para)
+    payload = collected if not args.ref else {
+        'rows': collected,
+        'refs': [dict(r or {'book': b, 'paragraph': p, 'ref': None}) for (b, p), r in refs.items()]}
+    emit(args, payload, render)
     return 0
 
 
@@ -840,7 +855,7 @@ def cmd_terms(args):
 
 
 # ---------------------------------------------------------------------------
-# related —— 本文 ↔ 义注 ↔ 复注的段落对应
+# related —— 根本 ↔ 义注 ↔ 复注的段落对应
 # ---------------------------------------------------------------------------
 
 
@@ -883,9 +898,66 @@ def cmd_related(args):
             print(f'      {coords}{more}')
         first = rows[0]
         print(f'\n取文：wikipali get {first.get("book")}:{(first.get("para") or [0])[0]}')
-        print('引用时必须标明层次——把义注的解释当成本文的说法是学术错误。')
+        print('引用时必须标明层次——把义注的解释当成根本的说法是学术错误。')
 
     emit(args, rows, render)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# ref —— 任意坐标的可追溯出处（印本页码 + 链接）
+# ---------------------------------------------------------------------------
+
+PALI_WORD = re.compile(r"[a-zāīūṃṁṅñṭḍṇḷ]+")
+
+
+def lookup_ref(client, book, para, tries=3):
+    """取一段的 ref / link / path。
+
+    服务端只有检索结果带 ref，没有「段落 → 页码」的接口。所以拿该段里最长的几个词
+    （越长越少见），限定在它自己那本书（pcd_book_id）里检索，从结果里挑出这一段。
+    找不到就返回 None——**不推算**。
+    """
+    try:
+        meta = client.call('GET', f'v2/palitext/{book}-{para}', timeout=READ_TIMEOUT) or {}
+    except ApiError as exc:
+        raise explain_api_error(exc, f'取 {book}:{para}')
+    pcd = meta.get('pcd_book_id')
+    words = sorted(set(PALI_WORD.findall((meta.get('text') or '').lower())), key=len, reverse=True)
+    for word in words[:tries]:
+        query = {'key': word, 'limit': 200}
+        if pcd:
+            query['book'] = pcd
+        try:
+            data = client.call('GET', 'v2/search-pali-wbw', query=query, timeout=READ_TIMEOUT)
+        except ApiError:
+            continue
+        for r in (data or {}).get('rows') or []:
+            if int(r.get('book', -1)) == book and int(r.get('paragraph', -1)) == para:
+                return {'book': book, 'paragraph': para, 'ref': r.get('ref') or [],
+                        'link': r.get('link'), 'path': r.get('path') or meta.get('path'),
+                        'paliTitle': r.get('paliTitle')}
+    return None
+
+
+def cmd_ref(args):
+    client = make_client(args)
+    out = []
+    for book, paras in parse_coords(args.coords).items():
+        for para in paras:
+            out.append(lookup_ref(client, book, para) or {'book': book, 'paragraph': para, 'ref': None})
+
+    def render():
+        for r in out:
+            coord = fmt_coord(r['book'], r['paragraph'])
+            if r.get('ref') is None:
+                print(f'{coord}  ⚠ 取不到出处（该段文字太少或索引里没有）。只给坐标，不要推算页码。\n')
+                continue
+            print(f'{coord}  {fmt_path(r.get("path"))}')
+            print(f'  出处 {fmt_cite(r["book"], r["paragraph"], r["ref"], r.get("link"))}')
+            print()
+
+    emit(args, out, render)
     return 0
 
 
