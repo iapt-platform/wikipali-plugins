@@ -278,8 +278,7 @@ PTS 页码是西方巴利学界的标准引用依据，别丢。
   （M 6.3 万条 / V 5.1 万 / P 3.2 万 / T 2.2 万），与正文里 `<code>M2.241</code>`
   标记同源，也与 `wbw_templates` 里 `type='.ctl.'` 的控制词一致。
 
-本插件的 `wikipali cite` 走的是**离线索引**（`references/citation-pages.tsv.gz`，
-M 版全量），不调这个端点；要 V/P/T 或要最新数据时才用它。
+本插件的 `wikipali page` 就是调这个端点（四个版本都支持）。
 
 ## 14. 章节路径（面包屑）—— `palitext/{book}-{para}` 的 `path`
 

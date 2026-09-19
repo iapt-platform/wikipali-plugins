@@ -1,115 +1,116 @@
 ---
 name: citation
-description: "Use this skill to resolve an abbreviated Pali/Burmese source citation — such as ဝိသုဒ္ဓိ၊၂၊၂၄၁, မဟာဋီ-၂-၄၀၁, ပြည်-ဝိသုဒ္ဓိမဂ်နိဿယ-၃-၂၄၁, or a romanised form like vism-2-241 — into the work it names and the WikiPali coordinate book-paragraph. Trigger whenever the user shows a citation abbreviation from a Burmese Buddhist text and asks which book and where it is, what 缩写/引用/出处 it refers to, where to find it in WikiPali, or pastes a bracketed reference they cannot read. Do not use for searching the corpus by word (that is the research skill)."
+description: "Use this skill to resolve an abbreviated Pali/Burmese source citation — such as ဝိသုဒ္ဓိ၊၂၊၂၄၁, မဟာဋီ-၂-၄၀၁, ပြည်-ဝိသုဒ္ဓိမဂ်နိဿယ-၃-၂၄၁, 阿毗达摩义注 2,47, or a romanised form like vism-2-241 — into the work it names and the WikiPali coordinate book-paragraph, optionally with the full page of Pali text and its chapter path. Trigger whenever the user shows a citation abbreviation from a Burmese Buddhist text and asks which book and where it is, what 缩写/引用/出处 it refers to, where to find it in WikiPali, or pastes a bracketed reference they cannot read. Do not use for searching the corpus by word (that is the research skill)."
 ---
 
 # 解析引用缩写
 
-缅甸佛教著作的脚注习惯写成 `<书的缩写>၊<册>၊<页>`，例如 `ဝိသုဒ္ဓိ၊၂၊၂၄၁`。
-本 skill 把它解析成**哪一部著作、WikiPali 的哪个坐标**。
+缅甸佛教著作的脚注写成 `<书的缩写>၊<册>၊<页>`，例如 `ဝိသုဒ္ဓိ၊၂၊၂၄၁`。把它解析成
+**哪一部著作、WikiPali 的哪个坐标**，需要时连整页原文与章节路径一起给出。
 
-一条命令，**离线**，不发请求也不需要登录，百毫秒出结果：
+## 分工
+
+| 谁 | 干什么 | 为什么 |
+|---|---|---|
+| **你** | 认出这是哪部著作，拆出册与页 | 缩写写法千变万化——缅文、罗马化、中文异名、简写、错字。这是判断，不是查表 |
+| `wikipali page` | 把页码换算成坐标与段落区间 | 走服务端的 `nav-page`，页码标记的权威数据在那边 |
+
+**表格发出去就冻在用户机器上了。** 所以认书这一步绝不能靠程序做字符串比对——遇到一个
+新写法就得等下次发版。`references/citation-abbrev.tsv` 是给**你**看的参考，不是查找键：
+看懂它，然后自己判断。
+
+## 流程
+
+**1. 读参考表，判断是哪部著作。**
 
 ```bash
-wikipali cite 'ဝိသုဒ္ဓိ၊၂၊၂၄၁'
-wikipali cite 'မဟာဋီ-၂-၄၀၁' 'ပြည်-ဝိသုဒ္ဓိမဂ်နိဿယ-၃-၂၄၁' 'vism-2-241'
-wikipali cite 'ဝိသုဒ္ဓိ၊၂၊၂၄၁' --text     # 连这一页的巴利原文与章节路径一起取
+cat ${CLAUDE_PLUGIN_ROOT}/references/citation-abbrev.tsv     # 75 行 8KB，可以整读
 ```
 
-```
-ဝိသုဒ္ဓိ၊၂၊၂၄၁
-  缩写   : ဝိသုဒ္ဓိ   第 2 册  缅甸版第 241 页
-  著作   : Visuddhimagga　清净道论　（aṭṭhakathā）
-  → 书名 : Visuddhimaggo(Dutiyo bhāgo)
-  → 坐标 : 65-1461　（页码标记 M2.0241 落在这一段）
-  取原文 : wikipali get 65:1461
+列是 `abbrev_my`（缅文写法，`|` 分隔多种）、`work_pali`、`work_zh`、`kind`（文献层次）、
+`pcd`、`note`。判断时该用上你知道的一切：
+
+- **缅文缩写**：`ဋ္ဌ` = `အဋ္ဌကထာ`（义注）、`ဋီ` = `ဋီကာ`（复注）、
+  `ပြည်` = 卑谬版（版本前缀，不是书名的一部分）
+- **中文异名**：表里写「论藏义注」，用户可能说「阿毗达摩义注」「阿毗昙义注」；
+  「大复注」也叫「清净道论大疏钞」
+- **罗马化**：`vism` / `visuddhimagga` / `Vism`，变音符可有可无
+- **子著作名**：用户可能直接说「殊胜义」「迷惑冰消」——那是论藏义注的第 1、2 册，
+  要落到 `books` 列里对应的那个 book
+
+**认不出就说认不出。** 缅文缩写彼此形近（`မ`＝中部、`မဟာဋီ`＝大复注、`မူလဋီ`＝根本复注），
+差一个字就是另一部书。请用户给上下文（脚注前后常有全名），**不要挑一个像的顶上**。
+
+**2. 拆出册与页。** 缅文数字 `၀၁၂၃၄၅၆၇၈၉` = `0123456789`。分隔符 `၊ ။ - 、 , .` 空格
+都用过，同一篇里还会混用。最后一个数字是页码，前一个（若有）是册号；
+`သံ၊၂၊၂၄၉-၂၅၀` 是页码范围；只有一个数字的是不分册的书。
+
+**3. 定候选 pcd。** 看 `pcd` 列——**`pcd` 是按著作编的号**（`pcd_book_id`），
+一本 book 收几部就有几个 pcd，正好能分开同一本书里各自编页的多部著作：
+
+- `*=70,71` —— 页码自带册号，把这些 pcd 全给命令，它按册页自己挑
+- `1=102;2=103;3=104,105,106,107,108` —— 页码里**没有**册号（缅甸版论藏义注三册
+  都从第 1 页起编），必须你按册号挑：第 2 册就只给 `--pcd 103`。全给会撞车，
+  命令会警告但仍以第一处作答
+
+**4. 跑命令。**
+
+```bash
+wikipali page 2.241 --pcd 70,71                    # <册>.<页>
+wikipali page 47 --pcd 103 --text                  # 不分册的只给页；--text 连原文与路径
+wikipali page 2.249-250 --pcd 186,187,188,189,190  # 页码范围
+wikipali page V2.240 --pcd 71                      # V=VRI P=PTS T=泰版，四版都支持
 ```
 
-⚠ **刚装好或刚更新插件时 `wikipali` 可能还不在 PATH 上**——PATH 注入在会话启动时完成。
-若 `command -v wikipali` 为空，改用 `${CLAUDE_PLUGIN_ROOT}/bin/wikipali`，并提醒用户重启会话。
+**5. 照结果回答**：著作名（巴利＋中文）、文献层次、WikiPali 书名、坐标
+`book-paragraph`，以及 `wikipali get <book>:<para>`。
 
 ## 铁律
 
-1. **页码不是段落号，中间隔着一张索引表。** 清净道论第 2 册第 241 页是 `65:1461`，
-   **不是** `65:241`——后者是完全不相干的另一段。**绝不许**把引用里的数字直接当段落号
-   写成坐标，一定要经 `wikipali cite` 换算。
-2. **表里没有的缩写就说没有。** 缅文缩写彼此形近（`မ`＝中部、`မဟာဋီ`＝大复注、
-   `မူလဋီ`＝根本复注），差一个字就是另一部书。命令报「表里没有这个缩写」时，如实说
-   不认识，请用户给出上下文（前后文里常有全名），不要挑一个像的顶上。
+1. **页码不是段落号。** 清净道论第 2 册第 241 页是 `65:1461`，**不是** `65:241`——
+   后者是完全不相干的另一段。**绝不许**把引用里的数字直接写成坐标，一律经
+   `wikipali page` 换算。
+2. **命令报「⚠ 候选里还有一处也有这一页」时，别当成确定答案。** 那说明候选 pcd 给宽了，
+   按册号收窄再跑。报「这些著作里没有这一页」则是册页不对或书判断错了——回到第 1 步，
+   别拿相近的书顶上。
 3. **缅文著作在 WikiPali 里没有对应。** 尼思耶（`နိဿယ`）、缅文复注（`ဘာသာဋီကာ`）、
-   缅文纲要书（`ကျမ်း`）都是缅文写的，WikiPali 收的是巴利文献。这类引用只能报出
-   **底本**是哪部巴利著作，**册页不能换算**——缅文本的分册与巴利本不是一回事。
-4. **标记指的是该页的起始处。** 一页往往横跨好几段，引文可能落在标出的那一段，也可能
-   在它后面几段。给用户坐标时说清楚这一点；要精确定位就把那一段前后读出来核对。
+   缅文纲要书（`ကျမ်း`）都是缅文写的，WikiPali 收的是巴利文献；表里 `kind` 记作
+   `nissaya` / `burmese`，`pcd` 为空。这类只能报出**底本**是哪部巴利著作，
+   **册页不能换算**——缅文本的分册与巴利本不是一回事。
+4. **页码指的是该页起始处。** 一页横跨好几段。命令给出的区间是
+   `[本页起始段 … 下一页起始段]`，**末段与下一页共享**，本页在它中间某处结束。
+   `wid` 是页在该段内的起始词，需要更精确时用得上。
 
-## 要原文就加 `--text`
+## `--text` 取到什么
 
-`--text` 会多做两件事（**这是唯一联网的地方**，不加则全程离线）：
+- **整页巴利原文**：`[本页起始段 … 下一页起始段]`。
+- **章节路径**：取自 `palitext/{book}-{para}` 的 `path`，从丛书一路到小节，如
+  `visuddhimagga › Visuddhimaggo(Dutiyo bhāgo) › 20. Maggāmagga… › Sammasanañāṇakathā`。
+  **直接用，不要自己拼章节名。**
 
-- **整页的巴利原文**：页的区间取自索引——下一页的起始段就是本页的末段，因为页的
-  分界落在段中间。所以取回来的是 `[本页起始段 … 下一页起始段]`，**末段与下一页共享**，
-  本页在它中间某处结束，不是整段都属于这一页。转述时说清楚。
-- **章节路径**：取 `palitext/{book}-{para}` 的 `path` 字段，从丛书一路到小节，
-  例如 `visuddhimagga › Visuddhimaggo(Dutiyo bhāgo) › 20. Maggāmaggañāṇadassanavisuddhiniddeso
-  › Sammasanañāṇakathā`。**直接用它，不要自己拼章节名。**
+原文里夹着的 `[M2.241]`、`[V2.240]` 是各版页码标记，**留在原位**——抽掉就丢了位置信息
+（见 `references/conventions.md`）。
 
-原文里夹着的 `[M2.241]`、`[V2.240]` 是各版页码标记，**留在原位**——它们标出页在
-正文中的起始位置，抽掉就丢了位置信息（见 `references/conventions.md`）。
+请求数：不加 `--text` 是 1–2 次（候选给多个时多一次撞车核查），加了 `--text` 是 3–4 次。
 
-## 给用户怎么答
+## 数据
 
-照命令的输出说：**著作名（巴利＋中文）、文献层次、WikiPali 书名、坐标 `book-paragraph`**，
-并把 `wikipali get <book>:<para>` 一并给出去，用户想看原文可以直接跑。
-用户要的是这一页的内容而不只是位置时，直接加 `--text`，别让他再跑一遍。
-
-定不到位置时命令会说明原因并列出候选，照实转述，**不要从候选里随便挑一个**。
-
-## 数据（都在插件里，不要联网取）
-
-| 文件 | 内容 |
+| 文件 | 给谁看 |
 |---|---|
-| `references/citation-abbrev.tsv` | 缩写（缅文写法 \| 罗马化别名）→ 著作、中文名、候选 book、册号对照 `vol_map`、文献层次、备注。75 部著作、173 个写法 |
-| `references/citation-books.tsv` | WikiPali 收的**每一部著作**一行：`book`、起始段 `para`、**toc 书名**（书名取 `toc` 字段，不是 `title`）、tags、缅甸版册与页码区间 |
-| `references/citation-pages.tsv.gz` | 页码标记索引：`M<册>.<页四位>` → `book`、`paragraph`。6.2 万条，覆盖 197 本书。就是它把页码变成段落号 |
+| `references/citation-abbrev.tsv` | **你**。75 部著作：缅文写法、巴利名、中文名、层次、候选 `pcd` |
+| `references/citation-books.tsv` | 对照用。275 部著作：`pcd`、`book`、起始段 `para`、`toc` 书名 |
 
-页码索引是从 WikiPali 数据库的 `wbw_templates` 表导出的（`type='.ctl.'` 的控制词就是
-版面标记），与正文里 `<code>M2.241</code>` 的位置是同一份数据。手工查：
+页码换算走服务端 `GET /v2/nav-page/{版本}-{pcd}-{册}-{页}`（见 `references/api-read.md` §13），
+数据源是 `page_numbers` 表，与正文里 `<code>M2.241</code>` 标记同源。表里没有的著作，
+只要你能认出是哪部巴利文献，在 `citation-books.tsv` 里按书名 `grep` 出 `pcd` 一样能查。
 
-```bash
-zgrep -P '^M2\.0241\t' ${CLAUDE_PLUGIN_ROOT}/references/citation-pages.tsv.gz
-```
+⚠ **`citation-books.tsv` 不要整读进上下文**（275 行），`grep` 需要的那几行就够。
 
-## 命令解析不了时，手工按这个来
+## 边界
 
-⚠ **用 `grep` 取需要的那一行，别把表整个读进上下文。** 两张表合起来 40KB、三百多行缅文，整读一遍既占地方又容易看错字——正常路径下这些数据是 Python 读的，模型只该看到结果。
-
-1. **缅文数字转阿拉伯数字**：`၀၁၂၃၄၅၆၇၈၉` = `0123456789`。
-2. **按分隔符切开**：`၊`（缅文逗号）、`။`、`-`、`、`、`,`、`.`、空格都用过，同一份文献里
-   甚至混着用（`ဝိသုဒ္ဓိ၊၂၊၂၅၁` 与 `ဝိသုဒ္ဓိ-၂-၂၄၁` 是同一种写法）。
-3. **非数字的部分拼回书名**，用 `-` 连接：`အဘိ၊ဋ္ဌ၊၂၊၂၅၂` 的书名是 `အဘိ-ဋ္ဌ`（论藏义注）。
-   `ဋ္ဌ` 是 `အဋ္ဌကထာ`（义注）的缩写，`ဋီ` 是 `ဋီကာ`（复注）的缩写。
-4. **数字部分**：最后一个是页码，前一个（若有）是册号；`သံ၊၂၊၂၄၉-၂၅၀` 是页码范围。
-   只有一个数字就是不分册的书（如 `ပဋိသံ၊၅၂` 无碍解道第 52 页）。
-5. **版本前缀**要认出来：`ပြည်` 是「卑谬版」，属于版本而非书名的一部分。
-6. 拿书名查 `citation-abbrev.tsv` 的 `abbrev_my`（多种写法用 `|` 分隔）或 `aliases`
-   （罗马化，去变音符后小写比对），得到候选 book——`grep 'ဝိသုဒ္ဓိ' references/citation-abbrev.tsv`
-   取那一行就够。
-7. 在页码索引里查 `M<册>.<页补足四位>`，**限定在候选 book 内**——同一个标记在别的书里
-   也有（每部著作各有自己的一套页码）。命中的 `book` + `paragraph` 就是答案。
-
-## 两个容易踩的坑
-
-- **不分册的著作标记成 `M0.<页>`**，不是「第 0 册」。命令在 `M<册>` 查不到时会自动
-  退回 `M0` 再查一次。
-- **有些书组的标记里根本没有册号。** 缅甸版论藏义注三册都标成 `M0.xxxx`，靠标记分不出
-  是哪一册，只能靠 `citation-abbrev.tsv` 的 `vol_map`（`1=96;2=97;3=98`）把册定死，
-  再用页码定册内的哪一部。根本复注、随复注同此结构。
-
-## 数据的边界
-
-- 缩写表来自一份具体的缅文著作的引文统计（173 条引用、75 部著作），**不是缅甸引用缩写
-  的全集**。冷僻缩写查不到很正常，如实说。
-- 页码索引只收了**缅甸版（M）**。V（VRI）、P（PTS）、T（泰版）的标记同源同表，需要时
-  可以再导；线上也有按印本页码定位的端点 `GET /v2/nav-page/{版本}-{pcd_book_id}-{册}-{页}`，
-  四个版本都支持（见 `references/api-read.md` §13）。
-- 197 本书有缅甸版页码标记；其余的（语法书、缅文著作、部分纲要书）没有，查不到就是没有。
+- 缩写表来自一份具体缅文著作的引文统计（173 条引用、75 部著作），**不是全集**。
+- **四个版本都支持**：`M`=缅甸版、`V`=VRI、`P`=PTS、`T`=泰版。缅甸引用写的是 M，
+  西方学界引的多是 PTS 页码，写成 `P1.123` 一样查。
+- 有页码标记的著作约 200 部；语法书、缅文著作等没有，查不到就是没有。
+- **这个命令要联网**（换算在服务端）。离线时只能靠你自己按表判断是哪部著作，
+  给不出段落号——如实说明。

@@ -7,7 +7,7 @@
 import argparse
 import sys
 
-import cmd_cite
+import cmd_page
 import cmd_discuss
 import cmd_read
 import cmd_site
@@ -169,12 +169,13 @@ def build_parser():
     p.add_argument('--refresh', action='store_true', help='强制重新拉取书目清单（有本地缓存）')
     p.set_defaults(func=cmd_read.cmd_books)
 
-    p = add('cite', '解析引用缩写：缅文/罗马化的「书-册-页」是哪本书（离线，不发请求）')
-    p.add_argument('citation', nargs='+',
-                   help='如 ဝိသုဒ္ဓိ၊၂၊၂၄၁ / မဟာဋီ-၂-၄၀၁ / visuddhimagga-2-241')
+    p = add('page', '印本页码 → 坐标：<册>.<页> 落在哪一段（认书是模型的活）')
+    p.add_argument('page', help='页码，如 2.241 / M2.241 / 47 / 2.249-250；M=缅甸版 V/P/T=VRI/PTS/泰版')
+    p.add_argument('--pcd', required=True,
+                   help='候选著作编号，逗号分隔（取自 references/citation-abbrev.tsv 的 pcd 列），如 70,71')
     p.add_argument('--text', action='store_true',
                    help='连这一页的巴利原文与章节路径一起取（这一项要联网）')
-    p.set_defaults(func=cmd_cite.cmd_cite)
+    p.set_defaults(func=cmd_page.cmd_page)
 
     # -- 写 ----------------------------------------------------------------
     p = add('ensure-model', '幂等地建立模型记录并取模型身份 token', needs_json=False)

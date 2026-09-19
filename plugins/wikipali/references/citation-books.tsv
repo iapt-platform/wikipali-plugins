@@ -1,282 +1,276 @@
-book	para	toc	related	tags	m_vol	m_first	m_last	m_more
-1	2	Namakkārapāḷi	NK	añña,buddha-vandanā ganthasaṅgaha,namakkāra,namakkārapāḷi	0	1	6	
-1	159	Namakkāraṭīkā	NK	añña,buddha-vandanā ganthasaṅgaha,namakkāra,namakkāraṭīkā,ṭīkā	0	7	226	
-2	2	Mahāpaṇāmapāṭha		añña,buddha-vandanā ganthasaṅgaha,mahāpaṇāmapāṭha	0	41	52	
-2	428	Tigumbacetiya thomanā		añña,buddha-vandanā ganthasaṅgaha,mahāpaṇāmapāṭha	0	118	121	
-2	479	Vāsamālinīkya		añña,buddha-vandanā ganthasaṅgaha,mahāpaṇāmapāṭha	0	179	214	
-3	2	Lakkhaṇāto		añña,buddha-vandanā ganthasaṅgaha,lakkhaṇāto	0	19	72	
-4	2	Suttavandanā		añña,buddha-vandanā ganthasaṅgaha,suttavandanā	0	13	86	
-5	2	Jinālaṅkāra		añña,buddha-vandanā ganthasaṅgaha,jinālaṅkāra				
-6	2	Kamalāñjali		añña,buddha-vandanā ganthasaṅgaha,kamalāñjali				
-7	2	Pajjamadhu		añña,buddha-vandanā ganthasaṅgaha,pajjamadhu				
-8	2	Buddhaguṇagāthāvalī		añña,buddha-vandanā ganthasaṅgaha,buddhaguṇagāthāvalī				
-9	2	Abhidhānappadīpikāṭīkā	dict	abhidhānappadīpikā,abhidhānappadīpikāṭīkā,añña,byākaraṇa ganthasaṅgaha,nirutti	0	1	621	
-10	2	Subodhālaṅkāro	subo	añña,byākaraṇa ganthasaṅgaha,nirutti,subodhālaṅkāra	0	156	189	
-11	2	Subodhālaṅkāraṭīkā	subo	añña,byākaraṇa ganthasaṅgaha,nirutti,subodhālaṅkāra,subodhālaṅkāraṭīkā	0	1	362	
-12	2	Bālāvatāra		avatāra,añña,byākaraṇa ganthasaṅgaha,bālāvatāra,nirutti	0	1	256	
-13	2	Moggallānasuttapāṭho		añña,byākaraṇa ganthasaṅgaha,moggallānasuttapāṭha,nirutti	0	1	53	
-13	1105	Moggallānabyākaraṇaṃ		añña,byākaraṇa ganthasaṅgaha,moggallānabyākaraṇa,nirutti	0	54	292	
-14	2	Kaccāyanabyākaraṇaṃ		añña,byākaraṇa ganthasaṅgaha,kaccāyanabyākaraṇa,nirutti	0	1	38	
-14	715	Mahākaccāyanasaddāpāṭha		añña,byākaraṇa ganthasaṅgaha,kaccāyanabyākaraṇa,nirutti	0	39	315	
-15	2	Saddanītippakaraṇaṃ (padamālā)		añña,byākaraṇa ganthasaṅgaha,nirutti,padamālā,saddanītippakaraṇa	0	1	418	
-16	2	Saddanītippakaraṇaṃ (dhātumālā)		añña,byākaraṇa ganthasaṅgaha,dhātumālā,nirutti,saddanītippakaraṇa	0	1	391	
-17	2	Padarūpasiddhi		añña,byākaraṇa ganthasaṅgaha,nirutti,padarūpasiddhi	0	1	421	
-18	2	Moggallāna pañcikā ṭīkā		añña,byākaraṇa ganthasaṅgaha,moggallāna pañcikā ṭīkā,nirutti	0	1	286	
-19	2	Payogasiddhipāḷi		añña,byākaraṇa ganthasaṅgaha,nirutti,payogasiddhipāḷi	0	1	304	
-20	2	Vuttodayaṃ		añña,byākaraṇa ganthasaṅgaha,nirutti,vuttodaya	0	192	201	
-21	2	Abhidhānappadīpikā	dict	abhidhānappadīpikā,añña,byākaraṇa ganthasaṅgaha,nirutti	0	1	99	
-22	2	Niruttidīpanīpāṭha		añña,leḍī sayādo,nirutti,niruttidīpanīpāṭha	0	1	563	
-23	2	Paramatthadīpanī	abhi9	abhidhamma,abhidhammatthasaṅgaha,añña,leḍī sayādo,paramatthadīpanī	0	1	456	
-24	2	Anudīpanīpāṭha	abhi9	abhidhamma,abhidhammatthasaṅgaha,anudīpanīpāṭha,añña,leḍī sayādo	0	1	324	
-25	2	Paṭṭhānuddesa dīpanīpāṭha		abhidhamma,añña,leḍī sayādo,paṭṭhāna,paṭṭhānuddesa dīpanīpāṭha	0	465	506	
-26	2	Caturārakkhadīpanī		añña,caturārakkhadīpanī,dīpanī,nīti-ganthasaṅgaha	0	1	353	
-27	2	Kavidappaṇanīti		añña,kavidappaṇanīti,nīti-ganthasaṅgaha	0	1	228	
-28	2	Nītimañjarī		añña,nīti-ganthasaṅgaha,nītimañjarī	0	1	208	
-29	2	Dhammanīti		añña,dhammanīti,nīti-ganthasaṅgaha	0	1	147	
-30	2	Mahārahanīti		añña,mahārahanīti,nīti-ganthasaṅgaha	0	1	112	
-31	2	Lokanīti		añña,lokanīti,nīti-ganthasaṅgaha	0	1	36	
-32	2	Suttantanīti		añña,nīti-ganthasaṅgaha,suttantanīti	0	3	82	
-32	134	Vasalasutta		añña,nīti-ganthasaṅgaha,suttantanīti	0	10	167	
-33	2	Sūrassatīnīti		añña,nīti-ganthasaṅgaha,sūrassatīnīti	1	1	196	2:1-184
-34	2	Cāṇakyanītipāḷi		añña,cāṇakyanītipāḷi,nīti-ganthasaṅgaha	0	1	80	
-35	2	Naradakkhadīpanī		añña,naradakkhadīpanī,nīti-ganthasaṅgaha	0	8	598	
-36	2	Rasavāhinī		añña,pakiṇṇaka-ganthasaṅgaha,rasavāhinī	0	1	173	
-37	2	Sīmavisodhanī		añña,pakiṇṇaka,pakiṇṇaka-ganthasaṅgaha,sīmavisodhanī	0	5	115	
-38	2	Vessantarāgīti		añña,pakiṇṇaka-ganthasaṅgaha,vessantarāgīti	0	1	216	
-39	3	(saṅgayana-puccha vissajjanā) Dīghanikāye		añña,dīghanikāya,saṅgayana-puccha vissajjanā,sutta	0	1	239	
-40	3	(saṅgayana-puccha vissajjanā) Majjhimanikāya		añña,majjhimanikāya,saṅgayana-puccha vissajjanā,sutta	1	1	228	2:1-260
-41	3	(saṅgayana-puccha vissajjanā) Saṃyuttanikāye		añña,saṃyuttanikāya,saṅgayana-puccha vissajjanā,sutta	1	1	271	2:1-317
-42	3	(saṅgayana-puccha vissajjanā) Aṅguttaranikāye		añña,aṅguttaranikāya,saṅgayana-puccha vissajjanā,sutta	1	1	362	2:1-275
-43	2	(saṅgayana-puccha vissajjanā) Vinayapiṭaka		añña,saṅgayana-puccha vissajjanā,vinaya,vinayapiṭaka	1	1	240	2:1-282
-44	2	(saṅgayana-puccha vissajjanā) Abhidhammapiṭaka		abhidhamma,abhidhammapiṭaka,añña,saṅgayana-puccha vissajjanā	0	1	167	
-45	2	(saṅgayana-puccha vissajjanā) Aṭṭhakathā		añña,aṭṭhakathā,saṅgayana-puccha vissajjanā	1	25	312	2:1-285;3:1-260
-46	1	Milidaṭīkā	kn18	añña,khuddakanikāya,milidaṭīkā,milindapañha,sihaḷa-ganthasaṅgaha,sutta,ṭīkā				
-47	1	Padamañjarī 		añña,nirutti,padamañjarī,sihaḷa-ganthasaṅgaha				
-48	1	Padasādhanaṃ 		añña,nirutti,padasādhana,sihaḷa-ganthasaṅgaha				
-49	1	Saddabindu pakaraṇaṃ		añña,nirutti,saddabindupakaraṇa,sihaḷa-ganthasaṅgaha				
-50	1	Kaccāyana  dhātu mañjūsā		añña,kaccāyana,kaccāyanadhātumañjūsā,nirutti,sihaḷa-ganthasaṅgaha				
-51	1	Samantakūṭavaṇṇanā 		añña,samantakūṭavaṇṇanā,sihaḷa-ganthasaṅgaha				
-52	1	Moggallāna vuttivivaraṇapañcikā. 		añña,moggallāna vuttivivaraṇapañcikā,sihaḷa-ganthasaṅgaha				
-53	1	Thupavaṃso 		añña,sihaḷa-ganthasaṅgaha,thupavaṃsa				
-54	1	Dāṭhāvaṃso 		añña,dāṭhāvaṃsa,sihaḷa-ganthasaṅgaha				
-55	1	Dhātupāṭha  vilāsiniyā		añña,dhātupāṭha vilāsiniyā,sihaḷa-ganthasaṅgaha				
-56	1	Dhātuvaṃso 		añña,dhātuvaṃsa,sihaḷa-ganthasaṅgaha				
-57	1	Hatthavanagallavihāra  vaṃso		añña,hatthavanagallavihāravaṃsa,sihaḷa-ganthasaṅgaha				
-58	1	Jinacaritaya 		añña,jinacaritaya,sihaḷa-ganthasaṅgaha				
-59	1	Jinavaṃsadīpaṃ 		añña,jinavaṃsadīpa,sihaḷa-ganthasaṅgaha				
-60	1	Telakaṭāhagāthā 		añña,sihaḷa-ganthasaṅgaha,telakaṭāhagāthā				
-61	2	Cūḷaganthavaṃsapāḷi		añña,cūḷaganthavaṃsapāḷi,vaṃsa ganthasaṅgaha,vaṃsa-ganthasaṅgaha				
-62	2	Sāsanavaṃsappadīpikā		añña,sāsanavaṃsappadīpikā,vaṃsa ganthasaṅgaha,vaṃsa-ganthasaṅgaha	0	1	187	
-63	2	Mahāvaṃsapāḷi		añña,mahāvaṃsapāḷi,vaṃsa ganthasaṅgaha,vaṃsa-ganthasaṅgaha	0	1	392	
-64	2	Visuddhimaggo(Paṭhamo bhāgo)	vism	añña,aṭṭhakathā,paṭhamo bhāgo,visuddhimagga	1	1	370	
-65	2	Visuddhimaggo(Dutiyo bhāgo)	vism	añña,aṭṭhakathā,dutiyo bhāgo,visuddhimagga	2	1	356	
-66	2	Visuddhimagga-mahāṭīkā(Paṭhamo bhāgo)	vism	añña,mahāṭīkā,paṭhamo bhāgo,visuddhimagga,ṭīkā	1	1	461	
-67	2	Visuddhimagga-mahāṭīkā(Dutiyo bhāgo)	vism	añña,dutiyo bhāgo,mahāṭīkā,visuddhimagga,ṭīkā	2	1	535	
-68	2	Visuddhimagga nidānakathā		añña,nidānakathā,visuddhimagga,ṭīkā	0	1	73	
-69	3	Paṭṭhānapāḷi(Dutiyo bhāgo)	abhi7	abhidhamma,mūla,paṭṭhāna,paṭṭhānapāḷi,pāḷi	2	1	493	
-70	3	Paṭṭhānapāḷi(Tatiyo bhāgo)	abhi7	abhidhamma,mūla,paṭṭhāna,paṭṭhānapāḷi,pāḷi	3	1	605	
-71	3	Paṭṭhānapāḷi(Catuttho bhāgo)	abhi7	abhidhamma,mūla,paṭṭhāna,paṭṭhānapāḷi,pāḷi	4	1	636	
-72	3	Paṭṭhānapāḷi(Pañcamo bhāgo)	abhi7	abhidhamma,mūla,paṭṭhāna,paṭṭhānapāḷi,pāḷi	5	1	442	
-73	3	Dhammasaṅgaṇīpāḷi	abhi1	abhidhamma,dhammasaṅgaṇī,mūla,pāḷi	0	1	298	
-74	3	Vibhaṅgapāḷi	abhi2	abhidhamma,mūla,pāḷi,vibhaṅga	0	1	453	
-75	3	Dhātukathāpāḷi	abhi3	abhidhamma,dhātukathā,mūla,pāḷi	0	1	100	
-76	3	Puggalapaññattipāḷi	abhi4	abhidhamma,mūla,puggalapaññatti,pāḷi	0	101	185	
-77	3	Kathāvatthupāḷi	abhi5	abhidhamma,kathāvatthu,mūla,pāḷi	0	1	454	
-78	3	Yamakapāḷi (paṭhamo bhāgo)	abhi6	abhidhamma,mūla,pāḷi,yamaka,yamakapāḷi	1	1	265	
-79	3	Yamakapāḷi (dutiyo bhāgo)	abhi6	abhidhamma,mūla,pāḷi,yamaka,yamakapāḷi	2	1	316	
-80	3	Yamakapāḷi (tatiyo bhāgo)	abhi6	abhidhamma,mūla,pāḷi,yamaka,yamakapāḷi	3	1	330	
-81	3	Paṭṭhānapāḷi(Paṭhamo bhāgo)	abhi7	abhidhamma,mūla,paṭṭhāna,paṭṭhānapāḷi,pāḷi	1	1	464	
-82	3	Dasakanipātapāḷi	an10	aṅguttaranikāya,dasakanipāta,mūla,nipāta,pāḷi,sutta	3	257	513	
-83	3	Ekādasakanipātapāḷi	an11	aṅguttaranikāya,ekādasakanipāta,mūla,nipāta,pāḷi,sutta	3	515	558	
-84	3	Ekakanipātapāḷi	an1	aṅguttaranikāya,ekakanipāta,mūla,nipāta,pāḷi,sutta	1	1	48	
-85	3	Dukanipātapāḷi	an2	aṅguttaranikāya,dukanipāta,mūla,nipāta,pāḷi,sutta	1	49	98	
-86	3	Tikanipātapāḷi	an3	aṅguttaranikāya,mūla,nipāta,pāḷi,sutta,tikanipāta	1	99	305	
-87	3	Catukkanipātapāḷi	an4	aṅguttaranikāya,catukkanipāta,mūla,nipāta,pāḷi,sutta	1	307	580	
-88	3	Pañcakanipātapāḷi	an5	aṅguttaranikāya,mūla,nipāta,pañcakanipāta,pāḷi,sutta	2	1	246	
-89	3	Chakkanipātapāḷi	an6	aṅguttaranikāya,chakkanipāta,mūla,nipāta,pāḷi,sutta	2	247	393	
-90	3	Sattakanipātapāḷi	an7	aṅguttaranikāya,mūla,nipāta,pāḷi,sattakanipāta,sutta	2	395	513	
-91	3	Aṭṭhakanipātapāḷi	an8	aṅguttaranikāya,aṭṭhakanipāta,mūla,nipāta,pāḷi,sutta	3	1	162	
-92	3	Navakanipātapāḷi	an9	aṅguttaranikāya,mūla,navakanipāta,nipāta,pāḷi,sutta	3	163	256	
-93	3	(DN) Sīlakkhandhavaggapāḷi	dn1	dīghanikāya,mūla,pāḷi,sutta,sīlakkhandhavagga	1	1	236	
-94	3	(DN) Mahāvaggapāḷi	dn2	dīghanikāya,mahāvagga,mūla,pāḷi,sutta	2	1	283	
-95	3	(DN) Pāthikavaggapāḷi	dn3	dīghanikāya,mūla,pāthikavagga,pāḷi,sutta	3	1	260	
-96	4	Dhammasaṅgaṇī-aṭṭhakathā	abhi1	abhidhamma,aṭṭhakathā,aṭṭhasālinī,dhammasaṅgaṇī	0	1	454	
-97	4	Vibhaṅga-aṭṭhakathā	abhi2	abhidhamma,aṭṭhakathā,sammohavinodanī,vibhaṅga	0	1	508	
-98	4	Dhātukathā-aṭṭhakathā	abhi3	abhidhamma,aṭṭhakathā,dhātukathā,pañcapakaraṇa	0	1	23	
-98	173	Puggalapaññatti-aṭṭhakathā	abhi4	abhidhamma,aṭṭhakathā,pañcapakaraṇa,puggalapaññatti	0	25	104	
-98	474	Kathāvatthu-aṭṭhakathā	abhi5	abhidhamma,aṭṭhakathā,kathāvatthu,pañcapakaraṇa	0	105	286	
-98	1623	Yamakappakaraṇa-aṭṭhakathā	abhi6	abhidhamma,aṭṭhakathā,pañcapakaraṇa,yamaka	0	287	340	
-98	1880	Paṭṭhānappakaraṇa-aṭṭhakathā	abhi7	abhidhamma,aṭṭhakathā,pañcapakaraṇa,paṭṭhāna	0	341	499	
-99	3	Ekakanipāta-aṭṭhakathā	an1_A	aṅguttaranikāya,aṭṭhakathā,ekakanipāta,manorathapūraṇī,nipāta,sutta	1	1	416	
-100	3	Dukanipāta-aṭṭhakathā	an2	aṅguttaranikāya,aṭṭhakathā,dukanipāta,manorathapūraṇī,nipāta,sutta	2	1	67	
-100	325	Tikanipāta-aṭṭhakathā	an3	aṅguttaranikāya,aṭṭhakathā,manorathapūraṇī,nipāta,sutta,tikanipāta	2	69	247	
-100	997	Catukkanipāta-aṭṭhakathā	an4	aṅguttaranikāya,aṭṭhakathā,catukkanipāta,manorathapūraṇī,nipāta,sutta	2	249	397	
-101	3	Pañcakanipāta-aṭṭhakathā	an5	aṅguttaranikāya,aṭṭhakathā,manorathapūraṇī,nipāta,pañcakanipāta,sutta	3	1	85	
-101	503	Chakkanipāta-aṭṭhakathā	an6	aṅguttaranikāya,aṭṭhakathā,chakkanipāta,manorathapūraṇī,nipāta,sutta	3	87	143	
-101	792	Sattakanipāta-aṭṭhakathā	an7	aṅguttaranikāya,aṭṭhakathā,manorathapūraṇī,nipāta,sattakanipāta,sutta	3	145	191	
-102	3	Aṭṭhakanipāta-aṭṭhakathā	an8	aṅguttaranikāya,aṭṭhakanipāta,aṭṭhakathā,manorathapūraṇī,nipāta,sutta	3	193	255	
-102	275	Navakanipāta-aṭṭhakathā	an9	aṅguttaranikāya,aṭṭhakathā,manorathapūraṇī,navakanipāta,nipāta,sutta	3	257	285	
-102	409	Dasakanipāta-aṭṭhakathā	an10	aṅguttaranikāya,aṭṭhakathā,dasakanipāta,manorathapūraṇī,nipāta,sutta	3	287	341	
-102	706	Ekādasakanipāta-aṭṭhakathā	an11	aṅguttaranikāya,aṭṭhakathā,ekādasakanipāta,manorathapūraṇī,nipāta,sutta	3	343	357	
-103	3	(DN) Sīlakkhandhavaggaṭṭhakathā	dn1_A	aṭṭhakathā,dīghanikāya,sumaṅgalavilāsinī,sutta,sīlakkhandhavagga	1	1	338	
-104	3	(DN) Mahāvaggaṭṭhakathā	dn2	aṭṭhakathā,dīghanikāya,mahāvagga,sumaṅgalavilāsinī,sutta	2	1	403	
-105	3	(DN) Pāthikavaggaṭṭhakathā	dn3	aṭṭhakathā,dīghanikāya,pāthikavagga,sumaṅgalavilāsinī,sutta	3	1	251	
-106	3	Therīgāthā-aṭṭhakathā	kn9	aṭṭhakathā,khuddakanikāya,sutta,therīgāthā	0	1	305	
-107	3	Apadāna-aṭṭhakathā	kn10_A	apadāna,aṭṭhakathā,khuddakanikāya,sutta,therāpadāna	1	1	352	2:1-303
-108	3	Buddhavaṃsa-aṭṭhakathā	kn12	aṭṭhakathā,buddhavaṃsa,khuddakanikāya,sutta,vaṃsa ganthasaṅgaha	0	1	354	
-109	3	Cariyāpiṭaka-aṭṭhakathā	kn13	aṭṭhakathā,carita,cariyāpiṭaka,khuddakanikāya,sutta	0	1	328	
-110	4	Jātaka-aṭṭhakathā(Paṭhamo bhāgo)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	1	1	538	
-111	3	Jātaka-aṭṭhakathā(Dutiyo bhāgo)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	2	1	408	
-112	4	Jātaka-aṭṭhakathā(Tatiyo bhāgo)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	3	1	517	
-113	4	Jātaka-aṭṭhakathā(Catuttho bhāgo)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	4	1	504	
-113	5312	Jātaka-aṭṭhakathā(Pañcamo bhāgo 16)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	5	1	113	
-114	1	Jātaka-aṭṭhakathā(Pañcamo bhāgo 17-21)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	5	114	553	
-115	3	Jātaka-aṭṭhakathā(Chaṭṭho bhāgo)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	6	1	332	
-116	3	Khuddakapāṭha-aṭṭhakathā	kn1	aṭṭhakathā,khuddakanikāya,khuddakapāṭha,paramatthajotika,sutta	0	1	216	
-117	3	Jātaka-aṭṭhakathā(Sattamo bhāgo)	kn14	aṭṭhakathā,jātaka,khuddakanikāya,sutta	7	1	387	
-118	3	Mahāniddesa-aṭṭhakathā	kn15	aṭṭhakathā,khuddakanikāya,mahāniddesa,niddesa,sutta	0	1	419	
-119	3	Cūḷaniddesa-aṭṭhakathā	kn16	aṭṭhakathā,cūḷaniddesa,khuddakanikāya,niddesa,sutta	0	1	140	
-120	3	Paṭisambhidāmagga-aṭṭhakathā	kn17	aṭṭhakathā,khuddakanikāya,paṭisambhidāmagga,saddhammappakāsinī,sutta	1	1	345	2:1-323
-121	3	Nettippakaraṇa-aṭṭhakathā	kn19	aṭṭhakathā,khuddakanikāya,netti,nettippakaraṇa,sutta	0	1	276	
-122	3	Dhammapada-aṭṭhakathā	kn2	aṭṭhakathā,dhammapada,khuddakanikāya,sutta	1	1	447	2:1-456
-123	3	Udāna-aṭṭhakathā	kn3	aṭṭhakathā,khuddakanikāya,sutta,udāna	0	1	393	
-124	3	Itivuttaka-aṭṭhakathā	kn4	aṭṭhakathā,itivuttaka,khuddakanikāya,sutta	0	1	355	
-125	3	Suttanipāta-aṭṭhakathā	kn5	aṭṭhakathā,khuddakanikāya,nipāta,paramatthajotika,sutta,suttanipāta	1	1	314	2:1-324
-126	3	Vimānavatthu-aṭṭhakathā	kn6	aṭṭhakathā,khuddakanikāya,sutta,vimānavatthu	0	1	335	
-127	3	Petavatthu-aṭṭhakathā	kn7	aṭṭhakathā,khuddakanikāya,petavatthu,sutta	0	1	270	
-128	3	Theragāthā-aṭṭhakathā(Paṭhamo bhāgo)	kn8	aṭṭhakathā,khuddakanikāya,sutta,theragāthā	1	1	485	
-129	3	Theragāthā-aṭṭhakathā(Dutiyo bhāgo)	kn8	aṭṭhakathā,khuddakanikāya,sutta,theragāthā	2	1	546	
-130	3	(MN) Mūlapaṇṇāsa-aṭṭhakathā	mn1_A	aṭṭhakathā,majjhimanikāya,mūlapaṇṇāsa,papañcasūdanī,sutta	1	1	398	2:1-320
-131	3	(MN) Majjhimapaṇṇāsa-aṭṭhakathā	mn2	aṭṭhakathā,majjhimanikāya,majjhimapaṇṇāsa,papañcasūdanī,sutta	3	1	309	
-132	3	(MN) Uparipaṇṇāsa-aṭṭhakathā	mn3	aṭṭhakathā,majjhimanikāya,papañcasūdanī,sutta,uparipaṇṇāsa	4	1	254	
-133	3	(SN) Sagāthāvagga-aṭṭhakathā	sn1_A	aṭṭhakathā,sagāthāvagga,saṃyuttanikāya,sutta,sāratthappakāsinī	1	1	325	
-134	3	(SN) Nidānavagga-aṭṭhakathā	sn2	aṭṭhakathā,nidānavagga,saṃyuttanikāya,sutta,sāratthappakāsinī	2	1	227	
-135	3	(SN) Khandhavagga-aṭṭhakathā	sn3	aṭṭhakathā,khandhavagga,saṃyuttanikāya,sutta,sāratthappakāsinī	2	229	324	
-136	3	(SN) Saḷāyatanavagga-aṭṭhakathā	sn4	aṭṭhakathā,saḷāyatanavagga,saṃyuttanikāya,sutta,sāratthappakāsinī	3	1	152	
-137	3	(SN) Mahāvagga-aṭṭhakathā	sn5	aṭṭhakathā,mahāvagga,saṃyuttanikāya,sutta,sāratthappakāsinī	3	153	341	
-138	3	Pārājikakaṇḍa-aṭṭhakathā	vin1	aṭṭhakathā,mahāvibhaṅga,pārājika,pārājikakaṇḍa,samantapāsādikā,suttavibhaṅga,vinaya	1	1	345	2:1-312
-139	3	(SP) Pācittiya-aṭṭhakathā	vin2	aṭṭhakathā,mahāvibhaṅga,pācittiya,pācittiya-aṭṭhakathā,samantapāsādikā,suttavibhaṅga,vinaya	0	1	172	
-139	925	Bhikkhunīvibhaṅgavaṇṇanā	vin2	aṭṭhakathā,bhikkhunī,bhikkhunīvibhaṅga,pācittiya,pācittiya-aṭṭhakathā,samantapāsādikā,suttavibhaṅga,vinaya	0	173	231	
-140	3	(SP) Mahāvagga-aṭṭhakathā	vin3	aṭṭhakathā,khandhaka,mahāvagga,samantapāsādikā,vinaya	0	233	437	
-141	3	(SP) Cūḷavagga-aṭṭhakathā	vin4	aṭṭhakathā,cūḷavagga,khandhaka,samantapāsādikā,vinaya	0	1	136	
-142	3	(SP) Parivāra-aṭṭhakathā	vin5	aṭṭhakathā,parivāra,parivārapāḷi,samantapāsādikā,vinaya	0	137	265	
-143	3	Therāpadānapāḷi(Paṭhamo bhāgo)	kn10_A	apadāna,khuddakanikāya,mūla,pāḷi,sutta,therāpadāna	1	1	445	
-144	3	Therāpadānapāḷi(Dutiyo bhāgo)	kn10_B	apadāna,khuddakanikāya,mūla,pāḷi,sutta,therāpadāna	2	1	185	
-144	6534	Therīapadānapāḷi	kn10_B	apadāna,khuddakanikāya,mūla,pāḷi,sutta,therīapadāna	2	187	298	
-145	3	Buddhavaṃsapāḷi	kn12	buddhavaṃsa,khuddakanikāya,mūla,pāḷi,sutta,vaṃsa ganthasaṅgaha	2	299	384	
-146	3	Cariyāpiṭakapāḷi	kn13	carita,cariyāpiṭaka,khuddakanikāya,mūla,pāḷi,sutta	2	385	420	
-147	3	Jātakapāḷi(Dutiyo bhāgo)	kn14	jātaka,khuddakanikāya,mūla,pāḷi,sutta	2	1	378	
-148	3	Jātakapāḷi(Paṭhamo bhāgo)	kn14	jātaka,khuddakanikāya,mūla,pāḷi,sutta	1	1	400	
-149	3	Mahāniddesapāḷi	kn15	khuddakanikāya,mahāniddesa,mūla,niddesa,pāḷi,sutta	0	1	410	
-150	3	Cūḷaniddesapāḷi	kn16	cūḷaniddesa,khuddakanikāya,mūla,niddesa,pāḷi,sutta	0	1	307	
-151	3	Paṭisambhidāmaggapāḷi	kn17	khuddakanikāya,mūla,paṭisambhidāmagga,pāḷi,sutta	0	1	419	
-152	3	Milindapañhapāḷi	kn18	khuddakanikāya,milindapañha,mūla,pāḷi,sutta	0	1	408	
-153	3	Nettippakaraṇapāḷi	kn19	khuddakanikāya,mūla,netti,nettippakaraṇa,pāḷi,sutta	0	1	166	
-154	3	Khuddakapāṭhapāḷi	kn1	khuddakanikāya,khuddakapāṭha,mūla,pāḷi,sutta	0	1	11	
-155	3	Peṭakopadesapāḷi	kn20	khuddakanikāya,mūla,peṭakopadesa,pāḷi,sutta	0	167	341	
-156	3	Dhammapadapāḷi	kn2	dhammapada,khuddakanikāya,mūla,pāḷi,sutta	0	13	76	
-157	3	Udānapāḷi	kn3	khuddakanikāya,mūla,pāḷi,sutta,udāna	0	77	193	
-158	3	Itivuttakapāḷi	kn4	itivuttaka,khuddakanikāya,mūla,pāḷi,sutta	0	195	277	
-159	3	Suttanipātapāḷi	kn5	khuddakanikāya,mūla,nipāta,pāḷi,sutta,suttanipāta	0	279	455	
-160	3	Vimānavatthupāḷi	kn6	khuddakanikāya,mūla,pāḷi,sutta,vimānavatthu	0	1	125	
-161	3	Petavatthupāḷi	kn7	khuddakanikāya,mūla,petavatthu,pāḷi,sutta	0	127	218	
-162	3	Theragāthāpāḷi	kn8	khuddakanikāya,mūla,pāḷi,sutta,theragāthā	0	19	375	
-163	3	Therīgāthāpāḷi	kn9	khuddakanikāya,mūla,pāḷi,sutta,therīgāthā	0	377	435	
-164	3	(MN)Mūlapaṇṇāsapāḷi	mn1	majjhimanikāya,mūla,mūlapaṇṇāsa,pāḷi,sutta	1	1	415	
-165	3	(MN)Majjhimapaṇṇāsapāḷi	mn2	majjhimanikāya,majjhimapaṇṇāsa,mūla,pāḷi,sutta	2	1	439	
-166	3	(MN)Uparipaṇṇāsapāḷi	mn3	majjhimanikāya,mūla,pāḷi,sutta,uparipaṇṇāsa	3	1	352	
-167	3	(SN)Sagāthāvaggo	sn1	mūla,pāḷi,sagāthāvagga,saṃyuttanikāya,sutta	1	1	242	
-168	3	(SN)Nidānavaggo	sn2	mūla,nidānavagga,pāḷi,saṃyuttanikāya,sutta	1	243	472	
-169	3	(SN)Khandhavaggo	sn3	khandhavagga,mūla,pāḷi,saṃyuttanikāya,sutta	2	1	235	
-170	3	(SN)Saḷāyatanavaggo	sn4	mūla,pāḷi,saḷāyatanavagga,saṃyuttanikāya,sutta	2	236	567	
-171	3	(SN)Mahāvaggo	sn5	mahāvagga,mūla,pāḷi,saṃyuttanikāya,sutta	3	1	415	
-172	3	Dhammasaṅgaṇī-mūlaṭīkā	abhi1	abhidhamma,dhammasaṅgaṇī,mūlaṭīkā,ṭīkā	0	1	203	
-173	3	Vibhaṅga-mūlaṭīkā	abhi2	abhidhamma,mūlaṭīkā,vibhaṅga,ṭīkā	0	1	235	
-173	1155	Vibhaṅga-anuṭīkā	abhi2	abhidhamma,mūlaṭīkā,vibhaṅga,ṭīkā				
-174	4	Dhātukathāpakaraṇa-mūlaṭīkā	abhi3	abhidhamma,dhātukathā,mūlaṭīkā,pañcapakaraṇa,ṭīkā	0	1	26	
-174	100	Puggalapaññattipakaraṇa-mūlaṭīkā	abhi4	abhidhamma,mūlaṭīkā,pañcapakaraṇa,puggalapaññatti,ṭīkā	0	27	45	
-174	201	Kathāvatthupakaraṇa-mūlaṭīkā	abhi5	abhidhamma,kathāvatthu,mūlaṭīkā,pañcapakaraṇa,ṭīkā	0	47	116	
-174	865	Yamakapakaraṇa-mūlaṭīkā	abhi6	abhidhamma,mūlaṭīkā,pañcapakaraṇa,yamaka,ṭīkā	0	117	164	
-174	1059	Paṭṭhānapakaraṇa-mūlaṭīkā	abhi7	abhidhamma,mūlaṭīkā,pañcapakaraṇa,paṭṭhāna,ṭīkā	0	165	248	
-175	3	Dhammasaṅgaṇī-anuṭīkā	abhi1	abhidhamma,anuṭīkā,dhammasaṅgaṇī,ṭīkā	0	1	220	
-176	4	Dhātukathāpakaraṇa-anuṭīkā	abhi3	abhidhamma,anuṭīkā,dhātukathā,pañcapakaraṇa,ṭīkā	0	1	33	
-176	117	Puggalapaññattipakaraṇa-anuṭīkā	abhi4	abhidhamma,anuṭīkā,pañcapakaraṇa,puggalapaññatti,ṭīkā	0	35	55	
-176	213	Kathāvatthupakaraṇa-anuṭīkā	abhi5	abhidhamma,anuṭīkā,kathāvatthu,pañcapakaraṇa,ṭīkā	0	57	157	
-176	917	Yamakapakaraṇa-anuṭīkā	abhi6	abhidhamma,anuṭīkā,pañcapakaraṇa,yamaka,ṭīkā	0	159	222	
-176	1139	Paṭṭhānapakaraṇa-anuṭīkā	abhi7	abhidhamma,anuṭīkā,pañcapakaraṇa,paṭṭhāna,ṭīkā	0	223	323	
-177	2	Abhidhammāvatāro	abhi8	abhidhamma,abhidhammāvatāra,abhidhammāvatāro,ṭīkā	0	1	186	
-177	4805	Nāmarūpaparicchedo		abhidhamma,abhidhammāvatāro,nāmarūpapariccheda,ṭīkā				
-177	10627	Paramatthavinicchayo		abhidhamma,abhidhammāvatāro,paramatthavinicchaya,ṭīkā				
-177	14272	Saccasaṅkhepo		abhidhamma,abhidhammāvatāro,saccasaṅkhepa,ṭīkā				
-178	2	Abhidhammatthasaṅgaho	abhi9	abhidhamma,abhidhammatthasaṅgaha,ṭīkā	0	1	68	
-178	875	Abhidhammatthavibhāvinīṭīkā	abhi9	abhidhamma,abhidhammatthasaṅgaha,ṭīkā	0	69	279	
-179	2	Abhidhammāvatāra-purāṇaṭīkā	abhi8	abhidhamma,abhidhammāvatāra,avatāra,purāṇaṭīkā,ṭīkā	0	1	138	
-179	872	Abhidhammāvatāra-abhinavaṭīkā	abhi8	abhidhamma,abhidhammāvatāra,abhinavaṭīkā,avatāra,ṭīkā	1	139	360	2:1-378
-180	2	Abhidhammamātikāpāḷi		abhidhamma,abhidhammamātikā,abhidhammamātikāpāḷi,mātikā,pāḷi,ṭīkā	0	1	95	
-180	1221	Mohavicchedanī		abhidhamma,abhidhammamātikā,mohavicchedanī,mātikā,pāḷi,ṭīkā	0	96	488	
-181	3	Ekakanipāta-ṭīkā	an1_A	aṅguttaranikāya,ekakanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	1	1	288	
-182	3	Dukanipāta-ṭīkā	an2	aṅguttaranikāya,dukanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	2	1	74	
-182	324	Tikanipāta-ṭīkā	an3	aṅguttaranikāya,nipāta,sutta,sāratthamañjūsā,tikanipāta,ṭīkā	2	75	220	
-182	1023	Catukkanipāta-ṭīkā	an4	aṅguttaranikāya,catukkanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	2	221	396	
-183	3	Pañcakanipāta-ṭīkā	an5	aṅguttaranikāya,nipāta,pañcakanipāta,sutta,sāratthamañjūsā,ṭīkā	3	1	80	
-183	470	Chakkanipāta-ṭīkā	an6	aṅguttaranikāya,chakkanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	3	81	147	
-183	793	Sattakanipāta-ṭīkā	an7	aṅguttaranikāya,nipāta,sattakanipāta,sutta,sāratthamañjūsā,ṭīkā	3	149	202	
-184	3	Aṭṭhakanipāta-ṭīkā	an8	aṅguttaranikāya,aṭṭhakanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	3	203	265	
-184	278	Navakanipāta-ṭīkā	an9	aṅguttaranikāya,navakanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	3	267	304	
-184	466	Dasakanipāta-ṭīkā	an10	aṅguttaranikāya,dasakanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	3	305	356	
-184	776	Ekādasakanipāta-ṭīkā	an11	aṅguttaranikāya,ekādasakanipāta,nipāta,sutta,sāratthamañjūsā,ṭīkā	3	357	371	
-185	3	(DN)Sīlakkhandhavaggaṭīkā	dn1_A	dīghanikāya,līnatthappakāsanā,sutta,sīlakkhandhavagga,sīlakkhandhavaggaṭīkā,ṭīkā	1	1	405	
-186	3	(DN)Mahāvaggaṭīkā	dn2	dīghanikāya,līnatthappakāsanā,mahāvagga,sutta,ṭīkā	2	1	358	
-187	3	(DN)Pāthikavaggaṭīkā	dn3	dīghanikāya,līnatthappakāsanā,pāthikavagga,sutta,ṭīkā	3	1	292	
-188	3	(DN)Sīlakkhandhavaggaabhinavaṭīkā	dn1_A	abhinavaṭīkā,dīghanikāya,sutta,sādhuvilāsinī,sīlakkhandhavagga,ṭīkā	1	1	500	
-189	3	(DN)Sīlakkhandhavaggaabhinavaṭīkā	dn1	abhinavaṭīkā,dīghanikāya,sutta,sādhuvilāsinī,sīlakkhandhavagga,ṭīkā	2	1	437	
-190	3	Nettippakaraṇa-ṭīkā	kn19	khuddakanikāya,netti,nettippakaraṇa,sutta,ṭīkā	0	1	151	
-191	3	Nettivibhāvinī	kn19	khuddakanikāya,netti,nettivibhāvinī,sutta,ṭīkā	0	1	356	
-192	3	(MN)Mūlapaṇṇāsa-ṭīkā	mn1_A	līnatthappakāsanā,majjhimanikāya,mūlapaṇṇāsa,sutta,ṭīkā	1	1	394	2:1-324
-193	3	(MN)Majjhimapaṇṇāsa-ṭīkā	mn2	līnatthappakāsanā,majjhimanikāya,majjhimapaṇṇāsa,sutta,ṭīkā	2	1	209	
-194	3	(MN)Uparipaṇṇāsa-ṭīkā	mn3	līnatthappakāsanā,majjhimanikāya,sutta,uparipaṇṇāsa,ṭīkā	2	211	442	
-195	3	(SN)Sagāthāvagga-ṭīkā	sn1	līnatthappakāsanā,sagāthāvagga,saṃyuttanikāya,sutta,ṭīkā	1	1	345	
-196	3	(SN)Nidānavagga-ṭīkā	sn2	līnatthappakāsanā,nidānavagga,saṃyuttanikāya,sutta,ṭīkā	2	1	200	
-197	3	(SN)Khandhavagga-ṭīkā	sn3	khandhavagga,līnatthappakāsanā,saṃyuttanikāya,sutta,ṭīkā	2	201	279	
-198	3	(SN)Saḷāyatanavagga-ṭīkā	sn4	līnatthappakāsanā,saḷāyatanavagga,saṃyuttanikāya,sutta,ṭīkā	2	281	391	
-199	3	(SN)Mahāvagga-ṭīkā	sn5	līnatthappakāsanā,mahāvagga,saṃyuttanikāya,sutta,ṭīkā	2	393	551	
-200	2	Vinayavinicchayo	vin8	vinaya,vinayavinicchaya,vinicchaya,ṭīkā	0	1	304	
-200	10176	Uttaravinicchayo	vin9	uttaravinicchaya,vinaya,vinicchaya,ṭīkā	0	305	395	
-201	2	Vinayavinicchaya-ṭīkā	vin8	vinaya,vinayavinicchaya,vinayavinicchayaṭīkā,vinicchaya,ṭīkā	1	1	571	2:1-399
-201	4270	Uttaravinicchaya-ṭīkā	vin9	uttaravinicchaya,uttaravinicchayaṭīkā,vinaya,vinicchaya,ṭīkā	2	401	530	
-202	3	Pācityādiyojanā	vin2	pācittiyapāḷi,pācityādiyojanā,suttavibhaṅga,uttaravinicchayaṭīkā,vinaya,yojanā,ṭīkā	0	1	655	
-203	3	Khuddasikkhā	vin10	khuddasikkhā,vinaya,ṭīkā	0	1	57	
-203	1620	Khuddasikkhā-purāṇaṭīkā	vin10	khuddasikkhā,purāṇaṭīkā,vinaya,ṭīkā	0	59	235	
-203	2361	Khuddasikkhā-abhinavaṭīkā		abhinavaṭīkā,khuddasikkhā,vinaya,ṭīkā	0	237	441	
-203	3100	Mūlasikkhā		mūlasikkhā,vinaya,ṭīkā	0	443	456	
-203	3481	Mūlasikkhā-ṭīkā	vin11	mūlasikkhā,vinaya,ṭīkā	0	457	498	
-204	3	Sāratthadīpanī-ṭīkā (paṭhamo bhāgo)	vin1	dīpanī,mahāvibhaṅga,paṭhamo bhāgo,pārājikapāḷi,suttavibhaṅga,sāratthadīpanī,vinaya,ṭīkā	1	1	460	
-205	3	(SAD) Pārājika-ṭīkā	vin1	dutiyo bhāgo,dīpanī,mahāvibhaṅga,pārājikapāḷi,suttavibhaṅga,sāratthadīpanī,vinaya,ṭīkā	2	1	448	
-206	3	(SAD) Pācittiya-ṭīkā	vin2	dīpanī,mahāvibhaṅga,pācittiyapāḷi,suttavibhaṅga,sāratthadīpanī,tatiyo bhāgo,vinaya,ṭīkā	3	1	129	
-206	717	(SAD) Mahāvagga-ṭīkā	vin3	dīpanī,khandhaka,mahāvagga,sāratthadīpanī,vinaya,ṭīkā	3	131	363	
-206	1753	(SAD) Cūḷavagga-ṭīkā	vin4	cūḷavagga,dīpanī,khandhaka,sāratthadīpanī,vinaya,ṭīkā	3	365	454	
-206	2154	(SAD) Parivāra-ṭīkā	vin5	dīpanī,parivāra,parivārapāḷi,sāratthadīpanī,vinaya,ṭīkā	3	455	496	
-207	3	Bhikkhupātimokkhapāḷi	vin6	bhikkhupātimokkha,dvemātikāpāḷi,pātimokkha,pāḷi,vinaya,ṭīkā	0	1	36	
-207	524	Bhikkhunīpātimokkhapāḷi	vin6	bhikkhunī,bhikkhupātimokkha,dvemātikāpāḷi,pātimokkha,pāḷi,vinaya,ṭīkā	0	37	81	
-207	1215	Kaṅkhāvitaraṇī-aṭṭhakathā	vin6	dvemātikāpāḷi,kaṅkhāvitaraṇī,pātimokkha,vinaya,ṭīkā	0	83	357	
-208	3	Vinayasaṅgaha-aṭṭhakathā	vin7	vinaya,vinayasaṅgaha,ṭīkā	0	1	468	
-209	3	Vajirabuddhi-ṭīkā	vin1	vajirabuddhi,vinaya,ṭīkā	0	1	29	
-209	166	Pārājikavaṇṇanā	vin1	mahāvibhaṅga,pārājika,pārājikapāḷi,suttavibhaṅga,vajirabuddhi,vinaya,ṭīkā	0	30	285	
-209	992	Pācittiyavaṇṇanā	vin2	pācittiya,pācittiyapāḷi,suttavibhaṅga,vajirabuddhi,vinaya,ṭīkā	0	286	389	
-209	1708	Mahāvaggavaṇṇanā		khandhaka,mahāvagga,vajirabuddhi,vinaya,ṭīkā	0	391	505	
-209	2217	Cūḷavaggavaṇṇanā	vin4	cūḷavagga,khandhaka,vajirabuddhi,vinaya,ṭīkā	0	507	542	
-209	2428	Parivāravaṇṇanā	vin5	parivāra,parivārapāḷi,vajirabuddhi,vinaya,ṭīkā	0	543	585	
-210	3	Bhikkhuvibhaṅgavaṇṇanā	vin1	mahāvibhaṅga,pārājikapāḷi,suttavibhaṅga,vimativinodanī,vinaya,ṭīkā	1	1	362	2:1-65
-210	1658	Bhikkhunīvibhaṅgavaṇṇanā	vin2	bhikkhunī,bhikkhunīvibhaṅga,pācittiyapāḷi,suttavibhaṅga,vimativinodanī,vinaya,ṭīkā	2	67	81	
-210	1779	Mahāvaggavaṇṇanā	vin3	khandhaka,mahāvagga,vimativinodanī,vinaya,ṭīkā	2	83	210	
-210	2431	Cūḷavaggavaṇṇanā	vin4	cūḷavagga,khandhaka,vimativinodanī,vinaya,ṭīkā	2	211	269	
-210	2792	Parivāravaṇṇanā	vin5	parivāra,parivārapāḷi,vimativinodanī,vinaya,ṭīkā	2	271	322	
-211	3	Vinayālaṅkāra-ṭīkā	vin7	vinaya,vinayālaṅkāra,ṭīkā	1	1	424	2:1-434
-212	2	Kaṅkhāvitaraṇīpurāṇa-ṭīkā	vin6	kaṅkhāvitaraṇī,purāṇaṭīkā,pātimokkha,vinaya,ṭīkā	0	1	117	
-212	671	Kaṅkhāvitaraṇī-abhinavaṭīkā	vin6	abhinavaṭīkā,kaṅkhāvitaraṇī,pātimokkha,vinaya,ṭīkā	0	119	489	
-213	3	(VN)Pārājikapāḷi	vin1	mahāvibhaṅga,mūla,pārājika,pārājikapāḷi,pāḷi,suttavibhaṅga,vinaya	0	1	381	
-214	3	(VN)Pācittiyapāḷi	vin2	mahāvibhaṅga,mūla,pācittiyapāḷi,pāḷi,suttavibhaṅga,vinaya	0	1	272	
-214	2162	(VN)Bhikkhunīvibhaṅgo	vin2	bhikkhunī,bhikkhunīvibhaṅga,mūla,pācittiyapāḷi,pāḷi,suttavibhaṅga,vinaya	0	273	470	
-215	3	(VN)Mahāvaggapāḷi	vin3	khandhaka,mahāvagga,mūla,pāḷi,vinaya	0	1	511	
-216	3	(VN)Cūḷavaggapāḷi	vin4	cūḷavagga,khandhaka,mūla,pāḷi,vinaya	0	1	508	
-217	3	(VN)Parivārapāḷi	vin5	mūla,parivāra,pāḷi,vinaya	0	1	390	
+pcd	book	para	toc
+1	1	2	Namakkārapāḷi
+2	1	159	Namakkāraṭīkā
+3	2	2	Mahāpaṇāmapāṭha
+4	2	428	Tigumbacetiya thomanā
+5	2	479	Vāsamālinīkya
+6	3	2	Lakkhaṇāto
+7	4	2	Suttavandanā
+8	5	2	Jinālaṅkāra
+9	6	2	Kamalāñjali
+10	7	2	Pajjamadhu
+11	8	2	Buddhaguṇagāthāvalī
+12	9	2	Abhidhānappadīpikāṭīkā
+13	10	2	Subodhālaṅkāro
+14	11	2	Subodhālaṅkāraṭīkā
+15	12	2	Bālāvatāra
+16	13	2	Moggallānasuttapāṭho
+17	13	1105	Moggallānabyākaraṇaṃ
+18	14	2	Kaccāyanabyākaraṇaṃ
+19	14	715	Mahākaccāyanasaddāpāṭha
+20	15	2	Saddanītippakaraṇaṃ (padamālā)
+21	16	2	Saddanītippakaraṇaṃ (dhātumālā)
+22	17	2	Padarūpasiddhi
+23	18	2	Moggallāna pañcikā ṭīkā
+24	19	2	Payogasiddhipāḷi
+25	20	2	Vuttodayaṃ
+26	21	2	Abhidhānappadīpikā
+27	22	2	Niruttidīpanīpāṭha
+28	23	2	Paramatthadīpanī
+29	24	2	Anudīpanīpāṭha
+30	25	2	Paṭṭhānuddesa dīpanīpāṭha
+31	26	2	Caturārakkhadīpanī
+32	27	2	Kavidappaṇanīti
+33	28	2	Nītimañjarī
+34	29	2	Dhammanīti
+35	30	2	Mahārahanīti
+36	31	2	Lokanīti
+37	32	2	Suttantanīti
+38	32	134	Vasalasutta
+39	33	2	Sūrassatīnīti
+40	34	2	Cāṇakyanītipāḷi
+41	35	2	Naradakkhadīpanī
+42	36	2	Rasavāhinī
+43	37	2	Sīmavisodhanī
+44	38	2	Vessantarāgīti
+45	39	3	(saṅgayana-puccha vissajjanā) Dīghanikāye
+46	40	3	(saṅgayana-puccha vissajjanā) Majjhimanikāya
+47	41	3	(saṅgayana-puccha vissajjanā) Saṃyuttanikāye
+48	42	3	(saṅgayana-puccha vissajjanā) Aṅguttaranikāye
+49	43	2	(saṅgayana-puccha vissajjanā) Vinayapiṭaka
+50	44	2	(saṅgayana-puccha vissajjanā) Abhidhammapiṭaka
+51	45	2	(saṅgayana-puccha vissajjanā) Aṭṭhakathā
+52	46	1	Milidaṭīkā
+53	47	1	Padamañjarī 
+54	48	1	Padasādhanaṃ 
+55	49	1	Saddabindu pakaraṇaṃ
+56	50	1	Kaccāyana  dhātu mañjūsā
+57	51	1	Samantakūṭavaṇṇanā 
+58	52	1	Moggallāna vuttivivaraṇapañcikā. 
+59	53	1	Thupavaṃso 
+60	54	1	Dāṭhāvaṃso 
+61	55	1	Dhātupāṭha  vilāsiniyā
+62	56	1	Dhātuvaṃso 
+63	57	1	Hatthavanagallavihāra  vaṃso
+64	58	1	Jinacaritaya 
+65	59	1	Jinavaṃsadīpaṃ 
+66	60	1	Telakaṭāhagāthā 
+67	61	2	Cūḷaganthavaṃsapāḷi
+68	62	2	Sāsanavaṃsappadīpikā
+69	63	2	Mahāvaṃsapāḷi
+70	64	2	Visuddhimaggo(Paṭhamo bhāgo)
+71	65	2	Visuddhimaggo(Dutiyo bhāgo)
+72	66	2	Visuddhimagga-mahāṭīkā(Paṭhamo bhāgo)
+73	67	2	Visuddhimagga-mahāṭīkā(Dutiyo bhāgo)
+74	68	2	Visuddhimagga nidānakathā
+75	69	3	Paṭṭhānapāḷi(Dutiyo bhāgo)
+76	70	3	Paṭṭhānapāḷi(Tatiyo bhāgo)
+77	71	3	Paṭṭhānapāḷi(Catuttho bhāgo)
+78	72	3	Paṭṭhānapāḷi(Pañcamo bhāgo)
+79	73	3	Dhammasaṅgaṇīpāḷi
+80	74	3	Vibhaṅgapāḷi
+81	75	3	Dhātukathāpāḷi
+82	76	3	Puggalapaññattipāḷi
+83	77	3	Kathāvatthupāḷi
+84	78	3	Yamakapāḷi (paṭhamo bhāgo)
+85	79	3	Yamakapāḷi (dutiyo bhāgo)
+86	80	3	Yamakapāḷi (tatiyo bhāgo)
+87	81	3	Paṭṭhānapāḷi(Paṭhamo bhāgo)
+88	82	3	Dasakanipātapāḷi
+89	83	3	Ekādasakanipātapāḷi
+90	84	3	Ekakanipātapāḷi
+91	85	3	Dukanipātapāḷi
+92	86	3	Tikanipātapāḷi
+93	87	3	Catukkanipātapāḷi
+94	88	3	Pañcakanipātapāḷi
+95	89	3	Chakkanipātapāḷi
+96	90	3	Sattakanipātapāḷi
+97	91	3	Aṭṭhakanipātapāḷi
+98	92	3	Navakanipātapāḷi
+99	93	3	(DN) Sīlakkhandhavaggapāḷi
+100	94	3	(DN) Mahāvaggapāḷi
+101	95	3	(DN) Pāthikavaggapāḷi
+102	96	4	Dhammasaṅgaṇī-aṭṭhakathā
+103	97	4	Vibhaṅga-aṭṭhakathā
+104	98	4	Dhātukathā-aṭṭhakathā
+105	98	173	Puggalapaññatti-aṭṭhakathā
+106	98	474	Kathāvatthu-aṭṭhakathā
+107	98	1623	Yamakappakaraṇa-aṭṭhakathā
+108	98	1880	Paṭṭhānappakaraṇa-aṭṭhakathā
+109	99	3	Ekakanipāta-aṭṭhakathā
+110	100	3	Dukanipāta-aṭṭhakathā
+111	100	325	Tikanipāta-aṭṭhakathā
+112	100	997	Catukkanipāta-aṭṭhakathā
+113	101	3	Pañcakanipāta-aṭṭhakathā
+114	101	503	Chakkanipāta-aṭṭhakathā
+115	101	792	Sattakanipāta-aṭṭhakathā
+116	102	3	Aṭṭhakanipāta-aṭṭhakathā
+117	102	275	Navakanipāta-aṭṭhakathā
+118	102	409	Dasakanipāta-aṭṭhakathā
+119	102	706	Ekādasakanipāta-aṭṭhakathā
+120	103	3	(DN) Sīlakkhandhavaggaṭṭhakathā
+121	104	3	(DN) Mahāvaggaṭṭhakathā
+122	105	3	(DN) Pāthikavaggaṭṭhakathā
+123	106	3	Therīgāthā-aṭṭhakathā
+124	107	3	Apadāna-aṭṭhakathā
+125	108	3	Buddhavaṃsa-aṭṭhakathā
+126	109	3	Cariyāpiṭaka-aṭṭhakathā
+127	110	4	Jātaka-aṭṭhakathā(Paṭhamo bhāgo)
+128	111	3	Jātaka-aṭṭhakathā(Dutiyo bhāgo)
+129	112	4	Jātaka-aṭṭhakathā(Tatiyo bhāgo)
+130	113	4	Jātaka-aṭṭhakathā(Catuttho bhāgo)
+131	113	5312	Jātaka-aṭṭhakathā(Pañcamo bhāgo 16)
+132	114	1	Jātaka-aṭṭhakathā(Pañcamo bhāgo 17-21)
+133	115	3	Jātaka-aṭṭhakathā(Chaṭṭho bhāgo)
+134	116	3	Khuddakapāṭha-aṭṭhakathā
+135	117	3	Jātaka-aṭṭhakathā(Sattamo bhāgo)
+136	118	3	Mahāniddesa-aṭṭhakathā
+137	119	3	Cūḷaniddesa-aṭṭhakathā
+138	120	3	Paṭisambhidāmagga-aṭṭhakathā
+139	121	3	Nettippakaraṇa-aṭṭhakathā
+140	122	3	Dhammapada-aṭṭhakathā
+141	123	3	Udāna-aṭṭhakathā
+142	124	3	Itivuttaka-aṭṭhakathā
+143	125	3	Suttanipāta-aṭṭhakathā
+144	126	3	Vimānavatthu-aṭṭhakathā
+145	127	3	Petavatthu-aṭṭhakathā
+146	128	3	Theragāthā-aṭṭhakathā(Paṭhamo bhāgo)
+147	129	3	Theragāthā-aṭṭhakathā(Dutiyo bhāgo)
+148	130	3	(MN) Mūlapaṇṇāsa-aṭṭhakathā
+149	131	3	(MN) Majjhimapaṇṇāsa-aṭṭhakathā
+150	132	3	(MN) Uparipaṇṇāsa-aṭṭhakathā
+151	133	3	(SN) Sagāthāvagga-aṭṭhakathā
+152	134	3	(SN) Nidānavagga-aṭṭhakathā
+153	135	3	(SN) Khandhavagga-aṭṭhakathā
+154	136	3	(SN) Saḷāyatanavagga-aṭṭhakathā
+155	137	3	(SN) Mahāvagga-aṭṭhakathā
+156	138	3	Pārājikakaṇḍa-aṭṭhakathā
+157	139	3	(SP) Pācittiya-aṭṭhakathā
+280	139	925	Bhikkhunīvibhaṅgavaṇṇanā
+158	140	3	(SP) Mahāvagga-aṭṭhakathā
+159	141	3	(SP) Cūḷavagga-aṭṭhakathā
+160	142	3	(SP) Parivāra-aṭṭhakathā
+161	143	3	Therāpadānapāḷi(Paṭhamo bhāgo)
+162	144	3	Therāpadānapāḷi(Dutiyo bhāgo)
+163	144	6534	Therīapadānapāḷi
+164	145	3	Buddhavaṃsapāḷi
+165	146	3	Cariyāpiṭakapāḷi
+166	147	3	Jātakapāḷi(Dutiyo bhāgo)
+167	148	3	Jātakapāḷi(Paṭhamo bhāgo)
+168	149	3	Mahāniddesapāḷi
+169	150	3	Cūḷaniddesapāḷi
+170	151	3	Paṭisambhidāmaggapāḷi
+171	152	3	Milindapañhapāḷi
+172	153	3	Nettippakaraṇapāḷi
+173	154	3	Khuddakapāṭhapāḷi
+174	155	3	Peṭakopadesapāḷi
+175	156	3	Dhammapadapāḷi
+176	157	3	Udānapāḷi
+177	158	3	Itivuttakapāḷi
+178	159	3	Suttanipātapāḷi
+179	160	3	Vimānavatthupāḷi
+180	161	3	Petavatthupāḷi
+181	162	3	Theragāthāpāḷi
+182	163	3	Therīgāthāpāḷi
+183	164	3	(MN)Mūlapaṇṇāsapāḷi
+184	165	3	(MN)Majjhimapaṇṇāsapāḷi
+185	166	3	(MN)Uparipaṇṇāsapāḷi
+186	167	3	(SN)Sagāthāvaggo
+187	168	3	(SN)Nidānavaggo
+188	169	3	(SN)Khandhavaggo
+189	170	3	(SN)Saḷāyatanavaggo
+190	171	3	(SN)Mahāvaggo
+191	172	3	Dhammasaṅgaṇī-mūlaṭīkā
+192	173	3	Vibhaṅga-mūlaṭīkā
+193	173	1155	Vibhaṅga-anuṭīkā
+194	174	4	Dhātukathāpakaraṇa-mūlaṭīkā
+195	174	100	Puggalapaññattipakaraṇa-mūlaṭīkā
+196	174	201	Kathāvatthupakaraṇa-mūlaṭīkā
+197	174	865	Yamakapakaraṇa-mūlaṭīkā
+198	174	1059	Paṭṭhānapakaraṇa-mūlaṭīkā
+199	175	3	Dhammasaṅgaṇī-anuṭīkā
+200	176	4	Dhātukathāpakaraṇa-anuṭīkā
+201	176	117	Puggalapaññattipakaraṇa-anuṭīkā
+202	176	213	Kathāvatthupakaraṇa-anuṭīkā
+203	176	917	Yamakapakaraṇa-anuṭīkā
+204	176	1139	Paṭṭhānapakaraṇa-anuṭīkā
+205	177	2	Abhidhammāvatāro
+206	177	4805	Nāmarūpaparicchedo
+207	177	10627	Paramatthavinicchayo
+208	177	14272	Saccasaṅkhepo
+209	178	2	Abhidhammatthasaṅgaho
+210	178	875	Abhidhammatthavibhāvinīṭīkā
+211	179	2	Abhidhammāvatāra-purāṇaṭīkā
+212	179	872	Abhidhammāvatāra-abhinavaṭīkā
+213	180	2	Abhidhammamātikāpāḷi
+214	180	1221	Mohavicchedanī
+215	181	3	Ekakanipāta-ṭīkā
+216	182	3	Dukanipāta-ṭīkā
+217	182	324	Tikanipāta-ṭīkā
+218	182	1023	Catukkanipāta-ṭīkā
+219	183	3	Pañcakanipāta-ṭīkā
+220	183	470	Chakkanipāta-ṭīkā
+221	183	793	Sattakanipāta-ṭīkā
+222	184	3	Aṭṭhakanipāta-ṭīkā
+223	184	278	Navakanipāta-ṭīkā
+224	184	466	Dasakanipāta-ṭīkā
+225	184	776	Ekādasakanipāta-ṭīkā
+226	185	3	(DN)Sīlakkhandhavaggaṭīkā
+227	186	3	(DN)Mahāvaggaṭīkā
+228	187	3	(DN)Pāthikavaggaṭīkā
+229	188	3	(DN)Sīlakkhandhavaggaabhinavaṭīkā
+230	189	3	(DN)Sīlakkhandhavaggaabhinavaṭīkā
+231	190	3	Nettippakaraṇa-ṭīkā
+232	191	3	Nettivibhāvinī
+233	192	3	(MN)Mūlapaṇṇāsa-ṭīkā
+234	193	3	(MN)Majjhimapaṇṇāsa-ṭīkā
+235	194	3	(MN)Uparipaṇṇāsa-ṭīkā
+236	195	3	(SN)Sagāthāvagga-ṭīkā
+237	196	3	(SN)Nidānavagga-ṭīkā
+238	197	3	(SN)Khandhavagga-ṭīkā
+239	198	3	(SN)Saḷāyatanavagga-ṭīkā
+240	199	3	(SN)Mahāvagga-ṭīkā
+241	200	2	Vinayavinicchayo
+242	200	10176	Uttaravinicchayo
+243	201	2	Vinayavinicchaya-ṭīkā
+244	201	4270	Uttaravinicchaya-ṭīkā
+245	202	3	Pācityādiyojanā
+246	203	3	Khuddasikkhā
+247	203	1620	Khuddasikkhā-purāṇaṭīkā
+248	203	2361	Khuddasikkhā-abhinavaṭīkā
+249	203	3100	Mūlasikkhā
+250	203	3481	Mūlasikkhā-ṭīkā
+251	204	3	Sāratthadīpanī-ṭīkā (paṭhamo bhāgo)
+252	205	3	(SAD) Pārājika-ṭīkā
+253	206	3	(SAD) Pācittiya-ṭīkā
+254	206	717	(SAD) Mahāvagga-ṭīkā
+255	206	1753	(SAD) Cūḷavagga-ṭīkā
+256	206	2154	(SAD) Parivāra-ṭīkā
+257	207	3	Bhikkhupātimokkhapāḷi
+258	207	524	Bhikkhunīpātimokkhapāḷi
+259	207	1215	Kaṅkhāvitaraṇī-aṭṭhakathā
+260	208	3	Vinayasaṅgaha-aṭṭhakathā
+261	209	3	Vajirabuddhi-ṭīkā
+267	210	3	Bhikkhuvibhaṅgavaṇṇanā
+268	210	1658	Bhikkhunīvibhaṅgavaṇṇanā
+269	210	1779	Mahāvaggavaṇṇanā
+270	210	2431	Cūḷavaggavaṇṇanā
+271	210	2792	Parivāravaṇṇanā
+272	211	3	Vinayālaṅkāra-ṭīkā
+273	212	2	Kaṅkhāvitaraṇīpurāṇa-ṭīkā
+274	212	671	Kaṅkhāvitaraṇī-abhinavaṭīkā
+275	213	3	(VN)Pārājikapāḷi
+276	214	3	(VN)Pācittiyapāḷi
+277	215	3	(VN)Mahāvaggapāḷi
+278	216	3	(VN)Cūḷavaggapāḷi
+279	217	3	(VN)Parivārapāḷi
