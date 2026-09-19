@@ -9,7 +9,7 @@ import re
 import sys
 
 from client import make_client, note
-from coords import fmt_coord, fmt_path, fmt_refs, parse_coord, parse_coords, text_layer
+from coords import fmt_coord, fmt_path, fmt_cite, parse_coord, parse_coords, text_layer
 from errors import ApiError, WpError, explain_api_error
 
 # 巴利原文本身就是一个 channel（_System_Pali_VRI_）。取原文、取译文、取逐词解析
@@ -207,14 +207,11 @@ def cmd_search(args):
         for idx, r in enumerate(rows, 1 + args.offset):
             coord = fmt_coord(r.get('book'), r.get('paragraph'))
             print(f'[{idx}] {coord}  {fmt_path(r.get("path"))}   rank {r.get("rank")}')
-            refs = fmt_refs(r.get('ref'))
-            if refs:
-                print(f'     出处 {refs}')
-            if r.get('link'):
-                print(f'     链接 {r["link"]}')
+            print(f'     出处 {fmt_cite(r.get("book"), r.get("paragraph"), r.get("ref"), r.get("link"))}')
             print(f'     {snippet(strip_markup(r.get("highlight")), args.width, "【")}')
-        print(f'\n引用时用坐标 book:paragraph，取原文用：wikipali get {rows[0].get("book")}:'
-              f'{rows[0].get("paragraph")}')
+        print('\n引用时照抄「出处」那一行（citation 与 WikiPali 链接已合成 Markdown 链接），'
+              '不要自己拼。')
+        print(f'取原文：wikipali get {rows[0].get("book")}:{rows[0].get("paragraph")}')
 
     emit(args, {'count': total, 'rows': rows}, render)
     return 0
@@ -302,10 +299,9 @@ def cmd_get(args):
         print(f'\n共 {len(collected)} 句。')
         for book, para in refs:
             r = refs[(book, para)]
-            line = fmt_refs(r['ref']) if r else '⚠ 取不到出处，不要推算页码'
-            print(f'出处 {fmt_coord(book, para)}  {line}')
-            if r and r.get('link'):
-                print(f'链接 {r["link"]}')
+            line = (fmt_cite(book, para, r['ref'], r.get('link')) if r
+                    else f'{fmt_coord(book, para)}  ⚠ 取不到出处，不要推算页码、不要自己拼链接')
+            print(f'出处 {line}')
 
     refs = {}
     if args.ref:
@@ -958,9 +954,7 @@ def cmd_ref(args):
                 print(f'{coord}  ⚠ 取不到出处（该段文字太少或索引里没有）。只给坐标，不要推算页码。\n')
                 continue
             print(f'{coord}  {fmt_path(r.get("path"))}')
-            print(f'  出处 {fmt_refs(r["ref"]) or "（无印本页码）"}')
-            if r.get('link'):
-                print(f'  链接 {r["link"]}')
+            print(f'  出处 {fmt_cite(r["book"], r["paragraph"], r["ref"], r.get("link"))}')
             print()
 
     emit(args, out, render)

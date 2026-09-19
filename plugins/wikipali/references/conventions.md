@@ -38,13 +38,14 @@ AI-汉译-Nissaya（**AI 生成**，deepseek-v3）(216:35)         ← 机器译
 1. **citation**：WikiPali 书名缩写与坐标，加上该段真有的印本页码（缅 / PTS / VRI / 泰）；
 2. **WikiPali 链接**：该段的网页阅读地址，用户点开就能核对原文。
 
-```
+两者合成**一个 Markdown 链接，链接文字就是 citation**：
+
+```markdown
 Līnatthappakāsanā, Dukkhasaccaniddesavaṇṇanā
-  (dī.ni.ṭī.2. 186:1411; 缅 dī-ṭī 2 p.340; PTS DnT II 429; VRI 314)
-  https://next.wikipali.org/library/tipitaka/186-1399/read#1411
+[dī.ni.ṭī.2. 186:1411; 缅 dī-ṭī 2 p.340; PTS DnT II p.429; VRI p.314](https://next.wikipali.org/library/tipitaka/186-1399/read#1411)
 ```
 
-两部分都取自服务端，**不要自己拼**：`search` 的每条结果都带「出处」「链接」两行；
+命令已经合成好了，**照抄，不要自己拼**：`search` 每条结果的「出处」行就是这个 Markdown 链接；
 来自 `get` / `related` / `page` 等别处的坐标，用 `wikipali ref <坐标…>` 或 `get --ref` 取。
 
 - **只写 `ref` 里真有的版本**，缺的不补、不推算。页码标的是该页起始处，引文可能在这一段之后。

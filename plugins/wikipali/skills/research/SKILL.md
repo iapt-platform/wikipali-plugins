@@ -23,7 +23,7 @@ skill 共用的规矩，必须遵守。** 端点细节见 `references/api-read.m
    产出。宁可说「未找到相关段落」，也不要凭印象转述。书名与章节路径直接取检索结果的
    `paliTitle` 与 `path`，**不要自己拼**；引用格式见 `references/conventions.md`。
    **交付前给每条引用配上出处＝citation＋WikiPali 链接，两样都要**：来自 `search` 的照抄
-   它的「出处」与「链接」两行；来自 `get` / `related` 等别处的坐标，用 `wikipali ref <坐标…>`
+   它的「出处」行（已是 `[citation](链接)` 形式的 Markdown 链接）；来自 `get` / `related` 等别处的坐标，用 `wikipali ref <坐标…>`
    补（或 `get --ref`）。取不到的只给坐标并注明，**绝不推算页码、不自己拼链接**。
 2. **检索前必须先展开词形**（`wikipali forms`，或给 `search --lemma`）。直接拿词典形
    去搜会**返回 0 条且不报错**。这是本工具最容易犯的错，因为它看起来像「搜过了，没有」。
@@ -112,8 +112,9 @@ wikipali search --lemma parivāsa --limit 50
 结果按黑体加权排序，**注释书里作为词条解释的段落会自然排在前面**。从前 50 条里挑出
 讲定义和执行流程的，用来写定义部分。
 
-每条下面的「出处」行是 citation（WikiPali 书名缩写与各印本页码：缅 / PTS / VRI / 泰），
-「链接」行是 WikiPali 网页阅读地址。引用时**两行都要照抄**（格式见 `references/conventions.md`）。
+每条下面的「出处」行是一个 Markdown 链接：链接文字是 citation（WikiPali 书名缩写、坐标与
+各印本页码：缅 / PTS / VRI / 泰），指向 WikiPali 网页阅读地址。引用时**原样照抄**
+（格式见 `references/conventions.md`）。
 
 **前几名全是 aṭṭhakathā / ṭīkā 是正常的，不是检索出了问题。** 大部分名词解释在义注
 （aṭṭhakathā）与复注（ṭīkā）里，律藏的根本（pāḷi / mūla）中也有部分解释。
