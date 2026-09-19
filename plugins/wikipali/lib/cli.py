@@ -80,7 +80,12 @@ def build_parser():
     p.add_argument('--channel', action='append',
                    help='channel uid，可重复；缺省取巴利原文')
     p.add_argument('--limit', type=int, default=200, help='每次请求最多取几句')
+    p.add_argument('--ref', action='store_true', help='附上每段的印本页码与链接（每段多 2 次请求）')
     p.set_defaults(func=cmd_read.cmd_get)
+
+    p = add('ref', '任意坐标的可追溯出处：WikiPali 缩写 + 缅/PTS/VRI/泰 印本页码 + 网页链接')
+    p.add_argument('coords', nargs='+', help='book:paragraph，可给多个')
+    p.set_defaults(func=cmd_read.cmd_ref)
 
     p = add('toc', '章节目录')
     p.add_argument('coord', help='book:paragraph，任意段号即可，服务端会找到所属丛书')

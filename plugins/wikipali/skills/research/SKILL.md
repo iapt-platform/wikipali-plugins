@@ -22,6 +22,9 @@ skill 共用的规矩，必须遵守。** 端点细节见 `references/api-read.m
 1. **每一条写进正文的引用，必须带得回坐标。** 手里没有坐标的内容，一个字都不许写进
    产出。宁可说「未找到相关段落」，也不要凭印象转述。书名与章节路径直接取检索结果的
    `paliTitle` 与 `path`，**不要自己拼**；引用格式见 `references/conventions.md`。
+   **交付前给每条引用配上出处＝citation＋WikiPali 链接，两样都要**：来自 `search` 的照抄
+   它的「出处」与「链接」两行；来自 `get` / `related` 等别处的坐标，用 `wikipali ref <坐标…>`
+   补（或 `get --ref`）。取不到的只给坐标并注明，**绝不推算页码、不自己拼链接**。
 2. **检索前必须先展开词形**（`wikipali forms`，或给 `search --lemma`）。直接拿词典形
    去搜会**返回 0 条且不报错**。这是本工具最容易犯的错，因为它看起来像「搜过了，没有」。
 3. **0 条结果不等于「没有材料」，也要如实报告。** 依次怀疑：词形没展开 → 词根选错 →
@@ -109,6 +112,9 @@ wikipali search --lemma parivāsa --limit 50
 结果按黑体加权排序，**注释书里作为词条解释的段落会自然排在前面**。从前 50 条里挑出
 讲定义和执行流程的，用来写定义部分。
 
+每条下面的「出处」行是 citation（WikiPali 书名缩写与各印本页码：缅 / PTS / VRI / 泰），
+「链接」行是 WikiPali 网页阅读地址。引用时**两行都要照抄**（格式见 `references/conventions.md`）。
+
 **前几名全是 aṭṭhakathā / ṭīkā 是正常的，不是检索出了问题。** 大部分名词解释在义注
 （aṭṭhakathā）与复注（ṭīkā）里，律藏的根本（pāḷi / mūla）中也有部分解释。
 
@@ -172,6 +178,8 @@ wikipali search --lemma parivāsa --tags vinaya --limit 200
 
 ```bash
 wikipali get 216:35 216:36 216:41       # 按坐标精确取，缺省是巴利原文
+wikipali get 216:35 --ref               # 同时给出各印本页码与网页链接
+wikipali ref 216:35 141:63              # 只要出处：WikiPali 缩写 + 缅/PTS/VRI/泰页码 + 链接
 wikipali toc 216:512                    # 看这本书的章节结构
 wikipali paras 216:512                  # 章内逐段清单：标题层级 + 每段多长（不取正文）
 wikipali chapter 216:512                # 只报体量：章节范围、段数、字符数

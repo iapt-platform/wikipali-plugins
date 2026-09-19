@@ -39,6 +39,27 @@ def fmt_coord(book, paragraph):
     return f"{book}:{paragraph}"
 
 
+# 检索结果 ref[].type → 显示名；WP 另行处理（它的 page 就是段落号）
+REF_EDITIONS = (('My', '缅'), ('PTS', 'PTS'), ('VRI', 'VRI'), ('Thai', '泰'))
+
+
+def fmt_refs(refs):
+    """把检索结果的 ref 数组压成一行出处：WP 缩写¶段 · 缅/PTS/VRI/泰 各版页码。"""
+    if not refs:
+        return ''
+    by_type = {r.get('type'): r for r in refs if isinstance(r, dict)}
+    parts = []
+    wp = by_type.get('WP')
+    if wp and wp.get('title'):
+        parts.append(f"{wp['title']} ¶{wp.get('page')}")
+    for key, label in REF_EDITIONS:
+        r = by_type.get(key)
+        if r and r.get('page') is not None:
+            title = f" {r['title']}" if r.get('title') else ''
+            parts.append(f"{label}{title} p.{r['page']}")
+    return ' · '.join(parts)
+
+
 def fmt_path(path, sep=' › ', max_items=4):
     """把检索结果的 path 数组压成一行章节路径。"""
     if not path:

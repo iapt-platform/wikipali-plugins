@@ -45,8 +45,19 @@ data.words[].words[] = {
 | ~~`view`~~ / ~~`type`~~ | **实测无影响**，源码也没读，可省略 |
 
 ```
-data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle, highlight } ] }
+data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle, highlight, link, ref } ] }
 ```
+
+- `link` 是该段的网页阅读地址（`…/library/tipitaka/{book}-{章节起始段}/read#{paragraph}`），
+  给用户核对原文时直接给它；
+- `ref` 是**各印本的页码**，`[{type, page, title}]`：
+  - `WP`：`title` 是 WikiPali 的书名缩写（如 `dī.ni.ṭī.2.`），`page` **就是段落号**，不是页码；
+  - `My`（缅甸第六次结集版）/ `PTS` / `VRI` / `Thai`：该段所在的印本页码，`title` 是
+    该版的书名缩写（如 PTS `DnT II`、缅 `dī-ṭī 2`），VRI 常为 `null`；
+  - 哪些版本有，逐段不同，**没有就是没有，不要推算**。与正文里 `[M2.241]` 这类标记同源。
+- **只有检索结果带 `ref`**，没有「段落 → 页码」的接口。`wikipali ref` / `get --ref` 的做法：
+  `palitext/{book}-{para}` 取 `pcd_book_id` 与正文，拿段里最长的词限定本书检索，从结果里挑出
+  这一段。每段约 2 次请求；段落太短、词不在索引里时取不到，如实报「取不到」。
 
 - `rank` = `sum(weight)`，黑体权重更高；
 - `path` 是章节路径数组，每项 `{book, paragraph, title, level}`；

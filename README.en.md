@@ -53,6 +53,8 @@ See the [plugin README](plugins/wikipali/README.md) (in Chinese) for the securit
 
 ## Updating
 
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release (written in Chinese).
+
 **Third-party marketplaces do not auto-update.** Upgrade manually with two commands:
 
 ```bash
@@ -112,7 +114,7 @@ release-check.sh     pre-release self-check script
 The plugin source lives in this repo under `plugins/wikipali/`, and the marketplace references it by relative path with **no pinned sha**. So releasing is three steps:
 
 1. Change the code under `plugins/wikipali/`
-2. Bump `version` in `plugins/wikipali/.claude-plugin/plugin.json` and set the matching entry in `.claude-plugin/marketplace.json` to the same version
+2. Bump `version` in `plugins/wikipali/.claude-plugin/plugin.json` and set the matching entry in `.claude-plugin/marketplace.json` to the same version; add a section at the top of `CHANGELOG.md` with the version, date and main changes
 3. Merge a PR into `main`
 
 Run `./release-check.sh` before pushing:

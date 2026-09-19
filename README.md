@@ -53,6 +53,8 @@ Claude Code 插件市场 · 读语料做研究，也能以 AI 模型身份写回
 
 ## 更新
 
+各版本的更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+
 **第三方 marketplace 默认不自动更新。** 有新版时手动升，两条命令：
 
 ```bash
@@ -112,7 +114,7 @@ release-check.sh     发版前的自检脚本
 插件源码就在本仓库的 `plugins/wikipali/`，marketplace 用相对路径引它、**不钉 sha**。所以发版只有三步：
 
 1. 改 `plugins/wikipali/` 下的代码
-2. bump `plugins/wikipali/.claude-plugin/plugin.json` 的 `version`，并把 `.claude-plugin/marketplace.json` 里那条改成同一个版本号
+2. bump `plugins/wikipali/.claude-plugin/plugin.json` 的 `version`，并把 `.claude-plugin/marketplace.json` 里那条改成同一个版本号；在 `CHANGELOG.md` 最前面加一节：版本号、日期、主要改动
 3. PR 合进 `main`
 
 推之前跑 `./release-check.sh`：

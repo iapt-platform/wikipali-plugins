@@ -63,7 +63,10 @@ wikipali page V2.240 --pcd 71                      # V=VRI P=PTS T=泰版，四�
 ```
 
 **5. 照结果回答**：著作名（巴利＋中文）、文献层次、WikiPali 书名、坐标
-`book-paragraph`，以及 `wikipali get <book>:<para>`。
+`book-paragraph`、**出处（citation＋WikiPali 链接）**，以及 `wikipali get <book>:<para>`。
+出处用 `wikipali ref <book>:<para>` 取，它给出该段在各印本的页码与网页链接，**必须附上**
+（格式见 `references/conventions.md`）。其中缅甸版页码应与引用本身一致，不一致就说明
+定位有问题，如实告诉用户。
 
 ## 铁律
 

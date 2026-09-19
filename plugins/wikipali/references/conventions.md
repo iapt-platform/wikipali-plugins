@@ -31,6 +31,25 @@ AI-汉译-Nissaya（**AI 生成**，deepseek-v3）(216:35)         ← 机器译
 
 书名与章节路径直接取检索结果的 `paliTitle` 与 `path` 字段，**不要自己拼**。
 
+### 出处 = citation + WikiPali 链接（两样都要）
+
+交付给用户的每一条引用，都要带**出处**，出处由两部分组成，**缺一不可**：
+
+1. **citation**：WikiPali 书名缩写与坐标，加上该段真有的印本页码（缅 / PTS / VRI / 泰）；
+2. **WikiPali 链接**：该段的网页阅读地址，用户点开就能核对原文。
+
+```
+Līnatthappakāsanā, Dukkhasaccaniddesavaṇṇanā
+  (dī.ni.ṭī.2. 186:1411; 缅 dī-ṭī 2 p.340; PTS DnT II 429; VRI 314)
+  https://next.wikipali.org/library/tipitaka/186-1399/read#1411
+```
+
+两部分都取自服务端，**不要自己拼**：`search` 的每条结果都带「出处」「链接」两行；
+来自 `get` / `related` / `page` 等别处的坐标，用 `wikipali ref <坐标…>` 或 `get --ref` 取。
+
+- **只写 `ref` 里真有的版本**，缺的不补、不推算。页码标的是该页起始处，引文可能在这一段之后。
+- `wikipali ref` 报「取不到出处」时，只给坐标并注明「出处未取到」，**不要自己拼链接**。
+
 ## 译文风格：默认现代汉语
 
 用户没有指定风格时，一律用**现代汉语**——通顺、易读的书面语。
