@@ -248,7 +248,7 @@ def cmd_dist(args):
         for layer in ('mūla', 'aṭṭhakathā', 'ṭīkā', ''):
             if layer in by_layer:
                 print(f'  {layer or "未标层次"} {by_layer[layer]}', end='')
-        print('\n引用时必须标明层次——把义注的解释当成本文的说法是学术错误。')
+        print('\n引用时必须标明层次——把义注的解释当成根本的说法是学术错误。')
 
     emit(args, {'rows': rows}, render)
     return 0
@@ -840,7 +840,7 @@ def cmd_terms(args):
 
 
 # ---------------------------------------------------------------------------
-# related —— 本文 ↔ 义注 ↔ 复注的段落对应
+# related —— 根本 ↔ 义注 ↔ 复注的段落对应
 # ---------------------------------------------------------------------------
 
 
@@ -883,7 +883,7 @@ def cmd_related(args):
             print(f'      {coords}{more}')
         first = rows[0]
         print(f'\n取文：wikipali get {first.get("book")}:{(first.get("para") or [0])[0]}')
-        print('引用时必须标明层次——把义注的解释当成本文的说法是学术错误。')
+        print('引用时必须标明层次——把义注的解释当成根本的说法是学术错误。')
 
     emit(args, rows, render)
     return 0

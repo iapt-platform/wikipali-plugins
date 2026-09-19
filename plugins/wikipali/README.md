@@ -2,9 +2,10 @@
 
 [WikiPali](https://www.wikipali.org) 巴利三藏平台的 Claude Code 插件。
 
-两个 skill：
+三个 skill：
 
-- **`research`** —— 检索与阅读语料做研究：词形展开、按词形检索、出处分布（分本文/义注/复注）、按坐标取原文与各家译本。只读，不需要登录。
+- **`research`** —— 检索与阅读语料做研究：词形展开、按词形检索、出处分布（分根本/义注/复注）、按坐标取原文与各家译本。只读，不需要登录。
+- **`citation`** —— 解析缅甸著作的引用缩写：`ဝိသုဒ္ဓိ၊၂၊၂၄၁` → 清净道论第二册，坐标 `65-1461`；加 `--text` 连整页巴利原文与章节路径一起取。查的是插件自带的缩写表与页码索引，不加 `--text` 全程离线。
 - **`write`** —— 以 **AI 模型身份**把句子写入句子库。
 
 写入的句子 `editor_uid` 记为 AI 模型的 uid 而不是操作者本人，署名与审计因此是准确的——谁翻的就是谁翻的。
@@ -16,7 +17,7 @@
 /plugin install wikipali@wikipali
 ```
 
-桌面版在 **Code** 标签页里点 `+` → **Plugins** → **Add plugin** 也可以装。
+**必须在 Claude Code 里装**——Claude Desktop 的 **Add plugin** 只能搜到官方 marketplace。用 Claude Code 装好后，插件在 Claude Desktop 的 **Plugins** 列表里能看到、能用，但升级仍要回 Claude Code 跑命令，所以只用桌面版的用户需要单独装一份 [Claude Code](https://docs.claude.com/en/docs/claude-code/setup)。
 
 不走 marketplace 的话，克隆本仓库后跑 `plugins/wikipali/install.sh --user`。
 
