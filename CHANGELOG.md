@@ -3,6 +3,18 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.14.0] - 2026-09-21
+
+### 变更
+- **注释书对应改用 `type=commentary`**（原来是 `type=note`）：`note-push` 写入的是 commentary，
+  `discuss` / `discuss-add` 的 `--type` 也多了这一项。旧数据由 api-v13 的迁移改名
+  （content 整体是句子模板的 `note` → `commentary`），其余 note 原样留着。
+
+### 新增
+- **`type=note` 是普通边注**：正文就是注解本身（不是句子模板），阅读页在锚点处渲染成一条
+  **没有出处**的边注——与 commentary 的区别只在这一点。写法：
+  `discuss-add … --type note --pos-end <位置> --quote-exact <摘录> --content <注解>`。
+
 ## [0.13.0] - 2026-09-19
 
 ### 新增

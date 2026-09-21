@@ -177,8 +177,12 @@ wikipali discuss-reply <批注id> --content '补充：义注中以 codanā 释�
   **原始 content** 的字符数（0 起，`pos_end` 不含）。`discuss` 列表会显示锚点。
 - `discuss-edit <id>` 先取原记录再提交，没给的字段保留（服务端对标题/正文/状态是全量
   覆盖）；锚点给空串即清空。`discuss-delete <id>` 只能删自己写的。
-- `--type note` 是**注释书对应**（义注 / 复注挂到上一层译文句子上），`discuss --type note`
-  可列出。批量建立对应用 `note-context` / `note-push`，流程见 `commentary-align` skill。
+- **句子上的三种 type**：`discussion`（普通批注，只在批注列表里）、`note`（边注：正文就是
+  注解本身，阅读页在锚点处渲染成一条没有出处的边注）、`commentary`（注释书对应：正文是
+  下一层的句子模板，边注带 <cite> 出处）。三种都用 `discuss --type <type>` 列出。
+- 写一条边注：`discuss-add … --type note --pos-end <位置> --quote-exact <摘录> --content <注解>`
+  （不给 `--title` 就拿正文作标题）。批量建立注释书对应用 `note-context` / `note-push`，
+  流程见 `commentary-align` skill。
 
 ## 站点
 

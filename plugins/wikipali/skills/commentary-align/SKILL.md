@@ -1,6 +1,6 @@
 ---
 name: commentary-align
-description: "Use this skill to align a Pali commentary with the text it comments on and upload the alignment to WikiPali — given a CST book name (an6, dn1, mn1 …), a cs_para number and a translation channel, work out which aṭṭhakathā sentences explain which phrase of the mūla translation (and ṭīkā → aṭṭhakathā), then write them as position-anchored notes (discussion type=note). Trigger when the user asks for 义注复注对应 / 注释书对应 / 注释对齐 / 把义注挂到根本上 / commentary alignment / anchor commentary notes, or gives a book_name + cs_para + channel for that purpose. Do not use for plain per-sentence discussions (that is the write skill) or for reading commentaries for research (research skill)."
+description: "Use this skill to align a Pali commentary with the text it comments on and upload the alignment to WikiPali — given a CST book name (an6, dn1, mn1 …), a cs_para number and a translation channel, work out which aṭṭhakathā sentences explain which phrase of the mūla translation (and ṭīkā → aṭṭhakathā), then write them as position-anchored notes (discussion type=commentary). Trigger when the user asks for 义注复注对应 / 注释书对应 / 注释对齐 / 把义注挂到根本上 / commentary alignment / anchor commentary notes, or gives a book_name + cs_para + channel for that purpose. Do not use for plain per-sentence discussions (that is the write skill) or for reading commentaries for research (research skill)."
 metadata:
   author: mint
 ---
@@ -9,7 +9,7 @@ metadata:
 
 输入：`book_name`（CST 书名，如 `an6`）、`cs_para`（CST 段号）、`channel_uid`（译文所在版本）。
 
-输出：若干条 `type='note'` 的 discussion，每条把**下一层的一句或几句**挂在
+输出：若干条 `type='commentary'` 的 discussion，每条把**下一层的一句或几句**挂在
 **上一层某句译文的某个片段**上：
 
 | 字段 | 值 |
@@ -103,7 +103,7 @@ wikipali note-push items.jsonl --channel <channel_uid> -y
 的清单。核对用：
 
 ```bash
-wikipali discuss <book>:<para> --channel <channel_uid> --words <起-止> --type note
+wikipali discuss <book>:<para> --channel <channel_uid> --words <起-止> --type commentary
 ```
 
 改错一条用 `discuss-edit <id> --quote-exact … --pos-start … --pos-end …`，删用 `discuss-delete <id>`。

@@ -246,11 +246,17 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
 | `quote_exact` | 字符串，可空 | 被锚定文本的原样摘录 |
 | `quote_prefix` / `quote_suffix` | 字符串，可空 | 摘录前后的上下文（建议 32~64 字符），抗文本位移 |
 
-`type` 除 `discussion` 外还有 **`note`**：注释书对应——`res_id` 是上一层（根本 / 义注）
-某句**译文**的 uid，`content` 是下一层句子模板 `{{book-para-start-end}}`（不是译文；
-一个片段由多句解释时并列多个模板 `{{…}}{{…}}`，仍是一条记录），
-阅读页渲染时在 `pos_end` 处插入该义注 / 复注的译文边注。只用 `pos_end` 定插入点，位置
-越界时挂到句尾。写法见 `note-push` 与 `skills/commentary-align`。
+`type` 除 `discussion`（普通批注，不进阅读页）外，还有两种会被**注入阅读页**的批注——
+都挂在句子的锚点上，都在 `pos_end` 处插入一条边注，区别只在有没有出处：
+
+| type | content | 阅读页 |
+|---|---|---|
+| `commentary` | 下一层句子模板 `{{book-para-start-end}}`（不是译文；一个片段由多句解释时并列多个模板 `{{…}}{{…}}`，仍是一条记录） | 边注正文是那几句在当前 channel 的译文，末尾带 `<cite>义注</cite>` 跳转锚点 |
+| `note` | 注解正文本身（markdown） | 边注正文就是它，**没有**出处 |
+
+`commentary` 即注释书对应：`res_id` 是上一层（根本 / 义注）某句**译文**的 uid。只用
+`pos_end` 定插入点，位置越界时挂到句尾。写法见 `note-push` 与 `skills/commentary-align`；
+写普通边注用 `discuss-add --type note`。
 
 回复只要给 `parent`（被回复的批注 id）和 `content`：**`res_id` / `res_type` 由服务端
 从 parent 继承，不要自己给**。父话题的 `children_count` 会自动加一。

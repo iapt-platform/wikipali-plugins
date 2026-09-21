@@ -19,7 +19,9 @@ from coords import fmt_coord, parse_coord
 from errors import ApiError, WpError, explain_api_error
 
 RES_TYPE = 'sentence'
-# qa / help 是文章场景；句子上用 discussion（普通批注）或 note（注释书对应，见 cmd_notes）
+# qa / help 是文章场景。句子上三种：discussion（普通批注，不进阅读页）、
+# note（边注：正文即注解，挂在锚点上，阅读页渲染成没有出处的边注）、
+# commentary（注释书对应：正文是下一层句子模板，边注带出处，见 cmd_notes）
 DISCUSS_TYPE = 'discussion'
 ANCHOR_FIELDS = ['pos_start', 'pos_end', 'quote_exact', 'quote_prefix', 'quote_suffix']
 
@@ -253,13 +255,13 @@ def cmd_discuss_add(args):
         'res_id': sent_uid,
         'res_type': RES_TYPE,
         'type': args.type,
-        'title': args.title or (content.strip() if args.type == 'note' else None),
+        'title': args.title or (content.strip() if args.type in ('note', 'commentary') else None),
         'content': content,
         'content_type': args.content_type,
         'notification': bool(args.notify),
     }
     if not body['title']:
-        raise WpError('--title 必填（服务端要求）；只有 --type note 时缺省用正文作标题。')
+        raise WpError('--title 必填（服务端要求）；只有 --type note / commentary 时缺省用正文作标题。')
     body.update(anchor_body(args))
     header = [f'批注对象 : {desc}', f'句子 uid : {sent_uid}', f'类型     : {args.type}']
     return create(client, args, body, header, '新建批注')

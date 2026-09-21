@@ -1,12 +1,15 @@
-"""注释书对应（note）：把义注 / 复注的句子挂到上一层译文句子的某个位置上。
+"""注释书对应（commentary）：把义注 / 复注的句子挂到上一层译文句子的某个位置上。
 
-一条对应 = 一条 `type='note'` 的 discussion：
+一条对应 = 一条 `type='commentary'` 的 discussion：
 
 - target：`res_type='sentence'`、`res_id=<上一层某句译文的 uid>`，加上锚点
   `pos_start` / `pos_end` / `quote_exact` / `quote_prefix` / `quote_suffix`；
 - body：`content = '{{book-para-start-end}}'`——下一层（义注 / 复注）句子的模板，
   **不是**译文本身，渲染时才按当前 channel 取译文。一个片段由多句解释时并列多个
   模板 `{{…}}{{…}}`，仍是一条记录。
+
+同一个注入口还收 `type='note'`（普通边注）：正文就是注解本身，渲染出来的边注没有
+出处；写它用 `wikipali discuss-add --type note`，不走这里。
 
 字符位的口径由服务端 `PaliContentService::injectAnnotationNotes` 定：它在译文句子
 的**原始 content**（未渲染的 markdown，按 mb_strlen 计字符）第 `pos_end` 个字符处
@@ -29,7 +32,7 @@ from cmd_read import READ_TIMEOUT, pali_channel, fetch_books, fetch_paragraphs_i
 from cmd_write import confirm
 from errors import ApiError, WpError, explain_api_error
 
-NOTE_TYPE = 'note'
+COMMENTARY_TYPE = 'commentary'
 LAYERS = [('mūla', '根本'), ('aṭṭhakathā', '义注'), ('ṭīkā', '复注')]
 LAYER_ALIAS = {'mula': 'mūla', 'mūla': 'mūla', 'pāḷi': 'mūla', 'pali': 'mūla',
                'att': 'aṭṭhakathā', 'aṭṭhakathā': 'aṭṭhakathā', 'atthakatha': 'aṭṭhakathā',
@@ -294,7 +297,7 @@ def load_items(path):
 def existing_notes(client, res_id):
     data = call_as_model(client, 'GET', 'v2/discussion', '列出已有对应',
                          query={'view': 'question', 'res_type': 'sentence', 'id': res_id,
-                                'type': NOTE_TYPE, 'status': 'active', 'limit': 200})
+                                'type': COMMENTARY_TYPE, 'status': 'active', 'limit': 200})
     return (data or {}).get('rows') or []
 
 
@@ -340,7 +343,7 @@ def cmd_note_push(args):
             # 一条对应 = 一条记录。一个词由下一层多句解释时，content 按顺序并列
             # 这几句的模板：{{b-p-s-e}}{{b-p-s-e}}…
             tpl = ''.join(f'{{{{{nb}-{np_}-{ns}-{ne}}}}}' for nb, np_, ns, ne in runs)
-            body = {'res_id': row['id'], 'res_type': 'sentence', 'type': NOTE_TYPE,
+            body = {'res_id': row['id'], 'res_type': 'sentence', 'type': COMMENTARY_TYPE,
                     'title': tpl, 'content': tpl, 'content_type': 'markdown',
                     'pos_start': start, 'pos_end': end, 'quote_exact': it['quote_exact'],
                     'quote_prefix': pre, 'quote_suffix': suf, 'notification': False}
