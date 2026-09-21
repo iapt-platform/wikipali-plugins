@@ -263,7 +263,7 @@ def build_parser():
                    help='note＝批注 / 脚注（正文即注解），commentary＝注释对照 / 义注对照 / 复注对照'
                         '（正文为 {{book-para-start-end}}），discussion＝审稿意见 / 讨论（默认），'
                         'qa＝问答，help＝求助。五种都可以不给锚点')
-    p.add_argument('--title', help='标题（服务端必填；--type note / commentary 时缺省用正文）')
+    p.add_argument('--title', help='标题（可选；批注 / 脚注一类正文即全部，不给就没有标题）')
     add_anchor_args(p)
     p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
     p.add_argument('--content-file', dest='content_file', help='从文件读正文')

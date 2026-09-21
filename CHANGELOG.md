@@ -9,6 +9,8 @@
 - **注释书对应改用 `type=commentary`**（原来是 `type=note`）：`note-push` 写入的是 commentary，
   `discuss` / `discuss-add` 的 `--type` 也多了这一项。旧数据由 api-v13 的迁移改名
   （content 整体是句子模板的 `note` → `commentary`），其余 note 原样留着。
+- **`--title` 改为可选**（服务端也不再必填）：批注 / 脚注、注释对照这类正文即全部的不必给
+  标题；`note-push` 不再拿句子模板顶一个标题，列表里没有标题就不显示这一行。
 
 ### 新增
 - **`type=note` 是普通边注**：正文就是注解本身（不是句子模板），阅读页在锚点处渲染成一条

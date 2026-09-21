@@ -184,8 +184,8 @@ wikipali discuss-reply <批注id> --content '补充：义注中以 codanā 释�
 
 - **挂点要确认**，见铁律第 8 条。`--channel` 缺省是巴利原文；要批注某个译本就给它。
   一段多句时命令会列出候选、要求用 `--words 起-止` 或 `--sent <句子uid>` 指明。
-- `discuss-add` 必须有 `--title`（服务端必填），只有 `--type note` / `commentary` 缺省拿正文
-  作标题；`discuss-reply` 只要 `--content`。
+- `--title` 是**可选**的：批注 / 脚注、注释对照这类正文就是全部的，不给标题即可；
+  审稿意见 / 问答 / 求助这类话题该给一个。`discuss-reply` 只要 `--content`。
 - 正文也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
 - **默认不发站内通知**，`--notify` 才发 —— 批量批注不要刷别人的通知。
 - 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条话题。

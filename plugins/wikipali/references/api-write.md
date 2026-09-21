@@ -231,7 +231,7 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
   "res_id": "<句子 uid>",
   "res_type": "sentence",
   "type": "discussion",
-  "title": "标题（新建时必填）",
+  "title": "标题（可选，可不给）",
   "content": "正文",
   "content_type": "markdown",
   "notification": false

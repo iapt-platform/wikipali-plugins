@@ -344,7 +344,7 @@ def cmd_note_push(args):
             # 这几句的模板：{{b-p-s-e}}{{b-p-s-e}}…
             tpl = ''.join(f'{{{{{nb}-{np_}-{ns}-{ne}}}}}' for nb, np_, ns, ne in runs)
             body = {'res_id': row['id'], 'res_type': 'sentence', 'type': COMMENTARY_TYPE,
-                    'title': tpl, 'content': tpl, 'content_type': 'markdown',
+                    'content': tpl, 'content_type': 'markdown',
                     'pos_start': start, 'pos_end': end, 'quote_exact': it['quote_exact'],
                     'quote_prefix': pre, 'quote_suffix': suf, 'notification': False}
             dup = [e for e in cache[row['id']] if (e.get('content') or '').strip() == tpl]
