@@ -19,10 +19,18 @@ from coords import fmt_coord, parse_coord
 from errors import ApiError, WpError, explain_api_error
 
 RES_TYPE = 'sentence'
-# qa / help 是文章场景。句子上三种：discussion（普通批注，不进阅读页）、
-# note（边注：正文即注解，挂在锚点上，阅读页渲染成没有出处的边注）、
-# commentary（注释书对应：正文是下一层句子模板，边注带出处，见 cmd_notes）
+# 句子上的五类批注（按用户的说法选，见 skills/write）：
+#   note        批注 / 脚注——正文就是注解本身
+#   commentary  注释对照 / 义注对照 / 复注对照——正文是下一层句子模板，见 cmd_notes
+#   discussion  审稿意见 / 讨论（默认）
+#   qa          问答
+#   help        求助
+# 五类的锚点都可以不给（不给就是整句的批注）。只有 note / commentary 会被注入阅读页
+# （api-v13 的 PaliContentService::injectAnnotationNotes），其余只在批注列表里。
+DISCUSS_TYPES = ['note', 'commentary', 'discussion', 'qa', 'help']
 DISCUSS_TYPE = 'discussion'
+# 不给 --title 时拿正文作标题的类型：正文短、本来也没有标题
+TITLE_FROM_CONTENT = ('note', 'commentary')
 ANCHOR_FIELDS = ['pos_start', 'pos_end', 'quote_exact', 'quote_prefix', 'quote_suffix']
 
 
@@ -255,7 +263,7 @@ def cmd_discuss_add(args):
         'res_id': sent_uid,
         'res_type': RES_TYPE,
         'type': args.type,
-        'title': args.title or (content.strip() if args.type in ('note', 'commentary') else None),
+        'title': args.title or (content.strip() if args.type in TITLE_FROM_CONTENT else None),
         'content': content,
         'content_type': args.content_type,
         'notification': bool(args.notify),

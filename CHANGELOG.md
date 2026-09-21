@@ -14,6 +14,10 @@
 - **`type=note` 是普通边注**：正文就是注解本身（不是句子模板），阅读页在锚点处渲染成一条
   **没有出处**的边注——与 commentary 的区别只在这一点。写法：
   `discuss-add … --type note --pos-end <位置> --quote-exact <摘录> --content <注解>`。
+- **批注按用户的说法分五类**，`discuss` / `discuss-add` 的 `--type` 收全五个，`write` skill
+  里给出对照表：批注 / 脚注→`note`，注释对照 / 义注对照 / 复注对照→`commentary`，
+  审稿意见 / 讨论→`discussion`，问答→`qa`，求助→`help`。五类的**锚点都可以不给**
+  （不给就是整句的批注）；只有 `note` 与 `commentary` 会被注入阅读页。
 
 ## [0.13.0] - 2026-09-19
 

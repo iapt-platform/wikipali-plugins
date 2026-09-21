@@ -246,17 +246,22 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
 | `quote_exact` | 字符串，可空 | 被锚定文本的原样摘录 |
 | `quote_prefix` / `quote_suffix` | 字符串，可空 | 摘录前后的上下文（建议 32~64 字符），抗文本位移 |
 
-`type` 除 `discussion`（普通批注，不进阅读页）外，还有两种会被**注入阅读页**的批注——
-都挂在句子的锚点上，都在 `pos_end` 处插入一条边注，区别只在有没有出处：
+句子上的批注按 `type` 分五类。**锚点五个字段对哪一类都是可选的**（不给就是整句的批注）：
 
-| type | content | 阅读页 |
-|---|---|---|
-| `commentary` | 下一层句子模板 `{{book-para-start-end}}`（不是译文；一个片段由多句解释时并列多个模板 `{{…}}{{…}}`，仍是一条记录） | 边注正文是那几句在当前 channel 的译文，末尾带 `<cite>义注</cite>` 跳转锚点 |
-| `note` | 注解正文本身（markdown） | 边注正文就是它，**没有**出处 |
+| type | 用户的说法 | content | 阅读页 |
+|---|---|---|---|
+| `note` | 批注、脚注 | 注解正文本身（markdown） | 边注正文就是它，**没有**出处 |
+| `commentary` | 注释对照、义注对照、复注对照 | 下一层句子模板 `{{book-para-start-end}}`（不是译文；一个片段由多句解释时并列多个模板 `{{…}}{{…}}`，仍是一条记录） | 边注正文是那几句在当前 channel 的译文，末尾带 `<cite>义注</cite>` 跳转锚点 |
+| `discussion` | 审稿意见、讨论（默认） | 正文 | 不进阅读页 |
+| `qa` | 问答 | 正文 | 不进阅读页 |
+| `help` | 求助 | 正文 | 不进阅读页 |
 
-`commentary` 即注释书对应：`res_id` 是上一层（根本 / 义注）某句**译文**的 uid。只用
-`pos_end` 定插入点，位置越界时挂到句尾。写法见 `note-push` 与 `skills/commentary-align`；
-写普通边注用 `discuss-add --type note`。
+只有 `note` 与 `commentary` 会被**注入阅读页**：服务端在句子原始 content 的 `pos_end`
+处插一条边注（`PaliContentService::injectAnnotationNotes`），位置为空或越界时挂到句尾。
+两者除出处外完全一样。
+
+`commentary` 即注释书对应：`res_id` 是上一层（根本 / 义注）某句**译文**的 uid，写法见
+`note-push` 与 `skills/commentary-align`；其余四类用 `discuss-add --type <type>`。
 
 回复只要给 `parent`（被回复的批注 id）和 `content`：**`res_id` / `res_type` 由服务端
 从 parent 继承，不要自己给**。父话题的 `children_count` 会自动加一。

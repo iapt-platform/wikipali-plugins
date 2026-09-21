@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries, or to read / write / reply to 批注 / discussions / annotations on a sentence, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
+description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries, or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help), or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
 metadata:
   author: mint
 ---
@@ -159,30 +159,46 @@ wikipali term-edit <guid> --meaning 念住          # 只改给出的字段，�
 对某一句的批注（discussion）。与句子、术语不同，**不需要 access token** —— 模型拿自己的
 token 直接建，署名就是模型。
 
+**`--type` 按用户的说法选**，不要一律用默认值：
+
+| 用户说 | `--type` | 是什么 |
+|---|---|---|
+| 加批注、加脚注 | `note` | 正文就是注解本身；阅读页在锚点处渲染成一条**没有出处**的边注 |
+| 加注释对照、义注对照、复注对照 | `commentary` | 正文是下一层的句子模板 `{{book-para-start-end}}`；阅读页渲染成带 `<cite>` 出处的边注。批量做用 `commentary-align` skill |
+| 加审稿意见、讨论 | `discussion`（默认） | 给人看的意见，只在批注列表里 |
+| 加问答 | `qa` | 同上 |
+| 加求助 | `help` | 同上 |
+
+五种的**锚点都可以不给**——不给就是挂在整句上。只有 `note` / `commentary` 会被注入
+阅读页，注入时用 `pos_end` 定插入点（没有锚点就插在句尾）。
+
 ```bash
-wikipali discuss 216:35 --words 2-17            # 看这一句上已有的批注与回复
-wikipali discuss-add 216:35 --words 2-17 \
-    --title '关于 tajjanīyakamma 的译名' --content '此处 tajjanīya 作「呵责」解。'
+wikipali discuss 216:35 --words 2-17 --type note   # 看这一句上已有的批注与回复
+wikipali discuss-add 216:35 --words 2-17 --type note \
+    --pos-end 24 --quote-exact 'tajjanīyakamma' \
+    --content '此处 tajjanīya 作「呵责」解。'
+wikipali discuss-add 216:35 --words 2-17 --type discussion \
+    --title '关于 tajjanīyakamma 的译名' --content '建议统一译作「呵责羯磨」。'
 wikipali discuss-reply <批注id> --content '补充：义注中以 codanā 释之。'
 ```
 
 - **挂点要确认**，见铁律第 8 条。`--channel` 缺省是巴利原文；要批注某个译本就给它。
   一段多句时命令会列出候选、要求用 `--words 起-止` 或 `--sent <句子uid>` 指明。
-- `discuss-add` 必须有 `--title`（服务端必填）；`discuss-reply` 只要 `--content`。
+- `discuss-add` 必须有 `--title`（服务端必填），只有 `--type note` / `commentary` 缺省拿正文
+  作标题；`discuss-reply` 只要 `--content`。
 - 正文也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
 - **默认不发站内通知**，`--notify` 才发 —— 批量批注不要刷别人的通知。
 - 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条话题。
 - **锚点**：`discuss-add` / `discuss-reply` / `discuss-edit` 都收 `--pos-start --pos-end
   --quote-exact --quote-prefix --quote-suffix`，把批注定位到句内一段文字。位置按句子
   **原始 content** 的字符数（0 起，`pos_end` 不含）。`discuss` 列表会显示锚点。
+  **锚点是可选的**，五种 type 都可以不给（整句批注）；给了就要对着原始 content 数准，
+  不确定就让用户给摘录、或先 `wikipali get <坐标> --json` 看原文。
 - `discuss-edit <id>` 先取原记录再提交，没给的字段保留（服务端对标题/正文/状态是全量
   覆盖）；锚点给空串即清空。`discuss-delete <id>` 只能删自己写的。
-- **句子上的三种 type**：`discussion`（普通批注，只在批注列表里）、`note`（边注：正文就是
-  注解本身，阅读页在锚点处渲染成一条没有出处的边注）、`commentary`（注释书对应：正文是
-  下一层的句子模板，边注带 <cite> 出处）。三种都用 `discuss --type <type>` 列出。
-- 写一条边注：`discuss-add … --type note --pos-end <位置> --quote-exact <摘录> --content <注解>`
-  （不给 `--title` 就拿正文作标题）。批量建立注释书对应用 `note-context` / `note-push`，
-  流程见 `commentary-align` skill。
+- 列表也按 type 分：`discuss … --type <type>`，不给就是 `discussion`——找不到刚写的批注
+  时先看 type 对不对。
+- 批量建立注释对照用 `note-context` / `note-push`，流程见 `commentary-align` skill。
 
 ## 站点
 
