@@ -19,7 +19,15 @@ from coords import fmt_coord, parse_coord
 from errors import ApiError, WpError, explain_api_error
 
 RES_TYPE = 'sentence'
-# qa / help 是文章场景；句子上用 discussion（普通批注）或 note（注释书对应，见 cmd_notes）
+# 句子上的五类批注（按用户的说法选，见 skills/write）：
+#   note        批注 / 脚注——正文就是注解本身
+#   commentary  注释对照 / 义注对照 / 复注对照——正文是下一层句子模板，见 cmd_notes
+#   discussion  审稿意见 / 讨论（默认）
+#   qa          问答
+#   help        求助
+# 五类的锚点都可以不给（不给就是整句的批注）。只有 note / commentary 会被注入阅读页
+# （api-v13 的 PaliContentService::injectAnnotationNotes），其余只在批注列表里。
+DISCUSS_TYPES = ['note', 'commentary', 'discussion', 'qa', 'help']
 DISCUSS_TYPE = 'discussion'
 ANCHOR_FIELDS = ['pos_start', 'pos_end', 'quote_exact', 'quote_prefix', 'quote_suffix']
 
@@ -150,7 +158,8 @@ def cmd_discuss_list(args):
         for row in rows:
             print('\n' + '-' * 72)
             print(f'  id     : {row.get("id")}')
-            print(f'  标题   : {row.get("title")}')
+            if row.get('title'):
+                print(f'  标题   : {row.get("title")}')
             print(f'  作者   : {who(row)}   {row.get("status")}   {row.get("created_at", "")[:10]}')
             if fmt_anchor(row):
                 print(f'  锚点   : {fmt_anchor(row)}')
@@ -253,13 +262,11 @@ def cmd_discuss_add(args):
         'res_id': sent_uid,
         'res_type': RES_TYPE,
         'type': args.type,
-        'title': args.title or (content.strip() if args.type == 'note' else None),
+        'title': args.title,
         'content': content,
         'content_type': args.content_type,
         'notification': bool(args.notify),
     }
-    if not body['title']:
-        raise WpError('--title 必填（服务端要求）；只有 --type note 时缺省用正文作标题。')
     body.update(anchor_body(args))
     header = [f'批注对象 : {desc}', f'句子 uid : {sent_uid}', f'类型     : {args.type}']
     return create(client, args, body, header, '新建批注')

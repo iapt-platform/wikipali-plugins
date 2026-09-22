@@ -247,8 +247,9 @@ def build_parser():
     p.add_argument('--channel', help='取哪个版本的句子（uid 或名字片段）；缺省取巴利原文')
     p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
     p.add_argument('--status', default='active', choices=['active', 'close'])
-    p.add_argument('--type', default='discussion', choices=['discussion', 'note'],
-                   help='discussion＝普通批注（默认），note＝注释书对应')
+    p.add_argument('--type', default='discussion', choices=cmd_discuss.DISCUSS_TYPES,
+                   help='列哪一类：note＝批注 / 脚注，commentary＝注释对照，'
+                        'discussion＝审稿意见 / 讨论（默认），qa＝问答，help＝求助')
     p.add_argument('--limit', type=int, default=50)
     p.add_argument('--offset', type=int, default=0)
     p.set_defaults(func=cmd_discuss.cmd_discuss_list)
@@ -258,9 +259,11 @@ def build_parser():
     p.add_argument('--sent', help='句子 uid，给了就不再按坐标解析')
     p.add_argument('--channel', help='批注挂在哪个版本的句子上；缺省是巴利原文')
     p.add_argument('--words', help='一段多句时指明是哪一句，如 2-17')
-    p.add_argument('--type', default='discussion', choices=['discussion', 'note'],
-                   help='discussion＝普通批注（默认），note＝注释书对应（正文为 {{book-para-start-end}}）')
-    p.add_argument('--title', help='标题（服务端必填；--type note 时缺省用正文）')
+    p.add_argument('--type', default='discussion', choices=cmd_discuss.DISCUSS_TYPES,
+                   help='note＝批注 / 脚注（正文即注解），commentary＝注释对照 / 义注对照 / 复注对照'
+                        '（正文为 {{book-para-start-end}}），discussion＝审稿意见 / 讨论（默认），'
+                        'qa＝问答，help＝求助。五种都可以不给锚点')
+    p.add_argument('--title', help='标题（可选；批注 / 脚注一类正文即全部，不给就没有标题）')
     add_anchor_args(p)
     p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
     p.add_argument('--content-file', dest='content_file', help='从文件读正文')
@@ -306,10 +309,10 @@ def build_parser():
     p.add_argument('--refresh-books', dest='refresh_books', action='store_true', help='刷新本地书目缓存')
     p.set_defaults(func=cmd_notes.cmd_note_context)
 
-    p = add('note-push', '写入注释书对应（type=note）：本工具按摘录数位置、校验、去重')
+    p = add('note-push', '写入注释书对应（type=commentary）：本工具按摘录数位置、校验、去重')
     p.add_argument('file', help='对应 JSONL 文件（一行一条），- 表示从 stdin 读')
     p.add_argument('--channel', required=True, help='target 译文句子所在的 channel')
-    p.add_argument('--replace', action='store_true', help='同一句已有同一 note 时删掉旧的重写（默认跳过）')
+    p.add_argument('--replace', action='store_true', help='同一句已有同一条对应时删掉旧的重写（默认跳过）')
     p.add_argument('--dry-run', action='store_true', help='只定位与校验，不写')
     p.add_argument('-y', '--yes', action='store_true')
     p.set_defaults(func=cmd_notes.cmd_note_push)

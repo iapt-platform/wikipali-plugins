@@ -3,6 +3,24 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.14.0] - 2026-09-21
+
+### 变更
+- **注释书对应改用 `type=commentary`**（原来是 `type=note`）：`note-push` 写入的是 commentary，
+  `discuss` / `discuss-add` 的 `--type` 也多了这一项。旧数据由 api-v13 的迁移改名
+  （content 整体是句子模板的 `note` → `commentary`），其余 note 原样留着。
+- **`--title` 改为可选**（服务端也不再必填）：批注 / 脚注、注释对照这类正文即全部的不必给
+  标题；`note-push` 不再拿句子模板顶一个标题，列表里没有标题就不显示这一行。
+
+### 新增
+- **`type=note` 是普通边注**：正文就是注解本身（不是句子模板），阅读页在锚点处渲染成一条
+  **没有出处**的边注——与 commentary 的区别只在这一点。写法：
+  `discuss-add … --type note --pos-end <位置> --quote-exact <摘录> --content <注解>`。
+- **批注按用户的说法分五类**，`discuss` / `discuss-add` 的 `--type` 收全五个，`write` skill
+  里给出对照表：批注 / 脚注→`note`，注释对照 / 义注对照 / 复注对照→`commentary`，
+  审稿意见 / 讨论→`discussion`，问答→`qa`，求助→`help`。五类的**锚点都可以不给**
+  （不给就是整句的批注）；只有 `note` 与 `commentary` 会被注入阅读页。
+
 ## [0.13.0] - 2026-09-19
 
 ### 新增
