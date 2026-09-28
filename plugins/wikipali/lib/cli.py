@@ -311,7 +311,6 @@ def build_parser():
     p.add_argument('cs_para', type=int, help='CST 段号')
     p.add_argument('--channel', required=True, help='译文所在的 channel（uid 或名字片段）')
     p.add_argument('--layers', help='只取某几层，逗号分隔：mula,att,tika')
-    p.add_argument('--refresh-books', dest='refresh_books', action='store_true', help='刷新本地书目缓存')
     p.set_defaults(func=cmd_notes.cmd_note_context)
 
     p = add('note-push', '写入注释书对应（type=commentary）：本工具按摘录数位置、校验、去重')

@@ -971,18 +971,26 @@ def v3_layer(tags):
     return ''
 
 
+def fetch_related_cs(client, book_name, cs_para):
+    """v3 的 tipitaka-related-paragraphs：给 CST 书名 + 段号，回各层对照段落的列表。
+
+    `related-cs` 用它展示，`note-context` 用它取句子素材——同一个数据源。
+    """
+    try:
+        return client.call('GET', 'v3/tipitaka-related-paragraphs',
+                           query={'book_name': book_name, 'cs_para': cs_para},
+                           v3=True, timeout=READ_TIMEOUT) or []
+    except ApiError as exc:
+        raise explain_api_error(exc, f'查 {book_name}/{cs_para} 的关联段落')
+
+
 def cmd_related_cs(args):
     """`wikipali related-cs <book_name> <cs_para>`：直接给 CST 锚点查关联段落。
 
     走 v3 的 tipitaka-related-paragraphs（`related` 仍走 v2，坐标是 book:para）。
     """
     client = make_client(args)
-    try:
-        rows = client.call('GET', 'v3/tipitaka-related-paragraphs',
-                           query={'book_name': args.book_name, 'cs_para': args.cs_para},
-                           v3=True, timeout=READ_TIMEOUT) or []
-    except ApiError as exc:
-        raise explain_api_error(exc, f'查 {args.book_name}/{args.cs_para} 的关联段落')
+    rows = fetch_related_cs(client, args.book_name, args.cs_para)
 
     def render():
         if not rows:
