@@ -161,6 +161,16 @@ def build_parser():
     p.add_argument('cs_para', type=int, help='CST 段号')
     p.set_defaults(func=cmd_read.cmd_related_cs)
 
+    p = add('related-books', '列出有 CST 锚点的书名（book_name），可按 file / book 反查')
+    g = p.add_mutually_exclusive_group()
+    g.add_argument('--file', type=int, help='文件号 → 该文件下的 book_name（如 93 → dn1）')
+    g.add_argument('--book', type=int, help='书号 → 该书对应的 book_name（如 100 → dn2）')
+    p.set_defaults(func=cmd_read.cmd_related_books)
+
+    p = add('related-paras', '列出某 book_name 里的全部 CST 段号（cs_para）')
+    p.add_argument('book_name', help='CST 书名缩写，如 dn2、mn1（用 related-books 查）')
+    p.set_defaults(func=cmd_read.cmd_related_paras)
+
     p = add('articles', '列出 / 搜索文章（二手研究）')
     p.add_argument('keyword', nargs='?', help='标题关键词')
     p.add_argument('--lang', help='按语言过滤')

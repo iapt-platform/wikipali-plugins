@@ -1018,6 +1018,104 @@ def cmd_related_cs(args):
 
 
 # ---------------------------------------------------------------------------
+# related-books / related-paras —— CST 锚点索引（v3 aggregate）
+# ---------------------------------------------------------------------------
+
+AGGREGATE_PER_PAGE = 200  # 服务端 per_page 上限
+
+
+def fetch_aggregate(client, path, query=None):
+    """分页拉全 v3/tipitaka-related-paragraphs/aggregate 系列端点。
+
+    这些端点返回 {data:[…], meta:{total, per_page, …}}，但 client 的 v3 模式只回 data；
+    per_page 上限 200，所以按「本页不足 200 即最后一页」翻页直到取空。
+    """
+    out = []
+    page = 1
+    while True:
+        q = dict(query or {})
+        q.update({'page': page, 'per_page': AGGREGATE_PER_PAGE})
+        rows = client.call('GET', path, query=q, v3=True, timeout=READ_TIMEOUT) or []
+        out.extend(rows)
+        if len(rows) < AGGREGATE_PER_PAGE:
+            return out
+        page += 1
+
+
+def cmd_related_books(args):
+    """`wikipali related-books`：列出有 CST 锚点的 book_name（--file / --book 反查）。
+
+    走 v3 的 tipitaka-related-paragraphs/aggregate——它是 related-paragraphs 数据的索引：
+    先拿 book_name，再用 related-paras 拿该书里的 cs_para，最后 related-cs 查具体对应。
+    """
+    client = make_client(args)
+    query = {}
+    scope = []
+    if args.file is not None:
+        query['file'] = args.file
+        scope.append(f'file={args.file}')
+    if args.book is not None:
+        query['book'] = args.book
+        scope.append(f'book={args.book}')
+    rows = fetch_aggregate(client, 'v3/tipitaka-related-paragraphs/aggregate', query)
+
+    def render():
+        print(f'{len(rows)} 个 book_name' + (f'  [{" ".join(scope)}]' if scope else ''))
+        if not rows:
+            print('\n没有匹配。file / book 号不存在，或该 file / book 下没有带 CST 锚点的书；')
+            print('不加 --file / --book 会列出全部。')
+            return
+        for r in rows:
+            print(f'  {r.get("book_name")}')
+        print('\n查某本书里有哪些段号：wikipali related-paras <book_name>')
+
+    emit(args, rows, render)
+    return 0
+
+
+def cs_para_ranges(paras):
+    """把段号压缩成 1-3,5,7-9 这样的区间表示，便于人读。"""
+    parts = []
+    start = prev = paras[0]
+    for p in paras[1:]:
+        if p == prev + 1:
+            prev = p
+            continue
+        parts.append(f'{start}-{prev}' if prev > start else f'{start}')
+        start = prev = p
+    parts.append(f'{start}-{prev}' if prev > start else f'{start}')
+    return ','.join(parts)
+
+
+def cmd_related_paras(args):
+    """`wikipali related-paras <book_name>`：列出该书里的全部 CST 段号。
+
+    走 v3 的 tipitaka-related-paragraphs/aggregate/{book_name}。拿到 cs_para 后，
+    related-cs 用它查各层对照段落。
+    """
+    import textwrap
+    client = make_client(args)
+    rows = fetch_aggregate(client, f'v3/tipitaka-related-paragraphs/aggregate/{args.book_name}')
+    paras = sorted({int(r.get('cs_para'))
+                    for r in rows if str(r.get('cs_para') or '').isdigit()})
+    cs_paras = [str(p) for p in paras]
+
+    def render():
+        if not paras:
+            print(f'{args.book_name} 里没有 CST 段号（该书不存在，或没有带锚点的段落）。')
+            print('先跑 wikipali related-books 看有哪些 book_name。')
+            return
+        print(f'{args.book_name} 共 {len(paras)} 个段号：')
+        for line in textwrap.wrap(cs_para_ranges(paras), 68, initial_indent='  ',
+                                  subsequent_indent='  '):
+            print(line)
+        print(f'\n查某段的各层对应：wikipali related-cs {args.book_name} <cs_para>')
+
+    emit(args, cs_paras, render)
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # ref —— 任意坐标的可追溯出处（印本页码 + 链接）
 # ---------------------------------------------------------------------------
 

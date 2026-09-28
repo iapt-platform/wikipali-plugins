@@ -3,6 +3,16 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.17.0] - 2026-09-28
+
+### 新增
+- **`related-books` 命令**：列出有 CST 锚点的书名（`book_name`），走 v3 的
+  `tipitaka-related-paragraphs/aggregate`；可用 `--file`（文件号）或 `--book`（书号）
+  反查某一本，两者互斥。端点每页只给 15 条、上限 200，命令内部自动翻页拉全。
+- **`related-paras` 命令**：给定 `book_name` 列出其中全部 CST 段号（`cs_para`），走
+  `…/aggregate/{book_name}`，同样自动翻页拉全；人读输出把连续段号压缩成区间，
+  `--json` 输出扁平字符串数组。
+
 ## [0.16.0] - 2026-09-28
 
 ### 新增
