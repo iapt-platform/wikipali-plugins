@@ -953,6 +953,63 @@ def cmd_related(args):
 
 
 # ---------------------------------------------------------------------------
+# related-cs —— 按 CST 书名 + 段号查注释层段落列表（v3）
+# ---------------------------------------------------------------------------
+
+V3_LAYER_ORDER = {'mūla': 0, 'aṭṭhakathā': 1, 'ṭīkā': 2}
+
+
+def v3_layer(tags):
+    """v3 的 tags 是字符串数组（不是 v2 的 {id,name,color} 对象数组）。"""
+    names = set(tags or [])
+    if names & {'ṭīkā', 'mūlaṭīkā', 'anuṭīkā'}:
+        return 'ṭīkā'
+    if 'aṭṭhakathā' in names:
+        return 'aṭṭhakathā'
+    if names & {'mūla', 'pāḷi'}:
+        return 'mūla'
+    return ''
+
+
+def cmd_related_cs(args):
+    """`wikipali related-cs <book_name> <cs_para>`：直接给 CST 锚点查关联段落。
+
+    走 v3 的 tipitaka-related-paragraphs（`related` 仍走 v2，坐标是 book:para）。
+    """
+    client = make_client(args)
+    try:
+        rows = client.call('GET', 'v3/tipitaka-related-paragraphs',
+                           query={'book_name': args.book_name, 'cs_para': args.cs_para},
+                           v3=True, timeout=READ_TIMEOUT) or []
+    except ApiError as exc:
+        raise explain_api_error(exc, f'查 {args.book_name}/{args.cs_para} 的关联段落')
+
+    def render():
+        if not rows:
+            print(f'{args.book_name} / cs_para {args.cs_para} 没有关联段落。')
+            print('约 2% 的段落没有 CST 锚点，这是正常结果，不是查询失败——'
+                  '如实报告，不要转而去注释书里搜关键词充数。')
+            return
+        print(f'{args.book_name} / cs_para {args.cs_para} 关联到 {len(rows)} 部书：\n')
+        ordered = sorted(rows, key=lambda r: (V3_LAYER_ORDER.get(v3_layer(r.get('tags')), 9),
+                                              r.get('book_id') or 0))
+        for r in ordered:
+            layer = v3_layer(r.get('tags')) or '未标层次'
+            paras = r.get('para') or []
+            coords = ' '.join(f'{r.get("book")}:{p}' for p in paras[:8])
+            more = f' …共 {len(paras)} 段' if len(paras) > 8 else ''
+            title = str(r.get('title') or '')
+            print(f'  [{layer:<11}] {title[:30]:<32}')
+            print(f'      {coords}{more}')
+        first = ordered[0]
+        print(f'\n取文：wikipali get {first.get("book")}:{(first.get("para") or [0])[0]}')
+        print('引用时必须标明层次——把义注的解释当成根本的说法是学术错误。')
+
+    emit(args, rows, render)
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # ref —— 任意坐标的可追溯出处（印本页码 + 链接）
 # ---------------------------------------------------------------------------
 

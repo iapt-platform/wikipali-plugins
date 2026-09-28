@@ -3,6 +3,18 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.16.0] - 2026-09-28
+
+### 新增
+- **`related-cs` 命令**：按 CST 书名 + 段号（`wikipali related-cs mn1 1`）直接查注释层
+  段落列表，走 v3 的 `tipitaka-related-paragraphs`。与 `related`（`book:para`，走 v2）
+  并存；输出按 根本 → 义注 → 复注 分层，每部书列出对应的 `book:para` 段落。
+
+### 变更
+- **client 支持 v3 响应信封**：`http_json` / `Client.call` 增加 `v3` 开关。v3 返回
+  Laravel 原生 `{data, meta}`（没有 `ok` 字段），成败只看 HTTP 状态码；错误路径顺带
+  兼容 v3 的 Problem 响应（取 `detail`），422 能直接显示具体原因。v2 行为不变。
+
 ## [0.15.0] - 2026-09-22
 
 ### 修复

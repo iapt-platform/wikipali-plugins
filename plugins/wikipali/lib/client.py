@@ -56,11 +56,14 @@ def note(msg):
     print(msg, file=sys.stderr)
 
 
-def http_json(api_url, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT):
+def http_json(api_url, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT, v3=False):
     """发一个 JSON 请求，返回解析后的响应体（dict）。
 
     网络层失败抛 urllib 的异常（由 Client 决定是否 fallback）；
     HTTP 层失败抛 ApiError，带上服务端 message。
+
+    v3=True 时按 v3 原生 Resource 信封处理：没有 ok 字段，成败只看 HTTP 状态码，
+    同样返回 payload 的 data；v2 仍按 {ok, message, data} 判 ok。
     """
     # 路径里可能有巴利词（parivāsa），urllib 只接受 ASCII，必须先百分号编码
     url = api_url + "/" + urllib.parse.quote(path.lstrip("/"), safe="/")
@@ -82,11 +85,16 @@ def http_json(api_url, method, path, token=None, body=None, query=None, timeout=
         raw = exc.read().decode("utf-8", "replace")
         status = exc.code
         payload = safe_json(raw)
-        message = payload.get("message") if isinstance(payload, dict) else None
+        message = None
+        if isinstance(payload, dict):
+            # v2 用 message，v3 Problem 用 detail（更具体），退 title（通用）
+            message = payload.get("message") or payload.get("detail") or payload.get("title")
         raise ApiError(status, message or f"HTTP {status}", url=url, body=payload or raw)
     payload = safe_json(raw)
     if not isinstance(payload, dict):
         raise ApiError(status, f"响应不是 JSON：{raw[:200]}", url=url, body=raw)
+    if v3:
+        return payload.get("data")
     if not payload.get("ok", False):
         raise ApiError(status, payload.get("message") or "请求失败", url=url, body=payload)
     return payload.get("data")
@@ -150,12 +158,12 @@ class Client:
         )
         return [s["url"] for s in others]
 
-    def call(self, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT):
+    def call(self, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT, v3=False):
         urls = [self.api_url] + (self.fallback_order() if self.allow_fallback else [])
         last = None
         for idx, url in enumerate(urls):
             try:
-                data = http_json(url, method, path, token=token, body=body, query=query, timeout=timeout)
+                data = http_json(url, method, path, token=token, body=body, query=query, timeout=timeout, v3=v3)
             except (urllib.error.URLError, TimeoutError, OSError,
                     http.client.HTTPException) as exc:
                 # IncompleteRead 属于 HTTPException 而非 OSError——大响应（如两百多万

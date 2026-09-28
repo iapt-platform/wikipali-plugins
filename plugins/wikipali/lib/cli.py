@@ -156,6 +156,11 @@ def build_parser():
     p.add_argument('coord', help='book:paragraph')
     p.set_defaults(func=cmd_read.cmd_related)
 
+    p = add('related-cs', '按 CST 书名+段号查注释层段落列表（v3）')
+    p.add_argument('book_name', help='CST 书名缩写，如 mn1、dn1、an2')
+    p.add_argument('cs_para', type=int, help='CST 段号')
+    p.set_defaults(func=cmd_read.cmd_related_cs)
+
     p = add('articles', '列出 / 搜索文章（二手研究）')
     p.add_argument('keyword', nargs='?', help='标题关键词')
     p.add_argument('--lang', help='按语言过滤')
