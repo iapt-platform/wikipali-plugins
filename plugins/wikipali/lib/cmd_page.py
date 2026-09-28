@@ -17,7 +17,7 @@ import os
 import re
 
 from client import make_client
-from cmd_read import pali_channel, strip_markup
+from cmd_read import pali_channel, row_text
 from errors import ApiError, WpError, explain_api_error
 
 REF_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'references')
@@ -183,6 +183,6 @@ def cmd_page(args):
         if row.get('paragraph') != current:
             current = row.get('paragraph')
             print(f'  [{book}:{current}]')
-        print('    ' + strip_markup(row.get('content')))
+        print('    ' + row_text(row))
     print('  末段与下一页共享——本页在其中某处结束，不是整段都属于这一页。')
     return 0

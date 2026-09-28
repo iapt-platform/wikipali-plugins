@@ -13,7 +13,7 @@ uid 是逐句、逐 channel 的——同一段巴利原文和它的中译是两�
 import json
 
 from client import WRITE_TIMEOUT, make_client
-from cmd_read import READ_TIMEOUT, pali_channel, strip_markup
+from cmd_read import READ_TIMEOUT, pali_channel, row_text
 from cmd_write import confirm, pick_channel, refresh_model_token
 from coords import fmt_coord, parse_coord
 from errors import ApiError, WpError, explain_api_error
@@ -109,7 +109,7 @@ def resolve_sentence(args, client):
         lines = [f'{fmt_coord(book, para)} 有 {len(rows)} 句，指明是哪一句再批注：']
         for r in rows:
             lines.append(f'  --words {r.get("word_start")}-{r.get("word_end")}   '
-                         f'{strip_markup(r.get("content"))[:60]}')
+                         f'{row_text(r)[:60]}')
         lines.append('  也可以用 --sent <句子uid> 直接指定。')
         raise WpError('\n'.join(lines))
 
@@ -117,7 +117,7 @@ def resolve_sentence(args, client):
     ch = row.get('channel') or {}
     desc = (f'{fmt_coord(book, para)} [{row.get("word_start")}-{row.get("word_end")}]  '
             f'{ch.get("name") or channel_name or ""}\n'
-            f'    {strip_markup(row.get("content"))[:100]}')
+            f'    {row_text(row)[:100]}')
     return row.get('id'), desc
 
 

@@ -61,14 +61,17 @@ READ_TIMEOUT = 60
 def strip_markup(raw, hl='【】', bold='**'):
     """把服务端返回的 HTML 压成纯文本，保留命中高亮与黑体两种信息。
 
-    命中词用 <span class='hl'> 包，黑体是原文的 <span class="bld">——后者是注释书
-    标出词条的地方，对判断「这段是不是定义」很关键，不能丢。
+    命中词用 <span class='hl'> 包，黑体有两种写法——<span class="bld"> 和 <strong>/<b>，
+    同一部书里也可能混用。黑体是注释书标出被解释词的地方：判断「这段是不是定义」、
+    按被解释词切意群（commentary-align）全靠它，**丢了就没有别的线索**——`ti` / `nti`
+    顶不上，「…ti acchariyaṃ」这种定义式里 ti 在释义那一侧，照 ti 找会切反。
     """
     if not raw:
         return ''
     text = raw
     text = re.sub(r"<span class='hl'>(.*?)</span>", hl[0] + r'\1' + hl[1], text, flags=re.S)
     text = re.sub(r'<span class="bld">(.*?)</span>', bold + r'\1' + bold, text, flags=re.S)
+    text = re.sub(r'<(strong|b)>(.*?)</\1>', bold + r'\2' + bold, text, flags=re.S)
     # <code>M1.1</code> 是版本页码（M=缅甸版 V=VRI P=PTS T=泰版），标的是页在正文里
     # 的起始位置，与段落不是一一对应，所以必须留在原位。直接去标签会让它粘到前一个
     # 词上（Evaṃ M1.1 → EvaṃM1.1），看着像词形的一部分，加方括号隔开。
@@ -77,6 +80,19 @@ def strip_markup(raw, hl='【】', bold='**'):
     text = re.sub(r'<[^>]+>', '', text)
     text = html_mod.unescape(text)
     return re.sub(r'\s+', ' ', text).strip()
+
+
+def row_text(row, **kw):
+    """一条句子 / 批注记录的正文，按服务端声明的 `content_type` 决定要不要转换。
+
+    `markdown` 的 content 本来就是 markdown（译文、批注都是这种），原样取；只有 `html`
+    的（巴利原文那一路）才过 strip_markup。**不要按 channel 身份猜**——那等于假定
+    「巴利一定是 html、译文一定是 markdown」，而服务端每条记录都已经明说了。
+    """
+    raw = row.get('content') or ''
+    if (row.get('content_type') or '').lower() == 'markdown':
+        return re.sub(r'\s+', ' ', raw).strip()
+    return strip_markup(raw, **kw)
 
 
 def snippet(text, width, around=None):
@@ -326,7 +342,7 @@ def cmd_get(args):
                 print(f'\n=== {fmt_coord(r.get("book"), r.get("paragraph"))}  '
                       f'{ch.get("name")}（{ch.get("lang")}）'
                       + (f'  作者：{who}' if who else '') + ' ===')
-            text = strip_markup(r.get('content'))
+            text = row_text(r)
             print(f'  [{r.get("word_start")}-{r.get("word_end")}] {text}')
         print(f'\n共 {len(collected)} 句。')
         for book, para in refs:

@@ -28,7 +28,7 @@ import sys
 
 from client import WRITE_TIMEOUT, make_client
 from cmd_discuss import call_as_model, resolve_channel, who
-from cmd_read import READ_TIMEOUT, pali_channel, fetch_books, fetch_paragraphs_info, strip_markup
+from cmd_read import READ_TIMEOUT, pali_channel, fetch_books, fetch_paragraphs_info, row_text
 from cmd_write import confirm
 from errors import ApiError, WpError, explain_api_error
 
@@ -130,7 +130,7 @@ def build_layer(client, entry, channel_uid):
         item = by_sid.setdefault(sid_of(r), {'sid': sid_of(r), 'pali': None,
                                              'translation': None, 'translation_uid': None})
         if channel_of(r) == pali:
-            item['pali'] = strip_markup(r.get('content'))
+            item['pali'] = row_text(r)
         elif channel_of(r) == channel_uid:
             item['translation'] = r.get('content') or ''
             item['translation_uid'] = r.get('id')
@@ -203,10 +203,14 @@ def anchor(text, item):
     """在译文原文里定位 quote_exact，返回 (pos_start, pos_end, prefix, suffix)。
 
     摘录出现多次时用模型给的 prefix / suffix 消歧；仍不唯一就报错，**不猜**。
+
+    不给 quote_exact ＝ **整句挂**（四项都返回 None）：段落在第一个黑体之前的引子没有
+    对应片段，挂在章节标题句上，阅读页插在句尾。这是 commentary-align 规则 3 的情形，
+    不是漏填——别的情形都该给摘录。
     """
     exact = item.get('quote_exact') or ''
     if not exact:
-        raise WpError('缺 quote_exact')
+        return (None, None, None, None)
     hits = []
     i = text.find(exact)
     while i != -1:
@@ -344,11 +348,13 @@ def cmd_note_push(args):
             # 这几句的模板：{{b-p-s-e}}{{b-p-s-e}}…
             tpl = ''.join(f'{{{{{nb}-{np_}-{ns}-{ne}}}}}' for nb, np_, ns, ne in runs)
             body = {'res_id': row['id'], 'res_type': 'sentence', 'type': COMMENTARY_TYPE,
-                    'content': tpl, 'content_type': 'markdown',
-                    'pos_start': start, 'pos_end': end, 'quote_exact': it['quote_exact'],
-                    'quote_prefix': pre, 'quote_suffix': suf, 'notification': False}
+                    'content': tpl, 'content_type': 'markdown', 'notification': False}
+            if start is not None:
+                body.update({'pos_start': start, 'pos_end': end,
+                             'quote_exact': it['quote_exact'],
+                             'quote_prefix': pre, 'quote_suffix': suf})
             dup = [e for e in cache[row['id']] if (e.get('content') or '').strip() == tpl]
-            plan.append({'n': n, 'target': tsid, 'body': body, 'dup': dup})
+            plan.append({'n': n, 'target': tsid, 'body': body, 'dup': dup, 'notes': runs})
         except WpError as exc:
             problems.append((n, it, str(exc)))
 
@@ -360,14 +366,26 @@ def cmd_note_push(args):
     for p in plan:
         b = p['body']
         mark = '已存在' if p['dup'] and not args.replace else ('替换' if p['dup'] else '新增')
-        print(f'  #{p["n"]:<3} {mark}  {p["target"]} [{b["pos_start"]}-{b["pos_end"]}]'
-              f' 「{b["quote_exact"][:30]}」 ← {b["content"]}')
+        where = ('整句' if b.get('pos_start') is None
+                 else f'[{b["pos_start"]}-{b["pos_end"]}] 「{b["quote_exact"][:30]}」')
+        print(f'  #{p["n"]:<3} {mark}  {p["target"]} {where} ← {b["content"]}')
     for n, it, msg in problems:
         where = it['raw'] if 'raw' in it else f'{it.get("target")} ← {it.get("note")}'
         print(f'  #{n:<3} ✗ {msg}   ({where})')
+    # 覆盖率：下一层这些段里，没有被任何一条对应引到的句子。规则 4 要求除了段落开头
+    # 的引子（挂标题句那几句）之外一句都不漏，所以这里逐句点出来，让人一眼看到漏没漏。
+    covered = {'-'.join(str(x) for x in sid) for p in plan for sid in p['notes']}
+    uncovered = sorted(notes - covered, key=parse_sid)
     todo = [p for p in plan if not p['dup'] or args.replace]
     print('-' * 72)
-    print(f'可写 {len(todo)} 条，已存在跳过 {len(plan) - len(todo)} 条，有问题 {len(problems)} 条。')
+    if uncovered:
+        print(f'⚠ 下一层有 {len(uncovered)} 句没有进任何一条对应：')
+        for sid in uncovered:
+            print(f'    {sid}')
+        print('  只有「段落第一个黑体之前的引子」允许不挂（那几句该挂在章节标题句上）；'
+              '其余是漏了，补进对应的 note 数组。')
+    print(f'可写 {len(todo)} 条，已存在跳过 {len(plan) - len(todo)} 条，有问题 {len(problems)} 条，'
+          f'下一层未覆盖 {len(uncovered)} 句。')
     print('=' * 72)
 
     if args.json:
