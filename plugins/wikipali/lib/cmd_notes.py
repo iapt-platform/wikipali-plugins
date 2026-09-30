@@ -28,7 +28,7 @@ import sys
 
 from client import WRITE_TIMEOUT, make_client
 from cmd_discuss import call_as_model, resolve_channel, who
-from cmd_read import READ_TIMEOUT, pali_channel, fetch_books, fetch_paragraphs_info, row_text
+from cmd_read import READ_TIMEOUT, pali_channel, fetch_related_cs, row_text
 from cmd_write import confirm
 from errors import ApiError, WpError, explain_api_error
 
@@ -82,24 +82,18 @@ def parse_sid(text):
 def locate(client, book_name, cs_para):
     """返回 [{layer, book, title, paras:[…]}]，按 根本→义注→复注 排序。
 
-    书目清单的 related_name 就是 CST 书名；对每本同名书取段落清单，挑出锚点等于
-    cs_para 的**正文段**（level=100）——标题行的 cs_para 常与上一段正文共用，
-    拿来对齐会选错层（见 wikipali-mobile docs/commentary-layers.md §3）。
+    与 related-cs 同源：走 v3 的 tipitaka-related-paragraphs，服务端按 CST 锚点一次给全
+    各层的对照段落，不必再靠书目清单 + 段落清单自己对齐（旧实现会因标题行的 cs_para 与
+    上一段正文共用而对错层）。
     """
-    books = [b for b in fetch_books(client) if b.get('related_name') == book_name]
-    if not books:
-        raise WpError(f'书目清单里没有 CST 书名为「{book_name}」的书。书名形如 an6、dn1、mn1。\n'
-                      '清单有本地缓存，书目刚更新过可加 --refresh-books。')
     found = []
-    for b in books:
-        layer = book_layer(b.get('tags'))
-        rows = fetch_paragraphs_info(client, int(b['book']), int(b['paragraph']))
-        paras = [int(r['paragraph']) for r in rows
-                 if r.get('book_name') == book_name and r.get('cs_para') == cs_para
-                 and int(r.get('level') or 0) == 100]
+    for r in fetch_related_cs(client, book_name, cs_para):
+        paras = [int(p) for p in (r.get('para') or [])]
         if paras:
-            found.append({'layer': layer, 'book': int(b['book']),
-                          'title': b.get('toc') or b.get('title'), 'paras': sorted(paras)})
+            found.append({'layer': book_layer(r.get('tags')),
+                          'book': int(r.get('book')),
+                          'title': r.get('title'),
+                          'paras': sorted(paras)})
     order = {name: i for i, (name, _) in enumerate(LAYERS)}
     found.sort(key=lambda f: (order.get(f['layer'], 9), f['book']))
     return found
@@ -140,8 +134,6 @@ def build_layer(client, entry, channel_uid):
 
 def cmd_note_context(args):
     client = make_client(args)
-    if args.refresh_books:
-        fetch_books(client, refresh=True)
     channel_uid, channel_name = resolve_channel(client, args.channel)
     if channel_uid == pali_channel(client):
         raise WpError('要给 --channel（译文所在的版本）：对应挂在译文句子上，位置按译文数。')
