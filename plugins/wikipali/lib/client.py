@@ -56,7 +56,8 @@ def note(msg):
     print(msg, file=sys.stderr)
 
 
-def http_json(api_url, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT, v3=False):
+def http_json(api_url, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT, v3=False,
+              headers=None, envelope=False):
     """发一个 JSON 请求，返回解析后的响应体（dict）。
 
     网络层失败抛 urllib 的异常（由 Client 决定是否 fallback）；
@@ -64,13 +65,17 @@ def http_json(api_url, method, path, token=None, body=None, query=None, timeout=
 
     v3=True 时按 v3 原生 Resource 信封处理：没有 ok 字段，成败只看 HTTP 状态码，
     同样返回 payload 的 data；v2 仍按 {ok, message, data} 判 ok。
+    envelope=True（只对 v3）返回整个响应体，列表要读 meta（分页）时用。
+    headers 是额外的请求头，如 agent 写入授权 X-Agent-Grant。
     """
     # 路径里可能有巴利词（parivāsa），urllib 只接受 ASCII，必须先百分号编码
     url = api_url + "/" + urllib.parse.quote(path.lstrip("/"), safe="/")
     if query:
         url += "?" + urllib.parse.urlencode({k: v for k, v in query.items() if v is not None})
     data = None
-    headers = {"Accept": "application/json", "User-Agent": "wikipali-write-skill"}
+    # 本工具的界面是中文；v3 按 Accept-Language 返回错误文案（v2 不看这个头）
+    headers = {"Accept": "application/json", "Accept-Language": "zh-Hans",
+               "User-Agent": "wikipali-write-skill", **(headers or {})}
     if body is not None:
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -94,7 +99,7 @@ def http_json(api_url, method, path, token=None, body=None, query=None, timeout=
     if not isinstance(payload, dict):
         raise ApiError(status, f"响应不是 JSON：{raw[:200]}", url=url, body=raw)
     if v3:
-        return payload.get("data")
+        return payload if envelope else payload.get("data")
     if not payload.get("ok", False):
         raise ApiError(status, payload.get("message") or "请求失败", url=url, body=payload)
     return payload.get("data")
@@ -158,12 +163,14 @@ class Client:
         )
         return [s["url"] for s in others]
 
-    def call(self, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT, v3=False):
+    def call(self, method, path, token=None, body=None, query=None, timeout=DEFAULT_TIMEOUT, v3=False,
+             headers=None, envelope=False):
         urls = [self.api_url] + (self.fallback_order() if self.allow_fallback else [])
         last = None
         for idx, url in enumerate(urls):
             try:
-                data = http_json(url, method, path, token=token, body=body, query=query, timeout=timeout, v3=v3)
+                data = http_json(url, method, path, token=token, body=body, query=query, timeout=timeout,
+                                 v3=v3, headers=headers, envelope=envelope)
             except (urllib.error.URLError, TimeoutError, OSError,
                     http.client.HTTPException) as exc:
                 # IncompleteRead 属于 HTTPException 而非 OSError——大响应（如两百多万

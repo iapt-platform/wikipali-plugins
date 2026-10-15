@@ -2,7 +2,7 @@
 
 一条对应 = 一条 `type='commentary'` 的 discussion：
 
-- target：`res_type='sentence'`、`res_id=<上一层某句译文的 uid>`，加上锚点
+- target：`target_type='sentence'`、`target_id=<上一层某句译文的 uid>`，加上锚点
   `pos_start` / `pos_end` / `quote_exact` / `quote_prefix` / `quote_suffix`；
 - body：`content = '{{book-para-start-end}}'`——下一层（义注 / 复注）句子的模板，
   **不是**译文本身，渲染时才按当前 channel 取译文。一个片段由多句解释时并列多个
@@ -27,7 +27,7 @@ import json
 import sys
 
 from client import WRITE_TIMEOUT, make_client
-from cmd_discuss import call_as_model, resolve_channel, who
+from cmd_discuss import call_as_agent, call_as_model, resolve_channel, who
 from cmd_read import READ_TIMEOUT, pali_channel, fetch_related_cs, row_text
 from cmd_write import confirm
 from errors import ApiError, WpError, explain_api_error
@@ -290,11 +290,10 @@ def load_items(path):
     return items, bad
 
 
-def existing_notes(client, res_id):
-    data = call_as_model(client, 'GET', 'v2/discussion', '列出已有对应',
-                         query={'view': 'question', 'res_type': 'sentence', 'id': res_id,
-                                'type': COMMENTARY_TYPE, 'status': 'active', 'limit': 200})
-    return (data or {}).get('rows') or []
+def existing_notes(client, sent_uid):
+    return call_as_model(client, 'GET', 'v3/discussions', '列出已有对应',
+                         query={'target_type': 'sentence', 'target_id': sent_uid,
+                                'type': COMMENTARY_TYPE, 'per_page': 200}) or []
 
 
 def cmd_note_push(args):
@@ -339,21 +338,23 @@ def cmd_note_push(args):
             # 一条对应 = 一条记录。一个词由下一层多句解释时，content 按顺序并列
             # 这几句的模板：{{b-p-s-e}}{{b-p-s-e}}…
             tpl = ''.join(f'{{{{{nb}-{np_}-{ns}-{ne}}}}}' for nb, np_, ns, ne in runs)
-            body = {'res_id': row['id'], 'res_type': 'sentence', 'type': COMMENTARY_TYPE,
-                    'content': tpl, 'content_type': 'markdown', 'notification': False}
+            body = {'target_id': row['id'], 'target_type': 'sentence', 'type': COMMENTARY_TYPE,
+                    'content': tpl, 'notify': False}
             if start is not None:
                 body.update({'pos_start': start, 'pos_end': end,
                              'quote_exact': it['quote_exact'],
                              'quote_prefix': pre, 'quote_suffix': suf})
             dup = [e for e in cache[row['id']] if (e.get('content') or '').strip() == tpl]
-            plan.append({'n': n, 'target': tsid, 'body': body, 'dup': dup, 'notes': runs})
+            # 写入授权按 (channel, book) 划范围：target 句子在 --channel 里、book 取自坐标
+            scope = (channel_uid, int(tsid.split('-')[0]))
+            plan.append({'n': n, 'target': tsid, 'body': body, 'dup': dup, 'notes': runs, 'scope': scope})
         except WpError as exc:
             problems.append((n, it, str(exc)))
 
     print('=' * 72)
     print(f'API      : {client.api_note()}')
     print(f'模型身份 : {client.model.get("name")}  uid={client.model.get("uid")}')
-    print(f'channel  : {channel_name or channel_uid}')
+    print(f'channel  : {channel_name or channel_uid}（写入时按 book 申请授权，署名为授权人、模型记为协作者）')
     print('-' * 72)
     for p in plan:
         b = p['body']
@@ -393,10 +394,9 @@ def cmd_note_push(args):
 
     for p in todo:
         for old in p['dup']:
-            call_as_model(client, 'DELETE', f'v2/discussion/{old["id"]}', '删除旧对应',
+            call_as_agent(client, 'DELETE', f'v3/discussions/{old["id"]}', '删除旧对应', p['scope'],
                           timeout=WRITE_TIMEOUT)
-        saved = call_as_model(client, 'POST', 'v2/discussion', '写入对应',
+        saved = call_as_agent(client, 'POST', 'v3/discussions', '写入对应', p['scope'],
                               body=p['body'], timeout=WRITE_TIMEOUT)
-        print(f'  #{p["n"]:<3} 已写入 {saved.get("id")}  editor={who(saved)}')
-    print('提示：阅读页按 (book, para, channel) 缓存；若服务端写批注时不清缓存，新对应要等缓存过期才显示。')
+        print(f'  #{p["n"]:<3} 已写入 {saved.get("id")}  署名 {who(saved)}')
     return 1 if problems else 0

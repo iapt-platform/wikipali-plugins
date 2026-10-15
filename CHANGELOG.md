@@ -3,6 +3,29 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.18.0] - 2026-10-15
+
+### 变更
+- **批注（discuss / discuss-add / discuss-reply / discuss-edit / discuss-delete / note-push）改走 v3
+  `/v3/discussions`**。写入要人类授权：工具用你的登录身份为模型签一张「channel + book」的写入授权
+  （`POST /v3/agent-grants`，7 天，缓存在凭据文件的 `agent_grants` 里自动复用、被撤销时自动重签一次），
+  写入带请求头 `X-Agent-Grant`。署名改为**你**（授权人），模型记为协作者，显示成「你（与 模型）」。
+  读不需要授权。**需要服务端已部署 v3 discussions 与 agent-grants**，否则这些命令 404。
+- discussion / qa / help / issue 类话题**必须给 `--title`**，且不收锚点；锚点只有 note / commentary 收。
+- `discuss-edit` 只提交改了的字段（v3 局部更新），不再先取回整条再全量覆盖。
+- `discuss-delete`：作者或该句所在 channel 的编辑者可删，软删除。
+- client：`http_json` / `Client.call` 增加 `headers`（额外请求头）与 `envelope`（返回含 `meta` 的完整响应）；
+  默认发 `Accept-Language: zh-Hans`，v3 的错误说明为中文。
+
+### 新增
+- `--type issue`（问题报告）。
+- `--severity`：`issue` 可选 `error` / `warning` / `suggestion`，`help` 可选 `urgent` / `normal`，
+  本地先校验与类型是否匹配；`discuss-edit` 也可改。
+
+### 移除
+- `discuss` 的 `--offset`（改用 `--page`，`--limit` 最多 200）。
+- `discuss-add` / `discuss-reply` 的 `--content-type`（v3 只收 markdown）；`discuss-reply` 的锚点参数。
+
 ## [0.17.0] - 2026-09-28
 
 ### 新增
