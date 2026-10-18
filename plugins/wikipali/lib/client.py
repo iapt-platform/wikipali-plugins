@@ -22,6 +22,27 @@ DEFAULT_TIMEOUT = 30
 WRITE_TIMEOUT = 120
 DEFAULT_BATCH = 50
 
+# 客户端身份：User-Agent 用标准「软件/版本」格式。版本只有 plugin.json 一处来源
+# （与 install.sh 同一约定），读不到就退回 0.0.0。
+DEFAULT_VERSION = "0.0.0"
+
+
+def client_version():
+    """从 <插件根>/.claude-plugin/plugin.json 读版本，失败退回 DEFAULT_VERSION。"""
+    try:
+        root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+        path = os.path.join(root, ".claude-plugin", "plugin.json")
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, dict) and data.get("version"):
+            return data["version"]
+    except (OSError, ValueError):
+        pass
+    return DEFAULT_VERSION
+
+
+USER_AGENT = f"wikipali-plugins/{client_version()}"
+
 
 def mask(token):
     if not token:
@@ -74,8 +95,9 @@ def http_json(api_url, method, path, token=None, body=None, query=None, timeout=
         url += "?" + urllib.parse.urlencode({k: v for k, v in query.items() if v is not None})
     data = None
     # 本工具的界面是中文；v3 按 Accept-Language 返回错误文案（v2 不看这个头）
+    # User-Agent 标识客户端软件（wikipali-plugins/版本），版本取自 plugin.json。
     headers = {"Accept": "application/json", "Accept-Language": "zh-Hans",
-               "User-Agent": "wikipali-write-skill", **(headers or {})}
+               "User-Agent": USER_AGENT, **(headers or {})}
     if body is not None:
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers["Content-Type"] = "application/json"
