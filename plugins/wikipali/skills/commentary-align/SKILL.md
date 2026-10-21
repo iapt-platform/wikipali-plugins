@@ -154,7 +154,7 @@ wikipali note-push items.jsonl --channel <channel_uid> -y
 wikipali discuss <book>:<para> --channel <channel_uid> --words <起-止> --type commentary
 ```
 
-改错一条用 `discuss-edit <id> --quote-exact … --pos-start … --pos-end …`，删用 `discuss-delete <id>`。
+改错一条用 `discuss-edit <id> --quote-exact …`（位置由工具按摘录重新算），删用 `discuss-delete <id>`。
 
 ## 要点
 

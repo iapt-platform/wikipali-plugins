@@ -3,6 +3,29 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.19.0] - 2026-10-21
+
+### 新增
+- **`--type glossary`（外挂术语）**：不改译文，给一段译文临时挂上术语，供讨论该词值不值得正式收进
+  术语表；阅读页把那段文字显示成术语，关闭后不再显示。`--title` 必填且就是术语词头，必须给
+  `--quote-exact`；只能挂在句子上，只有该句所在 channel 的编辑者能建。与术语表（`term-add`）是两回事：
+  用户说「新建术语」仍走 `term-add`，说「给译文添加外挂术语」才用它。
+- **issue 可带锚点**：给 `--quote-exact` 后阅读页把那段文字标成波浪下划线（颜色随 `--severity`），
+  不给则在句尾显示三角图标。
+- **锚点只给摘录即可**：`discuss-add` / `discuss-edit` 只要 `--quote-exact`，工具先取句子原文，
+  算出 `pos_start` / `pos_end` 与前后缀，不必再自己数字符位；摘录不在句中、出现多次又没给前后缀、
+  位置与摘录不符时报错。外挂术语的摘录与句中已有的术语 / 模板 / 格式重叠、或含 `[ ] { } | #` 时
+  提前报错（服务端遇到这些会静默不显示）。
+
+### 变更
+- 锚点不再只限 note / commentary：note / commentary / issue / glossary 都收，discussion / qa / help 仍不收。
+- `discuss-edit` 给了新的 `--quote-exact` 时按句子原文重新定位；确认回显显示合并后的完整锚点。
+- 摘录定位函数从 `cmd_notes.py` 移到 `lib/anchors.py`，`note-push` 与 `discuss-*` 共用。
+- 文档：write skill 的说法映射表加入 issue（带 / 不带位置）、外挂术语，并区分「外挂术语」与「术语」；
+  `references/api-write.md` 与 `docs/wikipali-api-calls.md` 同步七类 type、锚点、阅读页注入与可见性
+  （issue / glossary 对所有人可见，只有 discussion 不公开）。**需要服务端已部署 glossary 与 issue 锚点**，
+  否则 `--type glossary` 与带锚点的 issue 会被 422。
+
 ## [0.18.0] - 2026-10-15
 
 ### 变更

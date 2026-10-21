@@ -33,7 +33,7 @@
 | 读 | `GET {API}/v2/search-pali-wbw` | 按词形列表检索命中的段落，带页码出处与黑体高亮 |
 | 读 | `GET {API}/v2/search-pali-wbw-books` | 统计词形在各部书里的词次分布（数词次，不是段落数） |
 | 读 | `GET {API}/v2/sentence` | 按坐标取原文/译文句子（view=paragraph / chapter） |
-| 读 | `GET {API}/v2/sentence/{uid}` | 取单句，拿到它所属的 channel 与 book |
+| 读 | `GET {API}/v2/sentence/{uid}` | 取单句，拿到它所属的 channel 与 book、原始 content |
 | 读 | `GET {API}/v2/palitext` | 目录类查询（view=book-toc / paragraphs-info 等） |
 | 读 | `GET {API}/v2/para-info` | 取某章辖区的段落清单（每段是标题还是正文、多长） |
 | 读 | `GET {API}/v2/palitext/{book}-{para}` | 段落/章节元信息（chapter_len / strlen / pcd_book_id / path） |
@@ -146,10 +146,12 @@
 
 ## 6. 单句 —— `GET {API}/v2/sentence/{uid}`
 
-取单句，拿到它所属的 channel 与 book。
+取单句，拿到它所属的 channel 与 book，以及原始 content。
 
 - **入参**：路径参数 `{uid}`（`v2/sentence` 返回的 `id`）。
-- **返回**：`data: { …, channel: { id, … }, book }`——写批注前用 `data.channel.id`、`data.book` 申请授权。
+- **返回**：`data: { …, content, content_type, channel: { id, … }, book }`——写批注前用
+  `data.channel.id`、`data.book` 申请授权；`discuss-add` / `discuss-edit` 用 `data.content`
+  按 `--quote-exact` 算锚点位置。
 
 ## 7. 目录 —— `GET {API}/v2/palitext`
 
@@ -437,7 +439,8 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 ## 37. 列批注 —— `GET {API}/v3/discussions`
 
 - **入参**：query `target_type`、`target_id`（必填，句子 uid）、`type`、`status`、
-  `per_page`（≤200）、`page`。不带 `type` 只列话题，批注要显式 `type=note`/`commentary`。
+  `per_page`（≤200）、`page`。不带 `type` 只列话题（含 issue / glossary），批注要显式
+  `type=note`/`commentary`。
 - **返回**：`data: [ { id, target_type, target_id, type, title, content, status, editor, co_editor, reply_count, abilities, pos_start/pos_end/quote_exact/quote_prefix/quote_suffix, created_at, … } ]` + `meta` 分页。
 
 ## 38. 批注统计 —— `GET {API}/v3/discussions/summary`
@@ -462,10 +465,14 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
   { "target_type": "sentence", "target_id": "<句子 uid>", "type": "discussion",
     "title": "标题（话题必填，批注可省）", "content": "markdown 正文", "notify": false }
   ```
-  - `type` 六类：`note`/`commentary`（批注，收锚点，注入阅读页）、`discussion`/`qa`/`help`/
-    `issue`（话题，**title 必填**，不收锚点）。
-  - 锚点字段（W3C Web Annotation，只有批注收）：`pos_start`/`pos_end`（`mb_strlen` 口径）、
-    `quote_exact`、`quote_prefix`/`quote_suffix`。
+  - `type` 七类：`note`/`commentary`（批注，收锚点，注入阅读页）、`discussion`/`qa`/`help`
+    （话题，**title 必填**，不收锚点）、`issue`（话题，title 必填，收锚点，注入阅读页高亮）、
+    `glossary`（外挂术语：话题，**title 必填且为术语词头**，必须有锚点，只能挂句子，
+    注入阅读页显示成术语）。
+  - 锚点字段（W3C Web Annotation，`note`/`commentary`/`issue`/`glossary` 收，其余 422）：
+    `pos_start`/`pos_end`（`mb_strlen` 口径）、`quote_exact`、`quote_prefix`/`quote_suffix`。
+    CLI 只要 `--quote-exact`，位置与前后缀在本地按句子原文算（`lib/anchors.py`），
+    算之前先 `GET {API}/v2/sentence/{uid}` 取原文（§6）。
   - `commentary` 的 `content` 是下一层句子模板 `{{book-para-start-end}}`（可并列多个）。
   - `severity` 随 type：`issue`→`error/warning/suggestion`，`help`→`urgent/normal`，其它类型传了 422。
   - `notify` 缺省 true；AI 批量写显式给 `false`。
@@ -479,7 +486,8 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 ## 43. 修改 —— `PATCH {API}/v3/discussions/{id}`
 
 - **入参**：body 只提交要改的字段（**局部更新，无 PUT**）。`title`/`status`/`type`/`severity`
-  只对话题有效；批注 `type` 只能在 `note`/`commentary` 之间改。
+  只对话题有效；批注 `type` 只能在 `note`/`commentary` 之间改。改 type 时锚点保留。
+  CLI 给了新的 `--quote-exact` 时先取句子原文重新定位（同 §41）。
 - **返回**：200 `data: { … }`。
 
 ## 44. 删除 —— `DELETE {API}/v3/discussions/{id}`

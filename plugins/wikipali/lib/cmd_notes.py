@@ -26,6 +26,7 @@
 import json
 import sys
 
+from anchors import anchor
 from client import WRITE_TIMEOUT, make_client
 from cmd_discuss import call_as_agent, call_as_model, resolve_channel, who
 from cmd_read import READ_TIMEOUT, pali_channel, fetch_related_cs, row_text
@@ -37,8 +38,6 @@ LAYERS = [('mūla', '根本'), ('aṭṭhakathā', '义注'), ('ṭīkā', '复�
 LAYER_ALIAS = {'mula': 'mūla', 'mūla': 'mūla', 'pāḷi': 'mūla', 'pali': 'mūla',
                'att': 'aṭṭhakathā', 'aṭṭhakathā': 'aṭṭhakathā', 'atthakatha': 'aṭṭhakathā',
                'tika': 'ṭīkā', 'ṭīkā': 'ṭīkā'}
-# 前后缀取多长：设计文档建议 32~64 字符
-CONTEXT_CHARS = 32
 
 
 def emit(args, payload, render):
@@ -180,49 +179,6 @@ def cmd_note_context(args):
 # ---------------------------------------------------------------------------
 # note-push
 # ---------------------------------------------------------------------------
-
-
-def in_template(text, pos):
-    """pos 是否落在 {{…}} 或 [[…]] 里面——在那里插入会把模板劈开。"""
-    for open_, close in (('{{', '}}'), ('[[', ']]')):
-        start = text.rfind(open_, 0, pos)
-        if start != -1 and text.find(close, start, pos) == -1 and text.find(close, pos) != -1:
-            return True
-    return False
-
-
-def anchor(text, item):
-    """在译文原文里定位 quote_exact，返回 (pos_start, pos_end, prefix, suffix)。
-
-    摘录出现多次时用模型给的 prefix / suffix 消歧；仍不唯一就报错，**不猜**。
-
-    不给 quote_exact ＝ **整句挂**（四项都返回 None）：段落在第一个黑体之前的引子没有
-    对应片段，挂在章节标题句上，阅读页插在句尾。这是 commentary-align 规则 3 的情形，
-    不是漏填——别的情形都该给摘录。
-    """
-    exact = item.get('quote_exact') or ''
-    if not exact:
-        return (None, None, None, None)
-    hits = []
-    i = text.find(exact)
-    while i != -1:
-        hits.append(i)
-        i = text.find(exact, i + 1)
-    if not hits:
-        raise WpError(f'quote_exact「{exact}」不在该句译文里（必须原样摘录，含标点）')
-    if len(hits) > 1:
-        pre, suf = item.get('quote_prefix') or '', item.get('quote_suffix') or ''
-        hits = [h for h in hits
-                if text[:h].endswith(pre) and text[h + len(exact):].startswith(suf)]
-        if len(hits) != 1:
-            raise WpError(f'quote_exact「{exact}」在句中出现多次，前后缀也无法唯一确定')
-    start = hits[0]
-    end = start + len(exact)
-    if in_template(text, end):
-        raise WpError(f'「{exact}」的结束位落在模板 / 链接内部，插入会破坏它；换个摘录范围')
-    return (start, end,
-            text[max(0, start - CONTEXT_CHARS):start],
-            text[end:end + CONTEXT_CHARS])
 
 
 def note_list(value):

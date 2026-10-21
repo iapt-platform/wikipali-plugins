@@ -236,8 +236,9 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 | `GET v3/discussions/{id}` | — | 单条 |
 | `GET v3/discussions/{id}/replies` | `per_page`、`page` | 某话题下的回复，按时间正序 |
 
-- **不带 `type` 只列话题**（discussion / qa / help / issue），批注要显式 `type=note` / `commentary`。
-- 未登录看不到 discussion / issue；`basic` 角色在自己管不了的句子上只看得到自己发的。
+- **不带 `type` 只列话题**（discussion / qa / help / issue / glossary），批注要显式 `type=note` / `commentary`。
+- 未登录看不到 discussion；`basic` 角色在自己管不了的句子上只看得到自己发的 discussion。
+  issue / glossary 会注入公开的阅读页，所以对所有人可见。
 
 ### 新建
 
@@ -254,16 +255,24 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 }
 ```
 
-句子上的批注按 `type` 分六类：
+句子上的批注按 `type` 分七类：
 
 | type | 用户的说法 | 标题 | content | 锚点 | 阅读页 |
 |---|---|---|---|---|---|
 | `note` | 批注、脚注 | 可省 | 注解正文本身（必填） | 收 | 边注正文就是它，**没有**出处 |
 | `commentary` | 注释对照、义注对照、复注对照 | 可省 | 下一层句子模板 `{{book-para-start-end}}`（必填，格式不对 422；一个片段由多句解释时并列多个模板，仍是一条记录） | 收 | 边注正文是那几句在当前 channel 的译文，末尾带 `<cite>义注</cite>` |
 | `discussion` | 审稿意见、讨论（默认） | **必填** | 正文 | 不收（422） | 不进阅读页 |
-| `qa` / `help` / `issue` | 问答 / 求助 / 问题 | **必填** | 正文 | 不收 | 不进阅读页 |
+| `qa` / `help` | 问答 / 求助 | **必填** | 正文 | 不收 | 不进阅读页 |
+| `issue` | 问题（译错、漏译、标点…） | **必填** | 正文 | 收 | 有锚点：那段文字加波浪下划线（颜色随 severity），点开看内容；没锚点：句尾一个三角叹号。关闭后不再显示 |
+| `glossary` | 外挂术语 | **必填，填术语词头** | 说明（可省） | **必须有** | 那段文字换成 `[[词头#原文]]`，渲染成术语。关闭后不再显示 |
 
-**锚点字段**（W3C Web Annotation 的 TextPosition / TextQuote 选择器），只有批注收：
+`glossary`（外挂术语）**不改译文**，给一段译文临时挂上术语，供讨论该词值不值得正式收进术语表；
+与术语表（`v2/terms`，`term-add`）是两回事。只能挂在句子上，只有该句所在 channel 的编辑者能建。
+词头与被挂的那段原文里都不能有 `[ ] { } | #`，那段原文也不能和句中已有的 `[[…]]` / `{{…}}` /
+粗体等标记重叠——否则渲染不了，服务端会直接不显示这条。
+
+**锚点字段**（W3C Web Annotation 的 TextPosition / TextQuote 选择器），`note` / `commentary` /
+`issue` / `glossary` 收，其余类型传了 422：
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
@@ -271,15 +280,22 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 | `quote_exact` | 字符串，可空 | 被锚定文本的原样摘录 |
 | `quote_prefix` / `quote_suffix` | 字符串，可空 | 摘录前后的上下文（建议 32~64 字符），抗文本位移 |
 
-批注被**注入阅读页**：服务端在句子原始 content 的 `pos_end` 处插一条边注
-（`PaliContentService::injectAnnotationNotes`），位置为空或越界时挂到句尾；写入后服务端会清该段的阅读页缓存。
-批注下的回复不注入。
+这四类被**注入阅读页**（`PaliContentService::injectAnnotationNotes`，排版在 `AnnotationLayout`）：
+批注在锚点末尾插一条边注（没有锚点挂到句尾），glossary 把锚点处的原文换成术语，issue 高亮锚点处
+的原文（没有锚点就在句尾放三角图标）。位置以 `pos_*` 为准；与 `quote_exact` 对不上（译文改过）时，
+服务端按摘录（参考前后缀）重新定位，找不到的 issue 显示成句尾图标、glossary 不显示。交叠的 issue
+合并成一个高亮；issue 与 glossary 交叠时 issue 扩展到包住 glossary；两个 glossary 交叠只留一个。
+写入后服务端会清该段的阅读页缓存。回复不注入。
+
+CLI 的 `discuss-add` / `discuss-edit` 只要 `--quote-exact`，位置与前后缀由程序在句子原文里算
+（`lib/anchors.py`），不必让模型数字符位。
 
 `commentary` 即注释书对应：`target_id` 是上一层（根本 / 义注）某句**译文**的 uid，写法见
 `note-push` 与 `skills/commentary-align`；其余用 `discuss-add --type <type>`。
 
 `severity`（严重 / 紧急程度）取值随 type：`issue` 为 `error` / `warning` / `suggestion`，`help` 为
-`urgent` / `normal`，其它类型传了 422。改 type 时新类型不收原值的，服务端自动清空。
+`urgent` / `normal`，其它类型传了 422。改 type 时新类型不收原 severity 的，服务端自动清空；
+锚点不清（留着不显示，改回可带锚点的类型时恢复）。
 
 v3 只收 markdown，没有 `content_type`。`notify` 缺省是 **true**（会发站内通知），AI 批量写时显式给
 `false`；新建批注本来就不发。
@@ -293,6 +309,7 @@ v3 只收 markdown，没有 `content_type`。`notify` 缺省是 **true**（会�
 
 `PATCH {API}/v3/discussions/{id}`：**局部更新**，只改传了的字段（没有 PUT）。`title` / `status` /
 `type` / `severity` 只对话题有效；批注没有 `status`，type 只能在 note / commentary 之间改。
+改成 `glossary` 须挂在句子上、且是该句的编辑者。
 
 `DELETE {API}/v3/discussions/{id}`：**软删除**，返回 200 + 删除后的记录。作者或该句所在 channel 的
 编辑者可删；有回复的话题删后以「已删除」占位保留。

@@ -16,6 +16,7 @@ uid 是逐句、逐 channel 的——同一段巴利原文和它的中译是两�
 import json
 import time
 
+from anchors import anchor, check_glossary
 from client import TOKEN_REFRESH_MARGIN, WRITE_TIMEOUT, make_client, note, token_expiry
 from cmd_read import READ_TIMEOUT, pali_channel, row_text
 from cmd_write import confirm, iso_now, pick_channel, refresh_model_token
@@ -24,18 +25,25 @@ from errors import ApiError, WpError, explain_api_error
 
 TARGET_TYPE = 'sentence'
 GRANT_HEADER = 'X-Agent-Grant'
-# 句子上的六类批注（按用户的说法选，见 skills/write）：
+# 句子上的七类批注（按用户的说法选，见 skills/write）：
 #   note        批注 / 脚注——正文就是注解本身
 #   commentary  注释对照 / 义注对照 / 复注对照——正文是下一层句子模板，见 cmd_notes
 #   discussion  审稿意见 / 讨论（默认）
 #   qa          问答
 #   help        求助
 #   issue       问题报告（错误 / 待修）
-# 锚点只有批注（note / commentary）收；它们会被注入阅读页
-# （api-v13 的 PaliContentService::injectAnnotationNotes），其余四类只在批注列表里，
-# 而且必须有标题。v3 不带 type 列表时只列后三类（评论线程），批注要显式 --type。
-DISCUSS_TYPES = ['note', 'commentary', 'discussion', 'qa', 'help', 'issue']
+#   glossary    外挂术语——不改译文，给一段译文临时挂上术语（标题是词头），
+#               用来讨论这个词值不值得正式收进术语表；与术语表（term-*）是两回事
+# note / commentary 是批注（标题可省、没有开关）；其余五类是话题，必须有标题。
+# 锚点只有 note / commentary / issue / glossary 收（discussion / qa / help 是整句的）。
+# 这四类会被注入阅读页（api-v13 PaliContentService::injectAnnotationNotes）：批注插边注，
+# glossary 把锚点处的原文换成术语，issue 高亮锚点处的原文（没有锚点就在句尾显示三角图标）；
+# issue / glossary 关闭后不再注入。
+# v3 不带 type 列表时只列话题（评论线程），批注要显式 --type。
+DISCUSS_TYPES = ['note', 'commentary', 'discussion', 'qa', 'help', 'issue', 'glossary']
 ANNOTATION_TYPES = ['note', 'commentary']
+ANCHORED_TYPES = ['note', 'commentary', 'issue', 'glossary']
+GLOSSARY = 'glossary'
 # 严重 / 紧急程度，取值随 type（与 api-v13 Discussion::SEVERITIES 一致），其余类型不收
 SEVERITIES = {'issue': ['error', 'warning', 'suggestion'], 'help': ['urgent', 'normal']}
 SEVERITY_CHOICES = sorted({v for values in SEVERITIES.values() for v in values})
@@ -85,13 +93,18 @@ def explain_discuss_error(exc, what):
     return explain_api_error(exc, what)
 
 
-def sentence_scope(client, sent_uid):
-    """句子所在的 (channel uid, book)——agent 授权按这两样划范围。"""
+def fetch_sentence(client, sent_uid):
+    """取一条句子（含原始 content、所在 channel 与 book）。"""
     try:
-        data = client.call('GET', f'v2/sentence/{sent_uid}', timeout=READ_TIMEOUT)
+        return client.call('GET', f'v2/sentence/{sent_uid}', timeout=READ_TIMEOUT) or {}
     except ApiError as exc:
         raise explain_api_error(exc, f'取句子 {sent_uid}')
-    channel = (data or {}).get('channel') or {}
+
+
+def sentence_scope(client, sent_uid, data=None):
+    """句子所在的 (channel uid, book)——agent 授权按这两样划范围。"""
+    data = data if data is not None else fetch_sentence(client, sent_uid)
+    channel = data.get('channel') or {}
     if not channel.get('id'):
         raise WpError(f'句子 {sent_uid} 查不到所在的 channel，无法申请写入授权。')
     return channel['id'], int(data.get('book') or 0)
@@ -294,6 +307,30 @@ def anchor_body(args):
     return body
 
 
+def locate_anchors(text, anchors):
+    """按摘录补全锚点：给了 --quote-exact 没给位置，就在句子原文里找出位置与前后缀。
+
+    位置交给程序算（见 anchors.py）。两样都给了就核对：位置上的文字必须就是摘录。
+    补出的前后缀不覆盖用户显式给的。
+    """
+    exact = anchors.get('quote_exact')
+    if not exact:
+        return anchors
+    start, end = anchors.get('pos_start'), anchors.get('pos_end')
+    if start is not None and end is not None:
+        if text[start:end] != exact:
+            raise WpError(f'--pos-start/--pos-end 处的文字是「{text[start:end]}」，'
+                          f'与 --quote-exact「{exact}」不符。只给摘录就行，位置由程序算。')
+        return anchors
+    if start is not None or end is not None:
+        raise WpError('--pos-start / --pos-end 要么都给、要么都不给（只给摘录时程序会算）。')
+    start, end, prefix, suffix = anchor(text, anchors)
+    located = {**anchors, 'pos_start': start, 'pos_end': end}
+    located.setdefault('quote_prefix', prefix)
+    located.setdefault('quote_suffix', suffix)
+    return located
+
+
 def actor_name(actor):
     actor = actor or {}
     return actor.get('nickName') or actor.get('userName') or '(未知)'
@@ -312,8 +349,12 @@ def who(row):
 # ---------------------------------------------------------------------------
 
 
-def confirm_and_send(client, args, body, header_lines, what, method, path, scope):
-    """回显将要写入的内容、确认后以模型身份 + 人类授权提交。"""
+def confirm_and_send(client, args, body, header_lines, what, method, path, scope, anchor_view=None):
+    """回显将要写入的内容、确认后以模型身份 + 人类授权提交。
+
+    anchor_view：回显锚点用的完整字段。PATCH 只发改了的字段，直接拿 body 回显会缺一半
+    （如只改了起点就显示成 [11-None]），所以修改时传入合并后的锚点。
+    """
     print('=' * 72)
     print(f'API      : {client.api_note()}')
     model = client.model
@@ -324,8 +365,9 @@ def confirm_and_send(client, args, body, header_lines, what, method, path, scope
     print('-' * 72)
     if body.get('title'):
         print(f'  标题 : {body["title"]}')
-    if fmt_anchor(body):
-        print(f'  锚点 : {fmt_anchor(body)}')
+    shown = fmt_anchor(anchor_view if anchor_view is not None else body)
+    if shown:
+        print(f'  锚点 : {shown}')
     for line in (body.get('content') or '').splitlines():
         print(f'  | {line}')
     if 'notify' in body:
@@ -354,14 +396,21 @@ def cmd_discuss_add(args):
     sent_uid, desc = resolve_sentence(args, client)
     content = read_content(args)
     anchors = anchor_body(args)
-    if args.type not in ANNOTATION_TYPES:
-        if not args.title:
-            raise WpError(f'{args.type} 类话题必须给 --title（审稿意见 / 问答 / 求助是要被列出来讨论的）。')
-        if anchors:
-            raise WpError('锚点（--pos-* / --quote-*）只有批注（note / commentary）收，'
-                          f'{args.type} 是整句的话题。')
+    if args.type not in ANNOTATION_TYPES and not args.title:
+        if args.type == GLOSSARY:
+            raise WpError('外挂术语必须给 --title：术语的词头（巴利词，如 bhikkhu）。')
+        raise WpError(f'{args.type} 类话题必须给 --title（审稿意见 / 问答 / 求助 / 问题是要被列出来讨论的）。')
+    if anchors and args.type not in ANCHORED_TYPES:
+        raise WpError('锚点（--pos-* / --quote-*）只有 note / commentary / issue / glossary 收，'
+                      f'{args.type} 是整句的话题。')
 
     check_severity(args.type, args.severity)
+
+    sentence = fetch_sentence(client, sent_uid)
+    text = sentence.get('content') or ''
+    anchors = locate_anchors(text, anchors)
+    if args.type == GLOSSARY:
+        check_glossary(text, anchors.get('pos_start'), anchors.get('pos_end'), args.title)
 
     body = {
         'target_type': TARGET_TYPE,
@@ -378,7 +427,7 @@ def cmd_discuss_add(args):
     header = [f'批注对象 : {desc}', f'句子 uid : {sent_uid}',
               f'类型     : {args.type}' + (f'（{args.severity}）' if args.severity else '')]
     saved = confirm_and_send(client, args, body, header, '新建批注', 'POST', 'v3/discussions',
-                             sentence_scope(client, sent_uid))
+                             sentence_scope(client, sent_uid, sentence))
     if saved is None:
         return 1 if not args.dry_run else 0
     report_saved(saved)
@@ -430,7 +479,15 @@ def cmd_discuss_edit(args):
         check_severity(old.get('type'), args.severity)
         body['severity'] = args.severity
     anchors = anchor_body(args)
+    sentence = None
+    if anchors.get('quote_exact') or old.get('type') == GLOSSARY:
+        sentence = fetch_sentence(client, old['target_id'])
+    if anchors.get('quote_exact'):
+        anchors = locate_anchors(sentence.get('content') or '', anchors)
     merged = {f: anchors.get(f, old.get(f)) for f in ANCHOR_FIELDS}
+    if old.get('type') == GLOSSARY and (anchors or 'title' in body):
+        check_glossary(sentence.get('content') or '', merged['pos_start'], merged['pos_end'],
+                       body.get('title', old.get('title')))
     if (merged['pos_start'] is not None and merged['pos_end'] is not None
             and merged['pos_start'] > merged['pos_end']):
         raise WpError('改完后 pos_start 大于 pos_end')
@@ -442,7 +499,8 @@ def cmd_discuss_edit(args):
               f'原锚点    : {fmt_anchor(old) or "（无）"}',
               f'改动字段  : {", ".join(body)}']
     saved = confirm_and_send(client, args, body, header, '修改批注', 'PATCH', f'v3/discussions/{args.id}',
-                             sentence_scope(client, old['target_id']))
+                             sentence_scope(client, old['target_id'], sentence),
+                             anchor_view=merged if anchors else None)
     if saved is None:
         return 1 if not args.dry_run else 0
     report_saved(saved)

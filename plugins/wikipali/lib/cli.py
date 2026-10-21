@@ -19,13 +19,17 @@ from errors import WpError
 
 
 def add_anchor_args(p, editing=False):
-    """批注锚点（W3C TextPosition / TextQuote 选择器），字符位按句子原始 content 计。"""
+    """批注锚点（W3C TextPosition / TextQuote 选择器），字符位按句子原始 content 计。
+
+    一般只给 --quote-exact：程序在句子原文里找出位置与前后缀（见 anchors.py），不用自己数。
+    """
     tail = '；给空串清空' if editing else ''
-    p.add_argument('--pos-start', dest='pos_start', help='锚点起始字符位（0 起）' + tail)
-    p.add_argument('--pos-end', dest='pos_end', help='锚点结束字符位（不含）' + tail)
-    p.add_argument('--quote-exact', dest='quote_exact', help='被锚定文本的原样摘录')
-    p.add_argument('--quote-prefix', dest='quote_prefix', help='摘录前的上下文')
-    p.add_argument('--quote-suffix', dest='quote_suffix', help='摘录后的上下文')
+    p.add_argument('--quote-exact', dest='quote_exact',
+                   help='被锚定文本的原样摘录（含标点）；只给它就行，位置与前后缀由程序算')
+    p.add_argument('--quote-prefix', dest='quote_prefix', help='摘录前的上下文：摘录在句中出现多次时用来指明是哪一处')
+    p.add_argument('--quote-suffix', dest='quote_suffix', help='摘录后的上下文：同上')
+    p.add_argument('--pos-start', dest='pos_start', help='锚点起始字符位（0 起），一般不用给' + tail)
+    p.add_argument('--pos-end', dest='pos_end', help='锚点结束字符位（不含），一般不用给' + tail)
 
 
 def build_parser():
@@ -264,7 +268,8 @@ def build_parser():
     p.add_argument('--status', default='active', choices=['active', 'close'])
     p.add_argument('--type', default='discussion', choices=cmd_discuss.DISCUSS_TYPES,
                    help='列哪一类：note＝批注 / 脚注，commentary＝注释对照，'
-                        'discussion＝审稿意见 / 讨论（默认），qa＝问答，help＝求助，issue＝问题报告')
+                        'discussion＝审稿意见 / 讨论（默认），qa＝问答，help＝求助，issue＝问题报告，'
+                        'glossary＝外挂术语')
     p.add_argument('--limit', type=int, default=50, help='每页条数，最多 200')
     p.add_argument('--page', type=int, default=1, help='第几页')
     p.set_defaults(func=cmd_discuss.cmd_discuss_list)
@@ -277,8 +282,11 @@ def build_parser():
     p.add_argument('--type', default='discussion', choices=cmd_discuss.DISCUSS_TYPES,
                    help='note＝批注 / 脚注（正文即注解），commentary＝注释对照 / 义注对照 / 复注对照'
                         '（正文为 {{book-para-start-end}}），discussion＝审稿意见 / 讨论（默认），'
-                        'qa＝问答，help＝求助，issue＝问题报告。锚点只有 note / commentary 收')
-    p.add_argument('--title', help='标题：discussion / qa / help / issue 必填；note / commentary 可不给')
+                        'qa＝问答，help＝求助，issue＝问题报告（指出译文某处的问题），'
+                        'glossary＝外挂术语（不改译文，给一段译文临时挂上术语）。'
+                        '锚点只有 note / commentary / issue / glossary 收')
+    p.add_argument('--title', help='标题：discussion / qa / help / issue 必填；glossary 必填且填术语词头；'
+                                   'note / commentary 可不给')
     p.add_argument('--severity', choices=cmd_discuss.SEVERITY_CHOICES,
                    help='严重 / 紧急程度：issue 可选 error / warning / suggestion，help 可选 urgent / normal')
     add_anchor_args(p)
