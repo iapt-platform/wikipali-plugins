@@ -235,6 +235,7 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 | `GET v3/discussions/summary` | `target_type`、`target_id`、`type` | `{status_counts: {active, close}, creatable_types}` |
 | `GET v3/discussions/{id}` | — | 单条 |
 | `GET v3/discussions/{id}/replies` | `per_page`、`page` | 某话题下的回复，按时间正序 |
+| `GET v3/tipitaka-discussions/{channel}` | `book`、`chapter` 或 `para`/`to`、`type`（逗号多选）、`status`、`severity`、`per_page`、`page` | 一段经文里的批注，按经文顺序，每条带 `sentence: {book, paragraph, word_start, word_end}`；不给 book 即整个 channel |
 
 - **不带 `type` 只列话题**（discussion / qa / help / issue / glossary），批注要显式 `type=note` / `commentary`。
 - 未登录看不到 discussion；`basic` 角色在自己管不了的句子上只看得到自己发的 discussion。

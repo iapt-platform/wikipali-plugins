@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries (新建术语 / 加术语), or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / 问题 / 标出译文某处的问题 / 外挂术语 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help, issue, glossary), or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
+description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries (新建术语 / 加术语), or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / 问题 / 标出译文某处的问题 / 外挂术语 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help, issue, glossary), or to list all discussions / issues / 外挂术语 in a chapter, paragraph range, book or whole channel, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
 metadata:
   author: mint
 ---
@@ -222,6 +222,14 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type glossary \
   锚点给空串即清空；批注没有 `--status`。`discuss-edit` 改不了 type。`discuss-delete <id>`：作者或该句所在 channel 的编辑者可删，是软删除。
 - 列表按 type 分：`discuss … --type <type>`，不给就是 `discussion`——找不到刚写的批注
   时先看 type 对不对。分页用 `--limit`（每页，最多 200）与 `--page`。
+- **一次看一章 / 一段区间 / 一本书的批注**用 `discuss-range`，不要逐句跑 `discuss`：
+  ```bash
+  wikipali discuss-range 169:893 --chapter --channel <译文> --type issue,glossary --status active
+  wikipali discuss-range 169:895 --to 896 --channel <译文> --type issue --severity error
+  wikipali discuss-range --book 169 --channel <译文> --all --json   # 整本书，自动翻页
+  ```
+  `--channel` 必填；`--type` 逗号多选，不给只列话题（含 issue / 外挂术语，不含批注）。
+  每条带句子坐标与 id，要回复 / 修改 / 关闭就拿 id 用 `discuss-reply` / `discuss-edit`。
 - 批量建立注释对照用 `note-context` / `note-push`，流程见 `commentary-align` skill。
 
 ## 站点

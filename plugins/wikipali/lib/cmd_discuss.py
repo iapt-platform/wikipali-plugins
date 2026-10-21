@@ -274,6 +274,98 @@ def cmd_discuss_list(args):
     return 0
 
 
+def parse_types(value):
+    """--type 的逗号多选，逐个校验。"""
+    types = [t.strip() for t in (value or '').split(',') if t.strip()]
+    bad = [t for t in types if t not in DISCUSS_TYPES]
+    if bad:
+        raise WpError(f'--type 不认识：{", ".join(bad)}（可选 {" / ".join(DISCUSS_TYPES)}）')
+    return types
+
+
+def cmd_discuss_range(args):
+    """一段经文（一章 / 段落区间 / 一本书 / 整个 channel）里的批注：GET v3/tipitaka-discussions/{channel}。
+
+    与 `discuss`（一句）不同，这里按经文范围一次列出，每条带所在句子的坐标，按经文顺序排。
+    """
+    client = make_client(args)
+    client.model
+    if not args.channel:
+        raise WpError('要给 --channel：批注挂在哪个版本的句子上（uid 或名字片段）。')
+    channel_uid, channel_name = resolve_channel(client, args.channel)
+
+    query = {'per_page': args.limit}
+    if args.coord:
+        if args.book:
+            raise WpError('给了坐标就不要再给 --book。')
+        book, para = parse_coord(args.coord)
+        query['book'] = book
+        if args.chapter:
+            if args.to:
+                raise WpError('--chapter 与 --to 不能同用：--chapter 取整章，--to 取段落区间。')
+            query['chapter'] = para
+        else:
+            query['para'] = para
+            if args.to:
+                query['to'] = args.to
+    elif args.book:
+        if args.chapter or args.to:
+            raise WpError('--chapter / --to 要配坐标用，如 169:893 --chapter。')
+        query['book'] = args.book
+    elif args.chapter or args.to:
+        raise WpError('--chapter / --to 要配坐标用，如 169:893 --chapter。')
+    types = parse_types(args.type)
+    if types:
+        query['type'] = ','.join(types)
+    if args.status:
+        query['status'] = args.status
+    if args.severity:
+        query['severity'] = args.severity
+
+    rows, meta, page = [], {}, args.page
+    while True:
+        result = call_as_model(client, 'GET', f'v3/tipitaka-discussions/{channel_uid}', '列出经文范围内的批注',
+                               envelope=True, query={**query, 'page': page}) or {}
+        rows.extend(result.get('data') or [])
+        meta = result.get('meta') or {}
+        if not args.all or page >= int(meta.get('last_page') or 1):
+            break
+        page += 1
+
+    def render():
+        scope = (args.coord + ('（整章）' if args.chapter else (f'–{args.to}' if args.to else ''))
+                 if args.coord else (f'book {args.book}' if args.book else '整个 channel'))
+        print(f'范围   : {scope}   channel {channel_name or channel_uid}')
+        print(f'类型   : {", ".join(types) if types else "话题（discussion / qa / help / issue / glossary）"}'
+              + (f'   状态 {args.status}' if args.status else '') + (f'   严重程度 {args.severity}' if args.severity else ''))
+        shown = f'全部 {len(rows)} 条' if args.all else (
+            f'本页 {len(rows)} 条，第 {meta.get("current_page", 1)}/{meta.get("last_page", 1)} 页')
+        print(f'共 {meta.get("total", len(rows))} 条（{shown}）')
+        if not rows:
+            print('\n这个范围里没有符合条件的批注。')
+            return
+        last = None
+        for row in rows:
+            sent = row.get('sentence') or {}
+            where = f'{fmt_coord(sent.get("book"), sent.get("paragraph"))} [{sent.get("word_start")}-{sent.get("word_end")}]'
+            if where != last:
+                print('\n' + where)
+                last = where
+            tag = row.get('type') + (f'/{row["severity"]}' if row.get('severity') else '')
+            print(f'  {tag:<18} {row.get("status") or "":<6} {row.get("title") or ""}')
+            if fmt_anchor(row):
+                print(f'  {"":18} 锚点 {fmt_anchor(row)}')
+            first = ((row.get('content') or '').strip().splitlines() or [''])[0]
+            if first:
+                print(f'  {"":18} | {first[:80]}')
+            print(f'  {"":18} id {row.get("id")}   {who(row)}   回复 {row.get("reply_count", 0)}')
+        if not args.all and int(meta.get('last_page') or 1) > int(meta.get('current_page') or 1):
+            print('\n还有下一页：加 --page N，或 --all 一次取完。')
+
+    emit(args, rows, render)
+    return 0
+
+
 def fmt_anchor(row):
     if row.get('pos_start') is None and row.get('pos_end') is None and not row.get('quote_exact'):
         return ''

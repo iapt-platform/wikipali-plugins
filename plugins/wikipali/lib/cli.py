@@ -274,6 +274,21 @@ def build_parser():
     p.add_argument('--page', type=int, default=1, help='第几页')
     p.set_defaults(func=cmd_discuss.cmd_discuss_list)
 
+    p = add('discuss-range', '列出一段经文（一章 / 段落区间 / 一本书 / 整个 channel）里的批注，每条带句子坐标')
+    p.add_argument('coord', nargs='?', help='book:paragraph；配 --chapter 取整章，配 --to 取段落区间，单给是一段')
+    p.add_argument('--channel', help='批注挂在哪个版本的句子上（uid 或名字片段），必填')
+    p.add_argument('--chapter', action='store_true', help='坐标是章节起始段，取整章')
+    p.add_argument('--to', type=int, help='段落区间的结束段（含）')
+    p.add_argument('--book', type=int, help='不给坐标时取整本书；坐标和 --book 都不给就是整个 channel')
+    p.add_argument('--type', help='类型，逗号多选，如 issue,glossary；不给只列话题'
+                                  '（discussion / qa / help / issue / glossary），批注要显式 note / commentary')
+    p.add_argument('--status', choices=['active', 'close'], help='不给则两种都列')
+    p.add_argument('--severity', help='严重程度，逗号多选，如 error,warning')
+    p.add_argument('--limit', type=int, default=50, help='每页条数，最多 200')
+    p.add_argument('--page', type=int, default=1, help='第几页')
+    p.add_argument('--all', action='store_true', help='自动翻页取完全部')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_range)
+
     p = add('discuss-add', '给某一句加批注（AI 代写，需人类授权）', needs_json=False)
     p.add_argument('coord', nargs='?', help='book:paragraph；也可改用 --sent')
     p.add_argument('--sent', help='句子 uid，给了就不再按坐标解析')

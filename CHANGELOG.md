@@ -16,6 +16,10 @@
   算出 `pos_start` / `pos_end` 与前后缀，不必再自己数字符位；摘录不在句中、出现多次又没给前后缀、
   位置与摘录不符时报错。外挂术语的摘录与句中已有的术语 / 模板 / 格式重叠、或含 `[ ] { } | #` 时
   提前报错（服务端遇到这些会静默不显示）。
+- **`discuss-range`**：一次列出一章（`--chapter`）、一段段落区间（`--to`）、一本书（`--book`）或整个
+  channel 里挂在句子上的讨论，按经文顺序、每条带句子坐标与 id；`--type` / `--severity` 可逗号多选，
+  `--status` 过滤，`--all` 自动翻页，`--json` 输出原始数据。走 `GET /v3/tipitaka-discussions/{channel}`，
+  **需要服务端已部署该端点**，否则 404。
 
 ### 变更
 - 锚点不再只限 note / commentary：note / commentary / issue / glossary 都收，discussion / qa / help 仍不收。

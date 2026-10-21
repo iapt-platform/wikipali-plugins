@@ -75,6 +75,7 @@
 | 批注(v3) | `POST {API}/v3/discussions/{id}/replies` | 回复某话题 |
 | 批注(v3) | `PATCH {API}/v3/discussions/{id}` | 局部修改批注/话题 |
 | 批注(v3) | `DELETE {API}/v3/discussions/{id}` | 软删除批注/话题 |
+| 批注(v3) | `GET {API}/v3/tipitaka-discussions/{channel}` | 列出一段经文（章 / 段落区间 / 书 / 整个 channel）里的话题/批注，带句子坐标 |
 
 ---
 
@@ -496,6 +497,20 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 - **返回**：200 + 删除后的记录（**软删除**；有回复的话题以「已删除」占位保留）。
 
 ---
+
+## 45. 按经文范围列批注 —— `GET {API}/v3/tipitaka-discussions/{channel}`
+
+`discuss-range` 用。与 §37（一句）不同：一次列出一段经文里挂在句子上的批注，按经文顺序
+（书、段、句起始词）排列，每条带所在句子坐标。只读，用模型 token。
+
+- **入参**：路径 `{channel}`（句子所在 channel 的 uuid，必填）；query 全部可选——
+  `book`（与 `chapter`/`para`/`to` 同用时必填，不给就是整个 channel）、`chapter`（章节起始段，
+  服务端按章节长度展开；不能与 `para`/`to` 同用）、`para`、`to`（段落区间，含两端）、
+  `type`（**逗号多选**，如 `issue,glossary`；不给只列话题，批注要显式 `note`/`commentary`）、
+  `status`、`severity`（逗号多选）、`per_page`（≤200）、`page`。
+- **返回**：`data: [ { …同 §37 的每条…, sentence: { book, paragraph, word_start, word_end } } ]` +
+  `meta` 分页。channel 不存在或范围内没有批注返回空列表；`chapter` 不存在 404；参数非法 422。
+- 可见性同 §37：未登录看不到 discussion，basic 角色在不能编辑的 channel 上只看得到自己发的。
 
 # 附录
 
