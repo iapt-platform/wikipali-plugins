@@ -26,7 +26,7 @@
 
 插件能在你的机器上执行代码，装之前你应当知道这一个具体会干什么：
 
-- **读写 `~/.wikipali/credentials.json`**（权限 0600），里面存你的 WikiPali 登录 token、AI 模型身份 token 和 channel access token；
+- **读写 `~/.wikipali/credentials.json`**（权限 0600），里面存你的 WikiPali 登录 token、AI 模型身份 token、channel access token 和批注写入授权；
 - **往 wikipali.org 写数据**。写入是覆盖式的：相同位置（book / paragraph / word_start / word_end / channel）的已有句子会被替换。插件在每次写入前会回显目标并要求确认；
 - **只用 Python 标准库**，不装任何依赖，不建虚拟环境。
 
@@ -83,8 +83,9 @@ wikipali --api next ...    # 只影响这一次调用
 | 用户 token | 人类操作者 | 365 天 |
 | 模型 token | AI 模型身份，写句子时的 `Authorization` | 30 天，可撤销 |
 | access token | 被委托的 channel 编辑权，写句子时的 body 字段 | 7 天 |
+| 写入授权（agent grant） | 写批注时的 `X-Agent-Grant` 请求头：你授权模型代写某 channel / book 的批注，署名是你、模型记为协作者 | 7 天 |
 
-模型自身不是任何 channel 的 owner，它的全部写权限来自你签发的 access token，且受 book 范围约束——**你没有编辑权的 channel，签发阶段就会失败**。凭据泄漏时用 `wikipali revoke` 作废该模型已签出的全部 token。
+模型自身不是任何 channel 的 owner，它的全部写权限来自你签发的 access token，且受 book 范围约束——**你没有编辑权的 channel，签发阶段就会失败**。凭据泄漏时用 `wikipali revoke` 作废该模型已签出的全部 token（批注的写入授权一并失效）。
 
 ## 开发
 

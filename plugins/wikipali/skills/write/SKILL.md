@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries, or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help), or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
+description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries (新建术语 / 加术语), or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / 问题 / 标出译文某处的问题 / 外挂术语 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help, issue, glossary), or to list all discussions / issues / 外挂术语 in a chapter, paragraph range, book or whole channel, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
 metadata:
   author: mint
 ---
@@ -156,8 +156,10 @@ wikipali term-edit <guid> --meaning 念住          # 只改给出的字段，�
 
 ## 批注
 
-对某一句的批注（discussion）。与句子、术语不同，**不需要 access token** —— 模型拿自己的
-token 直接建，署名就是模型。
+对某一句的批注（discussion），走 v3 `/v3/discussions`。**写入要人类授权**：工具用你的登录
+身份为模型签一张「这个 channel、这个 book」的写入授权（`POST /v3/agent-grants`，7 天，
+缓存在凭据文件里自动复用），模型带着它写。署名是**你**（对内容负责），模型记为协作者，
+显示成「你（与 模型）」。你对该 channel 没有编辑权时签发会失败，写不进去。读不需要授权。
 
 **`--type` 按用户的说法选**，不要一律用默认值：
 
@@ -168,36 +170,66 @@ token 直接建，署名就是模型。
 | 加审稿意见、讨论 | `discussion`（默认） | 给人看的意见，只在批注列表里 |
 | 加问答 | `qa` | 同上 |
 | 加求助 | `help` | 同上 |
+| 指出译文某处有问题（译错、漏译、标点…） | `issue` + `--quote-exact` | 阅读页把那段文字标成波浪下划线，点开看内容 |
+| 报问题，但说不清具体在哪几个字 | `issue`（不带摘录） | 阅读页在句尾显示一个三角叹号 |
+| 给译文**加外挂术语** | `glossary` + `--quote-exact` | 不改译文，把那段文字临时显示成术语，供讨论该不该收进术语表 |
+| 新建术语、加术语 | **不是批注**，用 `term-add`（见「术语表」） | 正式进术语表 |
 
-五种的**锚点都可以不给**——不给就是挂在整句上。只有 `note` / `commentary` 会被注入
-阅读页，注入时用 `pos_end` 定插入点（没有锚点就插在句尾）。
+`note` / `commentary` 是**批注**：可以带锚点，会被注入阅读页（锚点末尾插边注，没有锚点
+就插在句尾），没有开 / 关状态。其余五类是**话题**：**必须有标题**，可以回复、可以关闭；
+其中 `discussion` / `qa` / `help` 是整句的，不收锚点，`issue` / `glossary` 收锚点并会注入阅读页
+（关闭后不再显示）。
+
+**「外挂术语」与「术语」别弄混**：用户说「新建术语」「加个术语」「把 X 收进术语表」→ `term-add`；
+只有说「给译文**添加外挂术语**」才是 `--type glossary`。外挂术语是**临时**的：不改译文、不进术语表，
+挂上去试用，围绕「这个词值不值得正式收录」讨论；讨论完关闭它（`discuss-edit <id> --status close`），
+要正式收录再走 `term-add`。
 
 ```bash
 wikipali discuss 216:35 --words 2-17 --type note   # 看这一句上已有的批注与回复
 wikipali discuss-add 216:35 --words 2-17 --type note \
-    --pos-end 24 --quote-exact 'tajjanīyakamma' \
+    --quote-exact 'tajjanīyakamma' \
     --content '此处 tajjanīya 作「呵责」解。'
 wikipali discuss-add 216:35 --words 2-17 --type discussion \
     --title '关于 tajjanīyakamma 的译名' --content '建议统一译作「呵责羯磨」。'
-wikipali discuss-reply <批注id> --content '补充：义注中以 codanā 释之。'
+wikipali discuss-reply <话题或批注id> --content '补充：义注中以 codanā 释之。'
+# 指出译文某处的问题：只给原样摘录，位置由程序算
+wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type issue --severity error \
+    --title '漏译 tajjanīya' --quote-exact '呵责羯磨' --content '巴利有 tajjanīya，译文漏了。'
+# 外挂术语：--title 是术语词头，--quote-exact 是译文里要挂术语的那几个字
+wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type glossary \
+    --title tajjanīyakamma --quote-exact '呵责羯磨' --content '试用此译名，讨论是否收入术语表。'
 ```
 
 - **挂点要确认**，见铁律第 8 条。`--channel` 缺省是巴利原文；要批注某个译本就给它。
   一段多句时命令会列出候选、要求用 `--words 起-止` 或 `--sent <句子uid>` 指明。
-- `--title` 是**可选**的：批注 / 脚注、注释对照这类正文就是全部的，不给标题即可；
-  审稿意见 / 问答 / 求助这类话题该给一个。`discuss-reply` 只要 `--content`。
-- 正文也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
-- **默认不发站内通知**，`--notify` 才发 —— 批量批注不要刷别人的通知。
-- 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条话题。
-- **锚点**：`discuss-add` / `discuss-reply` / `discuss-edit` 都收 `--pos-start --pos-end
-  --quote-exact --quote-prefix --quote-suffix`，把批注定位到句内一段文字。位置按句子
-  **原始 content** 的字符数（0 起，`pos_end` 不含）。`discuss` 列表会显示锚点。
-  **锚点是可选的**，五种 type 都可以不给（整句批注）；给了就要对着原始 content 数准，
-  不确定就让用户给摘录、或先 `wikipali get <坐标> --json` 看原文。
-- `discuss-edit <id>` 先取原记录再提交，没给的字段保留（服务端对标题/正文/状态是全量
-  覆盖）；锚点给空串即清空。`discuss-delete <id>` 只能删自己写的。
-- 列表也按 type 分：`discuss … --type <type>`，不给就是 `discussion`——找不到刚写的批注
-  时先看 type 对不对。
+- `--title`：`discussion` / `qa` / `help` / `issue` **必填**；`glossary` **必填且就是术语词头**
+  （巴利词，如 `bhikkhu`，不能含 `[ ] { } | #`），阅读页按它显示术语；`note` / `commentary` 可不给。
+- `--severity`：`issue` 可选 `error` / `warning` / `suggestion`（用户说「错误」「警告」「建议」时给），
+  `help` 可选 `urgent` / `normal`；其它类型不收。前端以彩色标签显示。
+  `discuss-reply` 只要 `--content`，不能回复一条回复（回复它所在的话题）。
+- 正文是 markdown，也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
+- **默认不发站内通知**，`--notify` 才发 —— 批量批注不要刷别人的通知（批注本来就不发）。
+- 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条。
+- **锚点**：`note` / `commentary` / `issue` / `glossary` 收，把它定位到句内一段文字。
+  **只给 `--quote-exact`（原样摘录，含标点）**，工具在句子原始 content 里找出位置与前后缀，
+  **不要自己数字符位**。摘录必须逐字取自**那一句**的原文（挂在译文上就取译文），
+  不确定就先 `wikipali get <坐标> --json` 看原文。摘录在句中出现多次时，补 `--quote-prefix` /
+  `--quote-suffix`（紧挨着的前后文字）指明是哪一处；工具会报错提示。`discuss` 列表会显示锚点。
+- `glossary` **必须给摘录**；摘录不能和句中已有的术语 `[[…]]`、模板 `{{…}}`、粗体等格式重叠
+  （外挂术语不能套在它们上面），工具会提前报错。`issue` 能定位就尽量给摘录，阅读页才高亮得出。
+- `discuss-edit <id>` 只提交改了的字段（v3 是局部更新），给新的 `--quote-exact` 会重新定位，
+  锚点给空串即清空；批注没有 `--status`。`discuss-edit` 改不了 type。`discuss-delete <id>`：作者或该句所在 channel 的编辑者可删，是软删除。
+- 列表按 type 分：`discuss … --type <type>`，不给就是 `discussion`——找不到刚写的批注
+  时先看 type 对不对。分页用 `--limit`（每页，最多 200）与 `--page`。
+- **一次看一章 / 一段区间 / 一本书的批注**用 `discuss-range`，不要逐句跑 `discuss`：
+  ```bash
+  wikipali discuss-range 169:893 --chapter --channel <译文> --type issue,glossary --status active
+  wikipali discuss-range 169:895 --to 896 --channel <译文> --type issue --severity error
+  wikipali discuss-range --book 169 --channel <译文> --all --json   # 整本书，自动翻页
+  ```
+  `--channel` 必填；`--type` 逗号多选，不给只列话题（含 issue / 外挂术语，不含批注）。
+  每条带句子坐标与 id，要回复 / 修改 / 关闭就拿 id 用 `discuss-reply` / `discuss-edit`。
 - 批量建立注释对照用 `note-context` / `note-push`，流程见 `commentary-align` skill。
 
 ## 站点

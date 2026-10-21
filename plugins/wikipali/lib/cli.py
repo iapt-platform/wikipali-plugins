@@ -19,13 +19,17 @@ from errors import WpError
 
 
 def add_anchor_args(p, editing=False):
-    """批注锚点（W3C TextPosition / TextQuote 选择器），字符位按句子原始 content 计。"""
+    """批注锚点（W3C TextPosition / TextQuote 选择器），字符位按句子原始 content 计。
+
+    一般只给 --quote-exact：程序在句子原文里找出位置与前后缀（见 anchors.py），不用自己数。
+    """
     tail = '；给空串清空' if editing else ''
-    p.add_argument('--pos-start', dest='pos_start', help='锚点起始字符位（0 起）' + tail)
-    p.add_argument('--pos-end', dest='pos_end', help='锚点结束字符位（不含）' + tail)
-    p.add_argument('--quote-exact', dest='quote_exact', help='被锚定文本的原样摘录')
-    p.add_argument('--quote-prefix', dest='quote_prefix', help='摘录前的上下文')
-    p.add_argument('--quote-suffix', dest='quote_suffix', help='摘录后的上下文')
+    p.add_argument('--quote-exact', dest='quote_exact',
+                   help='被锚定文本的原样摘录（含标点）；只给它就行，位置与前后缀由程序算')
+    p.add_argument('--quote-prefix', dest='quote_prefix', help='摘录前的上下文：摘录在句中出现多次时用来指明是哪一处')
+    p.add_argument('--quote-suffix', dest='quote_suffix', help='摘录后的上下文：同上')
+    p.add_argument('--pos-start', dest='pos_start', help='锚点起始字符位（0 起），一般不用给' + tail)
+    p.add_argument('--pos-end', dest='pos_end', help='锚点结束字符位（不含），一般不用给' + tail)
 
 
 def build_parser():
@@ -264,12 +268,28 @@ def build_parser():
     p.add_argument('--status', default='active', choices=['active', 'close'])
     p.add_argument('--type', default='discussion', choices=cmd_discuss.DISCUSS_TYPES,
                    help='列哪一类：note＝批注 / 脚注，commentary＝注释对照，'
-                        'discussion＝审稿意见 / 讨论（默认），qa＝问答，help＝求助')
-    p.add_argument('--limit', type=int, default=50)
-    p.add_argument('--offset', type=int, default=0)
+                        'discussion＝审稿意见 / 讨论（默认），qa＝问答，help＝求助，issue＝问题报告，'
+                        'glossary＝外挂术语')
+    p.add_argument('--limit', type=int, default=50, help='每页条数，最多 200')
+    p.add_argument('--page', type=int, default=1, help='第几页')
     p.set_defaults(func=cmd_discuss.cmd_discuss_list)
 
-    p = add('discuss-add', '给某一句加批注（AI 身份）', needs_json=False)
+    p = add('discuss-range', '列出一段经文（一章 / 段落区间 / 一本书 / 整个 channel）里的批注，每条带句子坐标')
+    p.add_argument('coord', nargs='?', help='book:paragraph；配 --chapter 取整章，配 --to 取段落区间，单给是一段')
+    p.add_argument('--channel', help='批注挂在哪个版本的句子上（uid 或名字片段），必填')
+    p.add_argument('--chapter', action='store_true', help='坐标是章节起始段，取整章')
+    p.add_argument('--to', type=int, help='段落区间的结束段（含）')
+    p.add_argument('--book', type=int, help='不给坐标时取整本书；坐标和 --book 都不给就是整个 channel')
+    p.add_argument('--type', help='类型，逗号多选，如 issue,glossary；不给只列话题'
+                                  '（discussion / qa / help / issue / glossary），批注要显式 note / commentary')
+    p.add_argument('--status', choices=['active', 'close'], help='不给则两种都列')
+    p.add_argument('--severity', help='严重程度，逗号多选，如 error,warning')
+    p.add_argument('--limit', type=int, default=50, help='每页条数，最多 200')
+    p.add_argument('--page', type=int, default=1, help='第几页')
+    p.add_argument('--all', action='store_true', help='自动翻页取完全部')
+    p.set_defaults(func=cmd_discuss.cmd_discuss_range)
+
+    p = add('discuss-add', '给某一句加批注（AI 代写，需人类授权）', needs_json=False)
     p.add_argument('coord', nargs='?', help='book:paragraph；也可改用 --sent')
     p.add_argument('--sent', help='句子 uid，给了就不再按坐标解析')
     p.add_argument('--channel', help='批注挂在哪个版本的句子上；缺省是巴利原文')
@@ -277,40 +297,44 @@ def build_parser():
     p.add_argument('--type', default='discussion', choices=cmd_discuss.DISCUSS_TYPES,
                    help='note＝批注 / 脚注（正文即注解），commentary＝注释对照 / 义注对照 / 复注对照'
                         '（正文为 {{book-para-start-end}}），discussion＝审稿意见 / 讨论（默认），'
-                        'qa＝问答，help＝求助。五种都可以不给锚点')
-    p.add_argument('--title', help='标题（可选；批注 / 脚注一类正文即全部，不给就没有标题）')
+                        'qa＝问答，help＝求助，issue＝问题报告（指出译文某处的问题），'
+                        'glossary＝外挂术语（不改译文，给一段译文临时挂上术语）。'
+                        '锚点只有 note / commentary / issue / glossary 收')
+    p.add_argument('--title', help='标题：discussion / qa / help / issue 必填；glossary 必填且填术语词头；'
+                                   'note / commentary 可不给')
+    p.add_argument('--severity', choices=cmd_discuss.SEVERITY_CHOICES,
+                   help='严重 / 紧急程度：issue 可选 error / warning / suggestion，help 可选 urgent / normal')
     add_anchor_args(p)
     p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
-    p.add_argument('--content-file', dest='content_file', help='从文件读正文')
-    p.add_argument('--content-type', dest='content_type', default='markdown')
-    p.add_argument('--notify', action='store_true', help='发站内通知（默认不发）')
+    p.add_argument('--content-file', dest='content_file', help='从文件读正文（markdown）')
+    p.add_argument('--notify', action='store_true', help='发站内通知（默认不发；批注本来就不发）')
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true', help='跳过交互确认（非交互环境必须显式给）')
     p.set_defaults(func=cmd_discuss.cmd_discuss_add)
 
-    p = add('discuss-reply', '回复一条批注（AI 身份）', needs_json=False)
-    p.add_argument('id', help='被回复的批注 id，用 wikipali discuss 查')
+    p = add('discuss-reply', '回复一条批注（AI 代写，需人类授权）', needs_json=False)
+    p.add_argument('id', help='被回复的话题 id，用 wikipali discuss 查（不能回复一条回复）')
     p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
-    p.add_argument('--content-file', dest='content_file', help='从文件读正文')
-    p.add_argument('--content-type', dest='content_type', default='markdown')
+    p.add_argument('--content-file', dest='content_file', help='从文件读正文（markdown）')
     p.add_argument('--notify', action='store_true', help='发站内通知（默认不发）')
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true')
-    add_anchor_args(p)
     p.set_defaults(func=cmd_discuss.cmd_discuss_reply)
 
-    p = add('discuss-edit', '修改一条批注 / 对应：标题、正文、状态、锚点（AI 身份）', needs_json=False)
+    p = add('discuss-edit', '修改一条批注 / 对应：标题、正文、状态、锚点（AI 代写，需人类授权）', needs_json=False)
     p.add_argument('id', help='批注 id，用 wikipali discuss 查')
     p.add_argument('--title')
     p.add_argument('--content', help='新正文；给 - 表示从 stdin 读；不给则保留原文')
     p.add_argument('--content-file', dest='content_file')
     p.add_argument('--status', choices=['active', 'close'])
+    p.add_argument('--severity', choices=cmd_discuss.SEVERITY_CHOICES,
+                   help='改严重 / 紧急程度（issue：error / warning / suggestion；help：urgent / normal）')
     add_anchor_args(p, editing=True)
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true')
     p.set_defaults(func=cmd_discuss.cmd_discuss_edit)
 
-    p = add('discuss-delete', '删除自己写的一条批注 / 对应', needs_json=False)
+    p = add('discuss-delete', '删除一条批注 / 对应（作者或该句 channel 的编辑者可删）', needs_json=False)
     p.add_argument('id')
     p.add_argument('--dry-run', action='store_true')
     p.add_argument('-y', '--yes', action='store_true')

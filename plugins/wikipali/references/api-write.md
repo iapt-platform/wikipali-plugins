@@ -191,94 +191,129 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
 
 ---
 
-## 8. 批注（discussion）
+## 8. 批注（discussion）——v3
 
-对**某一句**的批注。与句子、术语最大的不同：**不需要 access token**。服务端建批注
-只要求有一个有效身份，不查 channel 权限，`editor_uid` 直接记当前身份——所以模型拿
-自己的 token 就能建、就能正确署名。
+对**某一句**的批注，走 `/v3/discussions`。v3 的约定：成功直接 `{data: …}`（列表另有
+`meta` 分页），失败是 Problem Details（`{type, title, status, detail}`），**成败只看状态码**；
+请求带 `Accept-Language: zh-Hans` 时 `detail` 是中文。
 
-### 挂在哪：res_id 是句子 uid，不是坐标
+### 写入要人类授权：agent-grants
 
-`res_type = 'sentence'`、`res_id = sentences.uid`。这个 uid 是**逐句、逐 channel** 的：
+模型自己没有任何 channel 权限。写批注前，人类用 **userToken** 为模型签一张写入授权：
+
+`POST {API}/v3/agent-grants`（Bearer = **userToken**）
+
+```json
+{ "ai_model": "<模型 uid>", "target_type": "channel", "target_id": "<channel uid>", "book": 1935 }
+```
+
+→ 201 `{data: {token, grantor, ai_model, target_type, target_id, book, expires_at}}`。
+`book` 给 0 或不给表示不限 book。7 天有效；撤销模型 token（`DELETE v2/ai-model-token/{uid}`）
+时它签出的授权一并失效。签发条件：模型归当前用户所有、当前用户能编辑该 channel，否则 403。
+
+写入时：`Authorization: Bearer <modelToken>`，另加请求头 `X-Agent-Grant: <授权 token>`。服务端记
+**editor = 授权人**（对内容负责的人）、**co_editor = 模型**，权限按授权人判，只能写授权覆盖的
+channel / book 里的句子上的批注。模型不带授权写入一律 403。人亲自改了内容，co_editor 会被清空。
+
+读（列表、单条、回复、统计）只要 Bearer，不要授权。
+
+### 挂在哪：target_id 是句子 uid，不是坐标
+
+`target_type = 'sentence'`、`target_id = sentences.uid`。这个 uid 是**逐句、逐 channel** 的：
 同一段巴利原文和它的中译是两条不同的句子、两个不同的 uid。
 
 拿 uid 的办法就是读句子——`GET v2/sentence?view=paragraph&book=&para=&channels=` 返回的
 **`id` 字段就是 `sentences.uid`**（`wikipali get <坐标> --json` 直接可见）。一个段落常有
-多句，必须按 `word_start`/`word_end` 认准是哪一句，**不要猜**。
+多句，必须按 `word_start`/`word_end` 认准是哪一句，**不要猜**。句子所在的 channel 与 book
+（申请授权用）可以 `GET v2/sentence/{uid}` 取：`data.channel.id`、`data.book`。
 
 ### 列出
 
-`GET {API}/v2/discussion`
-
-| view | 参数 | 含义 |
+| 端点 | 参数 | 返回 |
 |---|---|---|
-| `question` | `res_type=sentence`、`id`=句子 uid、`type`、`status` | 该句上的话题（只出顶层，`parent` 为空的） |
-| `answer` | `id`=话题 id | 某话题下的回复 |
-| `topic-by-user` | `type`、`status` | 当前身份发的全部话题 |
+| `GET v3/discussions` | `target_type`、`target_id`（必填）、`type`、`status`、`per_page`（≤200）、`page` | 该句上的顶层话题 / 批注，带 `reply_count`、`abilities` |
+| `GET v3/discussions/summary` | `target_type`、`target_id`、`type` | `{status_counts: {active, close}, creatable_types}` |
+| `GET v3/discussions/{id}` | — | 单条 |
+| `GET v3/discussions/{id}/replies` | `per_page`、`page` | 某话题下的回复，按时间正序 |
+| `GET v3/tipitaka-discussions/{channel}` | `book`、`chapter` 或 `para`/`to`、`type`（逗号多选）、`status`、`severity`、`per_page`、`page` | 一段经文里的批注，按经文顺序，每条带 `sentence: {book, paragraph, word_start, word_end}`；不给 book 即整个 channel |
 
-→ `data: { rows, count, active, close, can_create, can_reply }`。
+- **不带 `type` 只列话题**（discussion / qa / help / issue / glossary），批注要显式 `type=note` / `commentary`。
+- 未登录看不到 discussion；`basic` 角色在自己管不了的句子上只看得到自己发的 discussion。
+  issue / glossary 会注入公开的阅读页，所以对所有人可见。
 
-- `type=discussion` 时**未登录一律返回空**，不是「没有批注」。
-- 角色是 `basic` 的人只看得到自己发的；AI 模型的 roles 是 `['ai']`，不受这条限制。
-- 顶层话题的回复数看 `children_count`，要正文得再取一次 `view=answer`。
+### 新建
 
-### 新建 / 回复
-
-`POST {API}/v2/discussion`（Bearer = **modelToken**，无需 access token）
+`POST {API}/v3/discussions`
 
 ```json
 {
-  "res_id": "<句子 uid>",
-  "res_type": "sentence",
+  "target_type": "sentence",
+  "target_id": "<句子 uid>",
   "type": "discussion",
-  "title": "标题（可选，可不给）",
-  "content": "正文",
-  "content_type": "markdown",
-  "notification": false
+  "title": "标题（话题必填，批注可省）",
+  "content": "正文（markdown）",
+  "notify": false
 }
 ```
 
-可选的**锚点字段**（W3C Web Annotation 的 TextPosition / TextQuote 选择器），新建与回复都收：
+句子上的批注按 `type` 分七类：
+
+| type | 用户的说法 | 标题 | content | 锚点 | 阅读页 |
+|---|---|---|---|---|---|
+| `note` | 批注、脚注 | 可省 | 注解正文本身（必填） | 收 | 边注正文就是它，**没有**出处 |
+| `commentary` | 注释对照、义注对照、复注对照 | 可省 | 下一层句子模板 `{{book-para-start-end}}`（必填，格式不对 422；一个片段由多句解释时并列多个模板，仍是一条记录） | 收 | 边注正文是那几句在当前 channel 的译文，末尾带 `<cite>义注</cite>` |
+| `discussion` | 审稿意见、讨论（默认） | **必填** | 正文 | 不收（422） | 不进阅读页 |
+| `qa` / `help` | 问答 / 求助 | **必填** | 正文 | 不收 | 不进阅读页 |
+| `issue` | 问题（译错、漏译、标点…） | **必填** | 正文 | 收 | 有锚点：那段文字加波浪下划线（颜色随 severity），点开看内容；没锚点：句尾一个三角叹号。关闭后不再显示 |
+| `glossary` | 外挂术语 | **必填，填术语词头** | 说明（可省） | **必须有** | 那段文字换成 `[[词头#原文]]`，渲染成术语。关闭后不再显示 |
+
+`glossary`（外挂术语）**不改译文**，给一段译文临时挂上术语，供讨论该词值不值得正式收进术语表；
+与术语表（`v2/terms`，`term-add`）是两回事。只能挂在句子上，只有该句所在 channel 的编辑者能建。
+词头与被挂的那段原文里都不能有 `[ ] { } | #`，那段原文也不能和句中已有的 `[[…]]` / `{{…}}` /
+粗体等标记重叠——否则渲染不了，服务端会直接不显示这条。
+
+**锚点字段**（W3C Web Annotation 的 TextPosition / TextQuote 选择器），`note` / `commentary` /
+`issue` / `glossary` 收，其余类型传了 422：
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
-| `pos_start` / `pos_end` | 非负整数，可空 | 锚点在句子**原始 content** 里的字符位（0 起，`mb_strlen` 口径，`pos_end` 不含） |
+| `pos_start` / `pos_end` | 非负整数，可空 | 锚点在句子**原始 content** 里的字符位（0 起，`mb_strlen` 口径，`pos_end` 不含，≥ `pos_start`） |
 | `quote_exact` | 字符串，可空 | 被锚定文本的原样摘录 |
 | `quote_prefix` / `quote_suffix` | 字符串，可空 | 摘录前后的上下文（建议 32~64 字符），抗文本位移 |
 
-句子上的批注按 `type` 分五类。**锚点五个字段对哪一类都是可选的**（不给就是整句的批注）：
+这四类被**注入阅读页**（`PaliContentService::injectAnnotationNotes`，排版在 `AnnotationLayout`）：
+批注在锚点末尾插一条边注（没有锚点挂到句尾），glossary 把锚点处的原文换成术语，issue 高亮锚点处
+的原文（没有锚点就在句尾放三角图标）。位置以 `pos_*` 为准；与 `quote_exact` 对不上（译文改过）时，
+服务端按摘录（参考前后缀）重新定位，找不到的 issue 显示成句尾图标、glossary 不显示。交叠的 issue
+合并成一个高亮；issue 与 glossary 交叠时 issue 扩展到包住 glossary；两个 glossary 交叠只留一个。
+写入后服务端会清该段的阅读页缓存。回复不注入。
 
-| type | 用户的说法 | content | 阅读页 |
-|---|---|---|---|
-| `note` | 批注、脚注 | 注解正文本身（markdown） | 边注正文就是它，**没有**出处 |
-| `commentary` | 注释对照、义注对照、复注对照 | 下一层句子模板 `{{book-para-start-end}}`（不是译文；一个片段由多句解释时并列多个模板 `{{…}}{{…}}`，仍是一条记录） | 边注正文是那几句在当前 channel 的译文，末尾带 `<cite>义注</cite>` 跳转锚点 |
-| `discussion` | 审稿意见、讨论（默认） | 正文 | 不进阅读页 |
-| `qa` | 问答 | 正文 | 不进阅读页 |
-| `help` | 求助 | 正文 | 不进阅读页 |
+CLI 的 `discuss-add` / `discuss-edit` 只要 `--quote-exact`，位置与前后缀由程序在句子原文里算
+（`lib/anchors.py`），不必让模型数字符位。
 
-只有 `note` 与 `commentary` 会被**注入阅读页**：服务端在句子原始 content 的 `pos_end`
-处插一条边注（`PaliContentService::injectAnnotationNotes`），位置为空或越界时挂到句尾。
-两者除出处外完全一样。
+`commentary` 即注释书对应：`target_id` 是上一层（根本 / 义注）某句**译文**的 uid，写法见
+`note-push` 与 `skills/commentary-align`；其余用 `discuss-add --type <type>`。
 
-`commentary` 即注释书对应：`res_id` 是上一层（根本 / 义注）某句**译文**的 uid，写法见
-`note-push` 与 `skills/commentary-align`；其余四类用 `discuss-add --type <type>`。
+`severity`（严重 / 紧急程度）取值随 type：`issue` 为 `error` / `warning` / `suggestion`，`help` 为
+`urgent` / `normal`，其它类型传了 422。改 type 时新类型不收原 severity 的，服务端自动清空；
+锚点不清（留着不显示，改回可带锚点的类型时恢复）。
 
-回复只要给 `parent`（被回复的批注 id）和 `content`：**`res_id` / `res_type` 由服务端
-从 parent 继承，不要自己给**。父话题的 `children_count` 会自动加一。
+v3 只收 markdown，没有 `content_type`。`notify` 缺省是 **true**（会发站内通知），AI 批量写时显式给
+`false`；新建批注本来就不发。
 
-`notification` 缺省是 **true**，会发站内通知。AI 批量批注时显式给 `false`，别刷屏。
+### 回复
+
+`POST {API}/v3/discussions/{话题id}/replies`，body 只有 `{content, notify}`：类型、挂靠对象由服务端
+从话题继承。话题已关闭 409；对一条回复再回复 422。批注也可以回复。
 
 ### 改与删
 
-`PUT`/`DELETE {API}/v2/discussion/{id}`，认「你是作者」或「你是所在 channel 的编辑」。
-模型能改删自己建的。
+`PATCH {API}/v3/discussions/{id}`：**局部更新**，只改传了的字段（没有 PUT）。`title` / `status` /
+`type` / `severity` 只对话题有效；批注没有 `status`，type 只能在 note / commentary 之间改。
+改成 `glossary` 须挂在句子上、且是该句的编辑者。
 
-⚠ `update()` 是**全量覆盖**：不提交 `title`/`content` 会被写成 null，而且 `status`
-不提交会被重置成 `active`——**改一下内容就把已关闭的话题重新打开了**。要改必须先
-`GET` 回填全部字段（`wikipali discuss-edit` 就是这样做的）。锚点五个字段例外：**出现才改**，
-没提交的原样保留，显式给 `null` 即清空。
-
-⚠ 现行 `destroy()` 只认作者本人，channel 编辑删不了别人的。
+`DELETE {API}/v3/discussions/{id}`：**软删除**，返回 200 + 删除后的记录。作者或该句所在 channel 的
+编辑者可删；有回复的话题删后以「已删除」占位保留。
 
 ---
 
