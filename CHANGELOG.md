@@ -3,6 +3,24 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.20.0] - 2026-10-22
+
+### 新增
+- **译文评价标准**（`references/translation-evaluate.md`）：问题分三级，对应 issue 的 `--severity`——
+  `error`（严重错误：严重失真、教理违背；一般错误：漏译、多译、词义误译、修饰错误、误解表达、
+  义理不符、用词不符、指代错误）、`warning`（待提升）、`suggestion`（可提升）。审稿 issue 的格式固定：
+  标题 `[类别] 简要描述`，正文四项「原文 / 译文 / 理由 / 建议修改为」，正文不用反引号、引文用斜体。
+- **用 nissaya 审稿**：按 nissaya 对照结果定级——词义用法不符为 `error`，明显歧义为 `warning`，
+  nissaya 补词、指代、解释性内容为 `suggestion`（可建议加脚注）；漏译一律以巴利原文为准。
+- **缅文 nissaya 读法**（`references/nissaya-reading.md`）：语序重排、语尾即语法分析（格位 / 时态 /
+  敬语对照表）、`iti` 的讲法交代说话人、补出的巴利与缅文、`ပ` 等省略记号与末音节缩写、
+  夹注的义注 / 复注层次、巴利拼写不可靠、权威排序。依《优波离经》前 200 句抽样核对。
+
+### 变更
+- research skill：校对、审稿、评估时按评价标准定级；交叉验证一步读 nissaya 前先看读法文档。
+  前后风格不一致由「就是错」改为 `suggestion`「风格统一」，被解释词不一致仍为 `error`「用词不符」。
+- write skill：`--severity` 说明指向评价标准与 issue 格式。
+
 ## [0.19.1] - 2026-10-22
 
 ### 新增
