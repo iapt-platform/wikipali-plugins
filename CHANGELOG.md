@@ -3,6 +3,12 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.19.1] - 2026-10-22
+
+### 新增
+- **站点 `staging.cc`**（`https://staging.wikipali.cc/api`）：与 `staging` 是同一个库，共用一桶凭据与缓存，
+  可用 `wikipali endpoint staging.cc` 切换。`local` 的序号随之由 6 变为 7（简称 `local` 不变）。
+
 ## [0.19.0] - 2026-10-21
 
 ### 新增
