@@ -14,6 +14,7 @@ from errors import WpError
 # 只有 bucket == "online" 的四个地址共享同一个数据库与 jwt 密钥，彼此可以互替。
 # staging 与开发机各是**另一个库**——实测 staging 的公开 channel 数与线上不同，
 # 同名 channel 的 uid 也不同——所以自成一桶，且绝不参与 fallback。
+# staging 的 .org / .cc 两个域名是同一个库，共用 staging 桶。
 SITES = [
     {"key": "www", "url": "https://www.wikipali.org/api",
      "version": "稳定版", "domain": ".org", "bucket": "online"},
@@ -25,6 +26,8 @@ SITES = [
      "version": "最新版", "domain": ".cc", "bucket": "online"},
     {"key": "staging", "url": "https://staging.wikipali.org/api",
      "version": "预发布", "domain": "独立库", "bucket": "staging"},
+    {"key": "staging.cc", "url": "https://staging.wikipali.cc/api",
+     "version": "预发布", "domain": "独立库 · .cc", "bucket": "staging"},
     {"key": "local", "url": "http://127.0.0.1:8000/api",
      "version": "开发机", "domain": "独立库", "bucket": "local"},
 ]
