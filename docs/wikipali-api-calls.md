@@ -3,7 +3,7 @@
 本文汇总 `wikipali-plugins`（`plugins/wikipali`）实际调用的全部 WikiPali HTTP 接口，
 用于快速检索「某个能力对应哪个接口、入参是什么、返回什么」。
 
-基址记为 `{API}`，由 `lib/sites.py` 定义，六个地址：
+基址记为 `{API}`，由 `lib/sites.py` 定义，七个地址：
 
 | 地址 | 版本 | 数据 |
 |---|---|---|
@@ -11,7 +11,8 @@
 | `https://www.wikipali.cc/api` | 稳定版 | 线上共享库 |
 | `https://next.wikipali.org/api` | 最新版 | 线上共享库 |
 | `https://next.wikipali.cc/api` | 最新版 | 线上共享库 |
-| `https://staging.wikipali.org/api` | 预发布 | 独立库 |
+| `https://staging.wikipali.org/api` | 预发布 | 独立库（与 staging.cc 同库） |
+| `https://staging.wikipali.cc/api` | 预发布 | 独立库（与 staging 同库） |
 | `http://127.0.0.1:8000/api` | 开发机 | 独立库 |
 
 **响应约定**
