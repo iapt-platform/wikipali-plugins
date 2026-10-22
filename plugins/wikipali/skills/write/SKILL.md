@@ -18,7 +18,7 @@ metadata:
 
 ⚠ **刚装好或刚更新插件时，这两个命令可能还不在 PATH 上**——PATH 注入在会话启动时完成，装完要重启会话。若 `command -v wikipali` 为空，改用 `${CLAUDE_PLUGIN_ROOT}/bin/wikipali`，并提醒用户重启会话。
 
-**坐标、引用格式、术语链接与注释、译文来源判定、凭据规矩见 `references/conventions.md`——那是所有 skill 共用的，必须遵守。** 端点细节见 `references/api-write.md`。
+**坐标、引用格式、术语链接与注释、译文来源判定、凭据规矩见 `references/conventions.md`——那是所有 skill 共用的，必须遵守。** 审稿、评估译文的问题分级见 `references/translation-evaluate.md`。端点细节见 `references/api-write.md`。
 
 ## 铁律
 
@@ -205,7 +205,9 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type glossary \
   一段多句时命令会列出候选、要求用 `--words 起-止` 或 `--sent <句子uid>` 指明。
 - `--title`：`discussion` / `qa` / `help` / `issue` **必填**；`glossary` **必填且就是术语词头**
   （巴利词，如 `bhikkhu`，不能含 `[ ] { } | #`），阅读页按它显示术语；`note` / `commentary` 可不给。
-- `--severity`：`issue` 可选 `error` / `warning` / `suggestion`（用户说「错误」「警告」「建议」时给），
+- `--severity`：`issue` 可选 `error` / `warning` / `suggestion`（用户说「错误」「警告」「建议」时给）。
+  **审稿、评估译文时按 `references/translation-evaluate.md` 归类定级**，标题写成
+  `[类别] 简要描述`，正文固定四项：原文、译文、理由、建议修改为，正文不用反引号、引文用 `*斜体*`（格式见该文件）；
   `help` 可选 `urgent` / `normal`；其它类型不收。前端以彩色标签显示。
   `discuss-reply` 只要 `--content`，不能回复一条回复（回复它所在的话题）。
 - 正文是 markdown，也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
