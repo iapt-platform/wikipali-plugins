@@ -269,7 +269,7 @@ def build_parser():
     p.add_argument('--type', default='discussion', choices=cmd_discuss.DISCUSS_TYPES,
                    help='列哪一类：note＝批注 / 脚注，commentary＝注释对照，'
                         'discussion＝审稿意见 / 讨论（默认），qa＝问答，help＝求助，issue＝问题报告，'
-                        'glossary＝外挂术语')
+                        'glossary＝外挂术语，assessment＝译文评估（打分）')
     p.add_argument('--limit', type=int, default=50, help='每页条数，最多 200')
     p.add_argument('--page', type=int, default=1, help='第几页')
     p.set_defaults(func=cmd_discuss.cmd_discuss_list)
@@ -281,9 +281,9 @@ def build_parser():
     p.add_argument('--to', type=int, help='段落区间的结束段（含）')
     p.add_argument('--book', type=int, help='不给坐标时取整本书；坐标和 --book 都不给就是整个 channel')
     p.add_argument('--type', help='类型，逗号多选，如 issue,glossary；不给只列话题'
-                                  '（discussion / qa / help / issue / glossary），批注要显式 note / commentary')
+                                  '（discussion / qa / help / issue / glossary），批注与评估要显式 note / commentary / assessment')
     p.add_argument('--status', choices=['active', 'close'], help='不给则两种都列')
-    p.add_argument('--severity', help='严重程度，逗号多选，如 error,warning')
+    p.add_argument('--severity', help='严重程度，逗号多选，如 error,warning；assessment 时是评估方法，如 mqm')
     p.add_argument('--limit', type=int, default=50, help='每页条数，最多 200')
     p.add_argument('--page', type=int, default=1, help='第几页')
     p.add_argument('--all', action='store_true', help='自动翻页取完全部')
@@ -298,14 +298,18 @@ def build_parser():
                    help='note＝批注 / 脚注（正文即注解），commentary＝注释对照 / 义注对照 / 复注对照'
                         '（正文为 {{book-para-start-end}}），discussion＝审稿意见 / 讨论（默认），'
                         'qa＝问答，help＝求助，issue＝问题报告（指出译文某处的问题），'
-                        'glossary＝外挂术语（不改译文，给一段译文临时挂上术语）。'
+                        'glossary＝外挂术语（不改译文，给一段译文临时挂上术语），'
+                        'assessment＝译文评估（用某种方法给这句译文打分，要 --score 与 --method；'
+                        '一句只留一条，再评估覆盖旧的）。'
                         '锚点只有 note / commentary / issue / glossary 收')
     p.add_argument('--title', help='标题：discussion / qa / help / issue 必填；glossary 必填且填术语词头；'
-                                   'note / commentary 可不给')
+                                   'note / commentary / assessment 可不给')
     p.add_argument('--severity', choices=cmd_discuss.SEVERITY_CHOICES,
                    help='严重 / 紧急程度：issue 可选 error / warning / suggestion，help 可选 urgent / normal')
+    p.add_argument('--score', type=int, help='评估分数，0–100 的整数（只限且必填于 assessment）')
+    p.add_argument('--method', help='评估方法（只限且必填于 assessment），1–16 位字母数字 . _ -，如 mqm、llm-judge')
     add_anchor_args(p)
-    p.add_argument('--content', help='正文；给 - 表示从 stdin 读')
+    p.add_argument('--content', help='正文；给 - 表示从 stdin 读（assessment 写打分理由，可不给）')
     p.add_argument('--content-file', dest='content_file', help='从文件读正文（markdown）')
     p.add_argument('--notify', action='store_true', help='发站内通知（默认不发；批注本来就不发）')
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
@@ -321,7 +325,7 @@ def build_parser():
     p.add_argument('-y', '--yes', action='store_true')
     p.set_defaults(func=cmd_discuss.cmd_discuss_reply)
 
-    p = add('discuss-edit', '修改一条批注 / 对应：标题、正文、状态、锚点（AI 代写，需人类授权）', needs_json=False)
+    p = add('discuss-edit', '修改一条批注 / 对应 / 评估：标题、正文、状态、锚点、分数（AI 代写，需人类授权）', needs_json=False)
     p.add_argument('id', help='批注 id，用 wikipali discuss 查')
     p.add_argument('--title')
     p.add_argument('--content', help='新正文；给 - 表示从 stdin 读；不给则保留原文')
@@ -329,6 +333,8 @@ def build_parser():
     p.add_argument('--status', choices=['active', 'close'])
     p.add_argument('--severity', choices=cmd_discuss.SEVERITY_CHOICES,
                    help='改严重 / 紧急程度（issue：error / warning / suggestion；help：urgent / normal）')
+    p.add_argument('--score', type=int, help='改评估分数，0–100 的整数（只限 assessment）')
+    p.add_argument('--method', help='改评估方法（只限 assessment）')
     add_anchor_args(p, editing=True)
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true')

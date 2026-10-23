@@ -237,9 +237,9 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 | `GET v3/discussions/{id}/replies` | `per_page`、`page` | 某话题下的回复，按时间正序 |
 | `GET v3/tipitaka-discussions/{channel}` | `book`、`chapter` 或 `para`/`to`、`type`（逗号多选）、`status`、`severity`、`per_page`、`page` | 一段经文里的批注，按经文顺序，每条带 `sentence: {book, paragraph, word_start, word_end}`；不给 book 即整个 channel |
 
-- **不带 `type` 只列话题**（discussion / qa / help / issue / glossary），批注要显式 `type=note` / `commentary`。
+- **不带 `type` 只列话题**（discussion / qa / help / issue / glossary），批注与评估要显式 `type=note` / `commentary` / `assessment`。
 - 未登录看不到 discussion；`basic` 角色在自己管不了的句子上只看得到自己发的 discussion。
-  issue / glossary 会注入公开的阅读页，所以对所有人可见。
+  issue / glossary / assessment 会注入公开的阅读页，所以对所有人可见。
 
 ### 新建
 
@@ -256,7 +256,7 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 }
 ```
 
-句子上的批注按 `type` 分七类：
+句子上的批注按 `type` 分八类：
 
 | type | 用户的说法 | 标题 | content | 锚点 | 阅读页 |
 |---|---|---|---|---|---|
@@ -266,6 +266,13 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 | `qa` / `help` | 问答 / 求助 | **必填** | 正文 | 不收 | 不进阅读页 |
 | `issue` | 问题（译错、漏译、标点…） | **必填** | 正文 | 收 | 有锚点：那段文字加波浪下划线（颜色随 severity），点开看内容；没锚点：句尾一个三角叹号。关闭后不再显示 |
 | `glossary` | 外挂术语 | **必填，填术语词头** | 说明（可省） | **必须有** | 那段文字换成 `[[词头#原文]]`，渲染成术语。关闭后不再显示 |
+| `assessment` | 译文评估、给译文打分 | 可省 | 打分理由（可省） | 不收 | 句尾一个对勾，颜色按分数：≥80 绿、≥60 橙、其余红；点开看分数、方法、理由。同段没评估的句子显示灰色对勾（标出句子边界，不能点） |
+
+`assessment`（译文评估）用某种方法给一句译文打分：**`score`（0–100 的整数）与 `severity`（填评估方法，
+1–16 位字母数字 `. _ -`，如 `mqm`、`llm-judge`）必填**，其它类型传 `score` 422。只能挂在句子上，只有该句
+所在 channel 的编辑者能建（模型凭授权代写）。**一句只留一条**：该句已有评估时再 POST 会就地覆盖
+（分数、方法、标题、理由、署名都换成这次的，回复保留），返回 **200** 且 id 不变；没有才新建，返回 201。
+没有开 / 关状态，不能与其它类型互转，不发通知。
 
 `glossary`（外挂术语）**不改译文**，给一段译文临时挂上术语，供讨论该词值不值得正式收进术语表；
 与术语表（`v2/terms`，`term-add`）是两回事。只能挂在句子上，只有该句所在 channel 的编辑者能建。
@@ -281,9 +288,9 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 | `quote_exact` | 字符串，可空 | 被锚定文本的原样摘录 |
 | `quote_prefix` / `quote_suffix` | 字符串，可空 | 摘录前后的上下文（建议 32~64 字符），抗文本位移 |
 
-这四类被**注入阅读页**（`PaliContentService::injectAnnotationNotes`，排版在 `AnnotationLayout`）：
+这四类与 `assessment` 被**注入阅读页**（`PaliContentService::injectAnnotationNotes`，排版在 `AnnotationLayout`）：
 批注在锚点末尾插一条边注（没有锚点挂到句尾），glossary 把锚点处的原文换成术语，issue 高亮锚点处
-的原文（没有锚点就在句尾放三角图标）。位置以 `pos_*` 为准；与 `quote_exact` 对不上（译文改过）时，
+的原文（没有锚点就在句尾放三角图标），assessment 在句尾（三角图标之后）放一个按分数着色的对勾。位置以 `pos_*` 为准；与 `quote_exact` 对不上（译文改过）时，
 服务端按摘录（参考前后缀）重新定位，找不到的 issue 显示成句尾图标、glossary 不显示。交叠的 issue
 合并成一个高亮；issue 与 glossary 交叠时 issue 扩展到包住 glossary；两个 glossary 交叠只留一个。
 写入后服务端会清该段的阅读页缓存。回复不注入。
@@ -295,7 +302,7 @@ CLI 的 `discuss-add` / `discuss-edit` 只要 `--quote-exact`，位置与前后�
 `note-push` 与 `skills/commentary-align`；其余用 `discuss-add --type <type>`。
 
 `severity`（严重 / 紧急程度）取值随 type：`issue` 为 `error` / `warning` / `suggestion`，`help` 为
-`urgent` / `normal`，其它类型传了 422。改 type 时新类型不收原 severity 的，服务端自动清空；
+`urgent` / `normal`，`assessment` 为评估方法（见上），其它类型传了 422。改 type 时新类型不收原 severity 的，服务端自动清空；
 锚点不清（留着不显示，改回可带锚点的类型时恢复）。
 
 v3 只收 markdown，没有 `content_type`。`notify` 缺省是 **true**（会发站内通知），AI 批量写时显式给
@@ -309,8 +316,9 @@ v3 只收 markdown，没有 `content_type`。`notify` 缺省是 **true**（会�
 ### 改与删
 
 `PATCH {API}/v3/discussions/{id}`：**局部更新**，只改传了的字段（没有 PUT）。`title` / `status` /
-`type` / `severity` 只对话题有效；批注没有 `status`，type 只能在 note / commentary 之间改。
-改成 `glossary` 须挂在句子上、且是该句的编辑者。
+`type` / `severity` / `score` 只对话题有效；批注没有 `status`，type 只能在 note / commentary 之间改。
+改成 `glossary` 须挂在句子上、且是该句的编辑者。`assessment` 可改 `score`、`severity`（方法，不能清空）、
+标题、正文；没有 `status`，不能与其它类型互转。
 
 `DELETE {API}/v3/discussions/{id}`：**软删除**，返回 200 + 删除后的记录。作者或该句所在 channel 的
 编辑者可删；有回复的话题删后以「已删除」占位保留。
