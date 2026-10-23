@@ -3,6 +3,17 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.21.0] - 2026-10-23
+
+### 新增
+- **译文评估**：`discuss-add --type assessment --score <0–100 的整数> --method <评估方法>`，用某种方法给
+  一句译文打分，理由写 `--content`（可省）。只有该句 channel 的编辑者（及其授权的模型）能写；
+  **一句只留一条，再评估就覆盖**旧的分数、方法、标题与理由，工具会提示「已覆盖」。阅读页句尾显示对勾，
+  按分数着色（≥80 绿、≥60 橙、其余红），同段未评估的句子显示灰色对勾。需要服务端支持
+  `/v3/discussions` 的 `assessment` 类型。
+- `discuss-edit <id> --score / --method` 改分数与方法；`discuss` / `discuss-range` 列表显示分数，
+  `discuss-range --type assessment --severity <方法>` 按方法筛选。
+
 ## [0.20.0] - 2026-10-22
 
 ### 新增
