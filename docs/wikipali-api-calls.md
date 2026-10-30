@@ -441,9 +441,10 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 ## 37. 列批注 —— `GET {API}/v3/discussions`
 
 - **入参**：query `target_type`、`target_id`（必填，句子 uid）、`type`、`status`、
-  `per_page`（≤200）、`page`。不带 `type` 只列话题（含 issue / glossary），批注要显式
-  `type=note`/`commentary`。
-- **返回**：`data: [ { id, target_type, target_id, type, title, content, status, editor, co_editor, reply_count, abilities, pos_start/pos_end/quote_exact/quote_prefix/quote_suffix, created_at, … } ]` + `meta` 分页。
+  `per_page`（≤200）、`page`。不带 `type` 只列话题（含 issue / glossary），批注与评估要显式
+  `type=note`/`commentary`/`assessment`。
+- **返回**：`data: [ { id, target_type, target_id, type, title, content, severity, score, status, editor, co_editor, reply_count, abilities, pos_start/pos_end/quote_exact/quote_prefix/quote_suffix, created_at, updated_at, … } ]` + `meta` 分页。
+  `score` 只有 assessment 有值（0–100 的整数），其余为 null。
 
 ## 38. 批注统计 —— `GET {API}/v3/discussions/summary`
 
@@ -467,18 +468,23 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
   { "target_type": "sentence", "target_id": "<句子 uid>", "type": "discussion",
     "title": "标题（话题必填，批注可省）", "content": "markdown 正文", "notify": false }
   ```
-  - `type` 七类：`note`/`commentary`（批注，收锚点，注入阅读页）、`discussion`/`qa`/`help`
+  - `type` 八类：`note`/`commentary`（批注，收锚点，注入阅读页）、`discussion`/`qa`/`help`
     （话题，**title 必填**，不收锚点）、`issue`（话题，title 必填，收锚点，注入阅读页高亮）、
     `glossary`（外挂术语：话题，**title 必填且为术语词头**，必须有锚点，只能挂句子，
-    注入阅读页显示成术语）。
+    注入阅读页显示成术语）、`assessment`（译文评估：**`score`（0–100 的整数）与 `severity`=评估方法必填**，
+    title 可省、`content` 写理由，不收锚点，只能挂句子，只有该句 channel 的编辑者能建，
+    注入阅读页在句尾显示按分数着色的对勾）。
   - 锚点字段（W3C Web Annotation，`note`/`commentary`/`issue`/`glossary` 收，其余 422）：
     `pos_start`/`pos_end`（`mb_strlen` 口径）、`quote_exact`、`quote_prefix`/`quote_suffix`。
     CLI 只要 `--quote-exact`，位置与前后缀在本地按句子原文算（`lib/anchors.py`），
     算之前先 `GET {API}/v2/sentence/{uid}` 取原文（§6）。
   - `commentary` 的 `content` 是下一层句子模板 `{{book-para-start-end}}`（可并列多个）。
-  - `severity` 随 type：`issue`→`error/warning/suggestion`，`help`→`urgent/normal`，其它类型传了 422。
-  - `notify` 缺省 true；AI 批量写显式给 `false`。
-- **返回**：201 `data: { id, …, editor, co_editor }`。
+  - `severity` 随 type：`issue`→`error/warning/suggestion`，`help`→`urgent/normal`，
+    `assessment`→评估方法（1–16 位字母数字 `. _ -`，如 `mqm`、`llm-judge`），其它类型传了 422。
+  - `score` 只有 `assessment` 收（且必填），其它类型传了 422。CLI：`discuss-add --type assessment --score 85 --method mqm`。
+  - `notify` 缺省 true；AI 批量写显式给 `false`（批注与评估本来就不发）。
+- **返回**：201 `data: { id, …, editor, co_editor }`。`assessment` **一句只留一条**：该句已有评估时
+  就地覆盖（分数、方法、标题、理由、署名换成这次的，回复保留），返回 **200**、id 不变。
 
 ## 42. 回复 —— `POST {API}/v3/discussions/{话题id}/replies`
 
@@ -487,8 +493,10 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 
 ## 43. 修改 —— `PATCH {API}/v3/discussions/{id}`
 
-- **入参**：body 只提交要改的字段（**局部更新，无 PUT**）。`title`/`status`/`type`/`severity`
+- **入参**：body 只提交要改的字段（**局部更新，无 PUT**）。`title`/`status`/`type`/`severity`/`score`
   只对话题有效；批注 `type` 只能在 `note`/`commentary` 之间改。改 type 时锚点保留。
+  `assessment` 可改 `score`、`severity`（评估方法，不能清空）、标题、正文；没有 `status`，不能与其它类型互转。
+  CLI：`discuss-edit <id> --score 90 --method mqm`。
   CLI 给了新的 `--quote-exact` 时先取句子原文重新定位（同 §41）。
 - **返回**：200 `data: { … }`。
 
@@ -507,8 +515,8 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 - **入参**：路径 `{channel}`（句子所在 channel 的 uuid，必填）；query 全部可选——
   `book`（与 `chapter`/`para`/`to` 同用时必填，不给就是整个 channel）、`chapter`（章节起始段，
   服务端按章节长度展开；不能与 `para`/`to` 同用）、`para`、`to`（段落区间，含两端）、
-  `type`（**逗号多选**，如 `issue,glossary`；不给只列话题，批注要显式 `note`/`commentary`）、
-  `status`、`severity`（逗号多选）、`per_page`（≤200）、`page`。
+  `type`（**逗号多选**，如 `issue,glossary`；不给只列话题，批注与评估要显式 `note`/`commentary`/`assessment`）、
+  `status`、`severity`（逗号多选；assessment 时是评估方法）、`per_page`（≤200）、`page`。
 - **返回**：`data: [ { …同 §37 的每条…, sentence: { book, paragraph, word_start, word_end } } ]` +
   `meta` 分页。channel 不存在或范围内没有批注返回空列表；`chapter` 不存在 404；参数非法 422。
 - 可见性同 §37：未登录看不到 discussion，basic 角色在不能编辑的 channel 上只看得到自己发的。

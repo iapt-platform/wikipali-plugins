@@ -14,6 +14,7 @@ uid 是逐句、逐 channel 的——同一段巴利原文和它的中译是两�
 """
 
 import json
+import re
 import time
 
 from anchors import anchor, check_glossary
@@ -34,16 +35,22 @@ GRANT_HEADER = 'X-Agent-Grant'
 #   issue       问题报告（错误 / 待修）
 #   glossary    外挂术语——不改译文，给一段译文临时挂上术语（标题是词头），
 #               用来讨论这个词值不值得正式收进术语表；与术语表（term-*）是两回事
-# note / commentary 是批注（标题可省、没有开关）；其余五类是话题，必须有标题。
+#   assessment  译文评估——用某种方法给一句译文打分（0–100 的整数），只有该句 channel 的编辑者能写；
+#               一句只留一条，再评估就覆盖旧的；阅读页在句尾显示按分数着色的对勾
+# note / commentary 是批注（标题可省、没有开关）；assessment 标题可省、没有开关、不收锚点；
+# 其余五类是话题，必须有标题。
 # 锚点只有 note / commentary / issue / glossary 收（discussion / qa / help 是整句的）。
 # 这四类会被注入阅读页（api-v13 PaliContentService::injectAnnotationNotes）：批注插边注，
 # glossary 把锚点处的原文换成术语，issue 高亮锚点处的原文（没有锚点就在句尾显示三角图标）；
 # issue / glossary 关闭后不再注入。
 # v3 不带 type 列表时只列话题（评论线程），批注要显式 --type。
-DISCUSS_TYPES = ['note', 'commentary', 'discussion', 'qa', 'help', 'issue', 'glossary']
+DISCUSS_TYPES = ['note', 'commentary', 'discussion', 'qa', 'help', 'issue', 'glossary', 'assessment']
 ANNOTATION_TYPES = ['note', 'commentary']
 ANCHORED_TYPES = ['note', 'commentary', 'issue', 'glossary']
 GLOSSARY = 'glossary'
+ASSESSMENT = 'assessment'
+# 评估方法存在 severity 列（varchar 16），与 api-v13 Discussion::ASSESSMENT_METHOD_PATTERN 一致
+ASSESSMENT_METHOD = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,15}$')
 # 严重 / 紧急程度，取值随 type（与 api-v13 Discussion::SEVERITIES 一致），其余类型不收
 SEVERITIES = {'issue': ['error', 'warning', 'suggestion'], 'help': ['urgent', 'normal']}
 SEVERITY_CHOICES = sorted({v for values in SEVERITIES.values() for v in values})
@@ -52,10 +59,37 @@ SEVERITY_CHOICES = sorted({v for values in SEVERITIES.values() for v in values})
 def check_severity(type_, severity):
     if severity is None:
         return
+    if type_ == ASSESSMENT:
+        raise WpError('评估不用 --severity，用 --method 给评估方法。')
     allowed = SEVERITIES.get(type_, [])
     if severity not in allowed:
         raise WpError(f'--severity {severity} 不适用于 {type_}：'
                       + (f'可选 {" / ".join(allowed)}' if allowed else '这一类没有严重程度'))
+
+
+def check_method(method):
+    if not ASSESSMENT_METHOD.match(method or ''):
+        raise WpError(f'--method「{method}」不合格：1–16 位字母、数字、点、下划线或连字符，以字母或数字开头，如 mqm、llm-judge。')
+
+
+def check_score(score):
+    if score is None or not 0 <= score <= 100:
+        raise WpError('--score 要给 0–100 的整数。')
+
+
+def score_text(row):
+    """评估的分数，如「85 分」；不是评估返回空串。"""
+    if row.get('type') != ASSESSMENT or row.get('score') is None:
+        return ''
+    return f'{row["score"]} 分'
+
+
+def fmt_score(row):
+    """评估的分数与方法，如「85 分（mqm）」；不是评估返回空串。"""
+    text = score_text(row)
+    return text + (f'（{row["severity"]}）' if text and row.get('severity') else '')
+
+
 DISCUSS_TYPE = 'discussion'
 ANCHOR_FIELDS = ['pos_start', 'pos_end', 'quote_exact', 'quote_prefix', 'quote_suffix']
 
@@ -259,6 +293,8 @@ def cmd_discuss_list(args):
             if row.get('title'):
                 print(f'  标题   : {row.get("title")}')
             print(f'  作者   : {who(row)}   {row.get("status")}   {(row.get("created_at") or "")[:10]}')
+            if fmt_score(row):
+                print(f'  评分   : {fmt_score(row)}')
             if fmt_anchor(row):
                 print(f'  锚点   : {fmt_anchor(row)}')
             for line in (row.get('content') or '').splitlines():
@@ -352,7 +388,8 @@ def cmd_discuss_range(args):
                 print('\n' + where)
                 last = where
             tag = row.get('type') + (f'/{row["severity"]}' if row.get('severity') else '')
-            print(f'  {tag:<18} {row.get("status") or "":<6} {row.get("title") or ""}')
+            title = f'{score_text(row)}  {row.get("title") or ""}'.strip()
+            print(f'  {tag:<18} {row.get("status") or "":<6} {title}')
             if fmt_anchor(row):
                 print(f'  {"":18} 锚点 {fmt_anchor(row)}')
             first = ((row.get('content') or '').strip().splitlines() or [''])[0]
@@ -457,6 +494,8 @@ def confirm_and_send(client, args, body, header_lines, what, method, path, scope
     print('-' * 72)
     if body.get('title'):
         print(f'  标题 : {body["title"]}')
+    if 'score' in body:
+        print(f'  评分 : {body["score"]}' + (f'（{body["severity"]}）' if body.get('severity') else ''))
     shown = fmt_anchor(anchor_view if anchor_view is not None else body)
     if shown:
         print(f'  锚点 : {shown}')
@@ -479,6 +518,8 @@ def confirm_and_send(client, args, body, header_lines, what, method, path, scope
 def report_saved(saved):
     print('-' * 72)
     print(f'已提交：{saved.get("id")}')
+    if saved.get('type') == ASSESSMENT and saved.get('created_at') != saved.get('updated_at'):
+        print('（这一句原来已有评估，已覆盖为本次的分数、方法与理由）')
     print(f'署名核对：{who(saved)}')
 
 
@@ -486,15 +527,22 @@ def cmd_discuss_add(args):
     client = make_client(args)
     client.model
     sent_uid, desc = resolve_sentence(args, client)
-    content = read_content(args)
+    is_assessment = args.type == ASSESSMENT
+    if is_assessment:
+        check_score(args.score)
+        check_method(args.method)
+    elif args.score is not None or args.method:
+        raise WpError('--score / --method 只给 --type assessment（译文评估）用。')
+    # 评估的理由可以不写
+    content = read_content(args, optional=is_assessment)
     anchors = anchor_body(args)
-    if args.type not in ANNOTATION_TYPES and not args.title:
+    if args.type not in ANNOTATION_TYPES and not is_assessment and not args.title:
         if args.type == GLOSSARY:
             raise WpError('外挂术语必须给 --title：术语的词头（巴利词，如 bhikkhu）。')
         raise WpError(f'{args.type} 类话题必须给 --title（审稿意见 / 问答 / 求助 / 问题是要被列出来讨论的）。')
     if anchors and args.type not in ANCHORED_TYPES:
         raise WpError('锚点（--pos-* / --quote-*）只有 note / commentary / issue / glossary 收，'
-                      f'{args.type} 是整句的话题。')
+                      f'{args.type} 是整句的。')
 
     check_severity(args.type, args.severity)
 
@@ -516,8 +564,13 @@ def cmd_discuss_add(args):
         body['title'] = args.title
     if args.severity:
         body['severity'] = args.severity
+    if is_assessment:
+        body['severity'] = args.method
+        body['score'] = args.score
     header = [f'批注对象 : {desc}', f'句子 uid : {sent_uid}',
               f'类型     : {args.type}' + (f'（{args.severity}）' if args.severity else '')]
+    if is_assessment:
+        header.append('注意     : 一句只留一条评估，这一句已有评估的话会被本次覆盖')
     saved = confirm_and_send(client, args, body, header, '新建批注', 'POST', 'v3/discussions',
                              sentence_scope(client, sent_uid, sentence))
     if saved is None:
@@ -570,6 +623,15 @@ def cmd_discuss_edit(args):
     if args.severity and args.severity != old.get('severity'):
         check_severity(old.get('type'), args.severity)
         body['severity'] = args.severity
+    if args.score is not None or args.method:
+        if old.get('type') != ASSESSMENT:
+            raise WpError('--score / --method 只能改译文评估（assessment）。')
+        if args.score is not None and args.score != old.get('score'):
+            check_score(args.score)
+            body['score'] = args.score
+        if args.method and args.method != old.get('severity'):
+            check_method(args.method)
+            body['severity'] = args.method
     anchors = anchor_body(args)
     sentence = None
     if anchors.get('quote_exact') or old.get('type') == GLOSSARY:
@@ -620,7 +682,10 @@ def cmd_discuss_delete(args):
     return 0
 
 
-def read_content(args):
+def read_content(args, optional=False):
+    """读正文。optional=True 时（评估的理由）什么都没给就返回 None。"""
+    if optional and not args.content and not args.content_file:
+        return None
     if args.content == '-':
         import sys
         content = sys.stdin.read()

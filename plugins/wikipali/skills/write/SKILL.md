@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries (新建术语 / 加术语), or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / 问题 / 标出译文某处的问题 / 外挂术语 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help, issue, glossary), or to list all discussions / issues / 外挂术语 in a chapter, paragraph range, book or whole channel, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
+description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries (新建术语 / 加术语), or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / 问题 / 标出译文某处的问题 / 外挂术语 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help, issue, glossary, assessment), or to score / assess a translation sentence (译文评估 / 给译文打分 / 评分), or to list all discussions / issues / 外挂术语 / assessments in a chapter, paragraph range, book or whole channel, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
 metadata:
   author: mint
 ---
@@ -173,12 +173,14 @@ wikipali term-edit <guid> --meaning 念住          # 只改给出的字段，�
 | 指出译文某处有问题（译错、漏译、标点…） | `issue` + `--quote-exact` | 阅读页把那段文字标成波浪下划线，点开看内容 |
 | 报问题，但说不清具体在哪几个字 | `issue`（不带摘录） | 阅读页在句尾显示一个三角叹号 |
 | 给译文**加外挂术语** | `glossary` + `--quote-exact` | 不改译文，把那段文字临时显示成术语，供讨论该不该收进术语表 |
+| 评估译文、给译文打分 | `assessment` + `--score` + `--method` | 用某种方法给整句打分（0–100 的整数）；阅读页句尾显示对勾，≥80 绿、≥60 橙、其余红。**一句只留一条，再评估覆盖旧的** |
 | 新建术语、加术语 | **不是批注**，用 `term-add`（见「术语表」） | 正式进术语表 |
 
 `note` / `commentary` 是**批注**：可以带锚点，会被注入阅读页（锚点末尾插边注，没有锚点
 就插在句尾），没有开 / 关状态。其余五类是**话题**：**必须有标题**，可以回复、可以关闭；
 其中 `discussion` / `qa` / `help` 是整句的，不收锚点，`issue` / `glossary` 收锚点并会注入阅读页
-（关闭后不再显示）。
+（关闭后不再显示）。`assessment` 是整句的评分：标题可省、理由写 `--content`（可省）、不收锚点、
+没有开 / 关状态，只有该句 channel 的编辑者（及其授权的模型）能写。
 
 **「外挂术语」与「术语」别弄混**：用户说「新建术语」「加个术语」「把 X 收进术语表」→ `term-add`；
 只有说「给译文**添加外挂术语**」才是 `--type glossary`。外挂术语是**临时**的：不改译文、不进术语表，
@@ -199,6 +201,9 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type issue --sever
 # 外挂术语：--title 是术语词头，--quote-exact 是译文里要挂术语的那几个字
 wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type glossary \
     --title tajjanīyakamma --quote-exact '呵责羯磨' --content '试用此译名，讨论是否收入术语表。'
+# 译文评估：--score 0–100，--method 写评估方法；这一句已有评估就覆盖
+wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type assessment \
+    --score 85 --method mqm --content '术语一致；语序略生硬，扣 15 分。'
 ```
 
 - **挂点要确认**，见铁律第 8 条。`--channel` 缺省是巴利原文；要批注某个译本就给它。
@@ -212,7 +217,11 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type glossary \
   `discuss-reply` 只要 `--content`，不能回复一条回复（回复它所在的话题）。
 - 正文是 markdown，也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
 - **默认不发站内通知**，`--notify` 才发 —— 批量批注不要刷别人的通知（批注本来就不发）。
-- 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条。
+- 批注是**追加**的，不会覆盖任何已有内容；同一句可以有多条。**`assessment` 例外**：一句只留一条，
+  再 `discuss-add --type assessment` 会覆盖原来的分数、方法、标题与理由（工具会提示「已覆盖」）。
+- `--score` / `--method` 只给 `assessment`：分数是 0–100 的整数（译文质量是模糊评估，不要小数）；方法 1–16 位字母数字 `. _ -`
+  （如 `mqm`、`llm-judge`），同一批评估用同一个方法名，便于按方法筛选（`discuss-range --type assessment --severity mqm`）。
+  改分数用 `discuss-edit <id> --score 90`。
 - **锚点**：`note` / `commentary` / `issue` / `glossary` 收，把它定位到句内一段文字。
   **只给 `--quote-exact`（原样摘录，含标点）**，工具在句子原始 content 里找出位置与前后缀，
   **不要自己数字符位**。摘录必须逐字取自**那一句**的原文（挂在译文上就取译文），
@@ -229,6 +238,7 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type glossary \
   wikipali discuss-range 169:893 --chapter --channel <译文> --type issue,glossary --status active
   wikipali discuss-range 169:895 --to 896 --channel <译文> --type issue --severity error
   wikipali discuss-range --book 169 --channel <译文> --all --json   # 整本书，自动翻页
+  wikipali discuss-range 169:893 --chapter --channel <译文> --type assessment   # 本章各句的评分
   ```
   `--channel` 必填；`--type` 逗号多选，不给只列话题（含 issue / 外挂术语，不含批注）。
   每条带句子坐标与 id，要回复 / 修改 / 关闭就拿 id 用 `discuss-reply` / `discuss-edit`。
