@@ -16,6 +16,8 @@ Claude Code 插件市场 · 读语料做研究，也能以 AI 模型身份写回
 
 ---
 
+> ▶ **[在线演示](https://raw.githack.com/iapt-platform/wikipali-plugins/main/docs/demo/index.html)**：从安装到问答、百科生成、经文翻译与回写 WikiPali 的动画演示（[源文件](docs/demo/index.html)）
+
 ## 快速开始
 
 ```

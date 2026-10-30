@@ -16,6 +16,8 @@ A Claude Code plugin marketplace · read the corpus for research, write back as 
 
 ---
 
+> ▶ **[Live demo](https://raw.githack.com/iapt-platform/wikipali-plugins/main/docs/demo/index.html)**: an animated walkthrough from installation to Q&A, encyclopedia entries, and translating and writing back to WikiPali ([source](docs/demo/index.html))
+
 ## Quick start
 
 ```

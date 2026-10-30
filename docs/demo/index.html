@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WikiPali 插件 · 从安装到使用</title>
+<style>
+  :root {
+    --bg: #f5f4ee;
+    --ink: #2b2a27;
+    --muted: #8a877d;
+    --line: #e4e1d6;
+    --accent: #c96442;
+    --accent-soft: #f3e3da;
+    --card: #ffffff;
+    --term-bg: #1e1d1b;
+    --term-ink: #e8e6df;
+    --ok: #4c9a5f;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    --serif: Georgia, "Songti SC", "Noto Serif CJK SC", serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.6; }
+
+  /* ---------- 顶部 ---------- */
+  header.hero { text-align: center; padding: 56px 20px 24px; }
+  header.hero h1 { font-family: var(--serif); font-weight: 500; font-size: 34px; margin: 0 0 8px; }
+  header.hero p { margin: 0; color: var(--muted); }
+  nav.steps {
+    position: sticky; top: 0; z-index: 10; display: flex; justify-content: center; gap: 8px;
+    padding: 12px; background: rgba(245,244,238,.88); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+  }
+  nav.steps a {
+    text-decoration: none; color: var(--muted); font-size: 14px; padding: 6px 14px; border-radius: 999px;
+    border: 1px solid transparent; transition: all .25s;
+  }
+  nav.steps a.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ---------- 场景 ---------- */
+  section.scene { max-width: 1040px; margin: 0 auto; padding: 56px 20px; min-height: 92vh; display: flex; flex-direction: column; justify-content: center; }
+  .scene-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; }
+  .scene-head .num { font-family: var(--serif); font-size: 44px; color: var(--accent); line-height: 1; }
+  .scene-head h2 { margin: 0; font-weight: 600; font-size: 22px; }
+  .scene-head p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .scene-head .replay {
+    margin-left: auto; border: 1px solid var(--line); background: var(--card); border-radius: 8px;
+    padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--muted);
+  }
+  .scene-head .replay:hover { color: var(--accent); border-color: var(--accent); }
+  .stage { position: relative; height: 560px; }
+  .progress { height: 3px; background: var(--line); border-radius: 3px; margin-top: 14px; overflow: hidden; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+  /* ---------- 终端（Claude Code） ---------- */
+  .terminal {
+    height: 100%; background: var(--term-bg); color: var(--term-ink); border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.18); overflow: hidden; display: flex; flex-direction: column;
+    font-family: var(--mono); font-size: 14px;
+  }
+  .terminal .bar { padding: 10px 14px; background: #2a2926; display: flex; align-items: center; gap: 8px; color: #8d8a80; font-size: 12px; }
+  .dots { display: flex; gap: 7px; margin-right: 8px; }
+  .dots i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .dots i:nth-child(1) { background: #ff5f57; } .dots i:nth-child(2) { background: #febc2e; } .dots i:nth-child(3) { background: #28c840; }
+  .terminal .body { flex: 1; padding: 16px 20px; overflow: hidden; white-space: pre-wrap; }
+  .terminal .ln { min-height: 1.6em; }
+  .t-dim { color: #8d8a80; } .t-ok { color: #7bc58b; } .t-acc { color: #e08a6a; } .t-blue { color: #8fb8e8; }
+  .t-box { border: 1px solid #5a5850; border-radius: 6px; padding: 8px 12px; margin: 6px 0; display: inline-block; }
+  .caret { display: inline-block; width: 8px; height: 1.1em; background: var(--term-ink); vertical-align: -3px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- Claude Desktop ---------- */
+  .desktop {
+    height: 100%; background: #faf9f5; border-radius: 12px; border: 1px solid var(--line);
+    box-shadow: 0 20px 50px rgba(60,50,30,.12); overflow: hidden; display: flex; flex-direction: column;
+  }
+  .desktop .bar { height: 38px; display: flex; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--line); background: #f3f1ea; font-size: 12px; color: var(--muted); }
+  .desktop .bar .title { flex: 1; text-align: center; margin-right: 60px; }
+  .desktop .main { flex: 1; display: flex; min-height: 0; }
+  .side { width: 200px; border-right: 1px solid var(--line); padding: 14px 10px; font-size: 13px; color: #5d5a52; background: #f3f1ea; flex-shrink: 0; }
+  .side .new { display: flex; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 8px; color: var(--accent); font-weight: 500; }
+  .side .lbl { margin: 16px 10px 6px; font-size: 11px; color: var(--muted); letter-spacing: .05em; }
+  .side .item { padding: 6px 10px; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side .item.on { background: #e9e6dc; }
+  .side .plug { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
+  .side .plug b { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; }
+  .chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .msgs { flex: 1; overflow-y: auto; padding: 22px 0 8px; scroll-behavior: smooth; }
+  .msgs::-webkit-scrollbar { width: 0; }
+  .col { max-width: 640px; margin: 0 auto; padding: 0 22px; }
+  .m-user { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+  .m-user div { background: #eeebe1; padding: 10px 14px; border-radius: 14px; max-width: 80%; font-size: 15px; }
+  .m-ai { font-family: var(--serif); font-size: 15.5px; line-height: 1.75; margin-bottom: 14px; }
+  .m-ai p { margin: 0 0 10px; }
+  .m-ai h3 { font-family: var(--sans); font-size: 15px; margin: 14px 0 6px; }
+  .m-ai .pali { font-style: italic; color: #6b5a3e; }
+  .cite { font-family: var(--sans); font-size: 11.5px; background: var(--accent-soft); color: var(--accent); padding: 1px 7px; border-radius: 999px; margin: 0 2px; white-space: nowrap; vertical-align: 1px; animation: pop .3s ease-out; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } }
+  .tool {
+    font-family: var(--sans); font-size: 13px; border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+    margin-bottom: 8px; overflow: hidden; animation: rise .35s ease-out;
+  }
+  @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
+  .tool .th { display: flex; align-items: center; gap: 8px; padding: 7px 12px; color: #5d5a52; }
+  .tool .th code { font-family: var(--mono); font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool .st { margin-left: auto; flex-shrink: 0; }
+  .spin { width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; display: inline-block; animation: rot .8s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  .tool .out { font-family: var(--mono); font-size: 12px; color: #6d6a61; background: #f7f6f1; border-top: 1px solid var(--line); padding: 7px 12px; white-space: pre-wrap; display: none; }
+  .tool.done .out { display: block; }
+  .skill-tag { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: #ebe8f6; color: #5b4fa8; font-weight: 500; }
+  .input { margin: 0 auto 16px; width: calc(100% - 44px); max-width: 640px; border: 1px solid var(--line); background: var(--card); border-radius: 16px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+  .input .txt { min-height: 24px; font-size: 15px; }
+  .input .txt:empty::before { content: "回复 Claude…"; color: #b5b2a8; }
+  .input .row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .send { width: 30px; height: 30px; border-radius: 8px; background: #d9d6cc; color: #fff; display: grid; place-items: center; font-size: 16px; transition: background .2s, transform .15s; }
+  .send.ready { background: var(--accent); }
+  .send.press { transform: scale(.85); }
+  .think { font-family: var(--sans); font-size: 13px; color: var(--muted); margin-bottom: 8px; display: flex; gap: 6px; align-items: center; }
+
+  /* 权限确认 */
+  .perm { font-family: var(--sans); border: 1px solid var(--accent); border-radius: 12px; background: #fffaf6; padding: 12px 14px; margin-bottom: 10px; animation: rise .35s ease-out; }
+  .perm .q { font-size: 13.5px; margin-bottom: 4px; }
+  .perm code { font-family: var(--mono); font-size: 12px; background: #f3ece4; padding: 2px 6px; border-radius: 4px; }
+  .perm .btns { display: flex; gap: 8px; margin-top: 10px; }
+  .perm .btns span { font-size: 13px; padding: 5px 12px; border-radius: 7px; border: 1px solid var(--line); background: #fff; }
+  .perm .btns .allow { background: var(--ink); color: #fff; border-color: var(--ink); transition: transform .15s; }
+  .perm .btns .allow.press { transform: scale(.92); background: var(--accent); border-color: var(--accent); }
+
+  /* 译文对照 / 文章 / 链接卡片 */
+  .pair { font-family: var(--sans); border-left: 3px solid var(--accent-soft); padding: 4px 0 4px 12px; margin-bottom: 8px; animation: rise .35s ease-out; }
+  .pair .pl { font-family: var(--serif); font-style: italic; color: #6b5a3e; font-size: 14px; }
+  .pair .zh { font-family: var(--serif); font-size: 15px; }
+  .article { font-family: var(--serif); border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 18px 22px; margin-bottom: 10px; animation: rise .4s ease-out; }
+  .article h1 { font-size: 22px; margin: 0; font-weight: 600; }
+  .article .sub { font-family: var(--sans); font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .article h3 { font-family: var(--sans); font-size: 13px; color: var(--accent); margin: 12px 0 4px; letter-spacing: .04em; }
+  .article p { margin: 0 0 6px; font-size: 14.5px; }
+  .linkcard { font-family: var(--sans); display: flex; gap: 12px; align-items: center; border: 1px solid var(--ok); background: #f1f8f2; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; animation: rise .4s ease-out; }
+  .linkcard .ic { width: 36px; height: 36px; border-radius: 9px; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+  .linkcard a { color: var(--accent); font-size: 13px; word-break: break-all; }
+  .linkcard b { font-size: 14px; display: block; }
+
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 20px 60px; }
+  footer code { font-family: var(--mono); background: #ebe8de; padding: 2px 6px; border-radius: 4px; }
+
+  @media (max-width: 720px) {
+    .side { display: none; }
+    .stage { height: 600px; }
+    .scene-head .num { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>WikiPali 插件 · 从安装到使用</h1>
+  <p>在 Claude Code 里装一次，Claude Desktop 里直接用 —— 巴利三藏的检索、问答、百科与翻译</p>
+</header>
+
+<nav class="steps">
+  <a href="#s1">① 安装</a>
+  <a href="#s2">② 佛教问答</a>
+  <a href="#s3">③ 百科生成</a>
+  <a href="#s4">④ 翻译与回写</a>
+</nav>
+
+<!-- 场景 1：安装 -->
+<section class="scene" id="s1">
+  <div class="scene-head">
+    <span class="num">1</span>
+    <div><h2>安装插件</h2><p>在 Claude Code 里两条命令，装好后重启会话</p></div>
+    <button class="replay">↻ 重播</button>
+  </div>
+  <div class="stage">
+    <div class="terminal">
+      <div class="bar"><span class="dots"><i></i><i></i><i></i></span>~ — claude</div>
+      <div class="body"></div>
+    </div>
+  </div>
+  <div class="progress"><i></i></div>
+</section>
+
+<!-- 场景 2：问答 -->
+<section class="scene" id="s2">
+  <div class="scene-head">
+    <span class="num">2</span>
+    <div><h2>佛教问答</h2><p>用自然语言提问，Claude 检索原典与义注，回答附可追溯出处</p></div>
+    <button class="replay">↻ 重播</button>
+  </div>
+  <div class="stage"></div>
+  <div class="progress"><i></i></div>
+</section>
+
+<!-- 场景 3：百科 -->
+<section class="scene" id="s3">
+  <div class="scene-head">
+    <span class="num">3</span>
+    <div><h2>佛教百科生成</h2><p>术语表 + 出处分布 + 原典阅读，整理成一篇带引用的百科条目</p></div>
+    <button class="replay">↻ 重播</button>
+  </div>
+  <div class="stage"></div>
+  <div class="progress"><i></i></div>
+</section>
+
+<!-- 场景 4：翻译回写 -->
+<section class="scene" id="s4">
+  <div class="scene-head">
+    <span class="num">4</span>
+    <div><h2>经文翻译与回写 WikiPali</h2><p>以 AI 模型身份写入你的译文 channel，并生成阅读链接</p></div>
+    <button class="replay">↻ 重播</button>
+  </div>
+  <div class="stage"></div>
+  <div class="progress"><i></i></div>
+</section>
+
+<footer>
+  安装：<code>/plugin marketplace add iapt-platform/wikipali-plugins</code> → <code>/plugin install wikipali@wikipali</code>
+  <br>github.com/iapt-platform/wikipali-plugins
+</footer>
+
+<template id="desktop-tpl">
+  <div class="desktop">
+    <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="title">Claude</span></div>
+    <div class="main">
+      <aside class="side">
+        <div class="new">＋ 新对话</div>
+        <div class="lbl">最近</div>
+        <div class="item on"></div>
+        <div class="item">阿毗达摩心路过程</div>
+        <div class="item">清净道论 引用核对</div>
+        <div class="lbl">插件</div>
+        <div class="plug"><b></b>wikipali <span style="color:var(--muted);font-size:11px">0.21.0</span></div>
+      </aside>
+      <div class="chat">
+        <div class="msgs"><div class="col"></div></div>
+        <div class="input">
+          <div class="txt"></div>
+          <div class="row"><span>Opus · wikipali</span><span class="send">↑</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+/* ============ 基础：可取消的计时 ============ */
+class Cancelled extends Error {}
+const SPEED = 1; // 调整整体播放速度，<1 更快
+
+function makeCtx(scene) {
+  const token = { alive: true };
+  const wait = ms => new Promise((res, rej) => {
+    setTimeout(() => token.alive ? res() : rej(new Cancelled()), ms * SPEED);
+  });
+  return { token, wait, scene };
+}
+
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+
+/* ============ 终端助手 ============ */
+function Term(root, ctx) {
+  const body = root.querySelector('.body');
+  body.innerHTML = '';
+  const { wait } = ctx;
+  return {
+    line(html = '') { const l = el('div', 'ln', html); body.appendChild(l); body.scrollTop = body.scrollHeight; return l; },
+    async type(prompt, text, cps = 26) {
+      const l = this.line(prompt);
+      const t = el('span'); const c = el('span', 'caret');
+      l.append(t, c);
+      for (const ch of text) { t.textContent += ch; await wait(1000 / cps); }
+      await wait(350); c.remove();
+      return l;
+    },
+    clear() { body.innerHTML = ''; }
+  };
+}
+
+/* ============ Desktop 聊天助手 ============ */
+function Chat(stage, ctx, chatTitle) {
+  stage.innerHTML = '';
+  stage.appendChild(document.getElementById('desktop-tpl').content.cloneNode(true));
+  stage.querySelector('.side .item.on').textContent = chatTitle;
+  const msgs = stage.querySelector('.msgs');
+  const col = stage.querySelector('.col');
+  const txt = stage.querySelector('.input .txt');
+  const send = stage.querySelector('.send');
+  const { wait } = ctx;
+  const scroll = () => { msgs.scrollTop = msgs.scrollHeight; };
+  const add = node => { col.appendChild(node); scroll(); return node; };
+
+  return {
+    async ask(text, cps = 22) {
+      send.classList.add('ready');
+      for (const ch of text) { txt.textContent += ch; await wait(1000 / cps); }
+      await wait(350);
+      send.classList.add('press'); await wait(150); send.classList.remove('press', 'ready');
+      txt.textContent = '';
+      add(el('div', 'm-user', `<div>${esc(text)}</div>`));
+      await wait(400);
+    },
+    async thinking(label = '思考中', ms = 900) {
+      const t = add(el('div', 'think', `<span class="spin"></span>${label}…`));
+      await wait(ms); t.remove();
+    },
+    async tool(cmd, out, { ms = 900, skill = false } = {}) {
+      const head = skill
+        ? `<span class="skill-tag">Skill</span><code>${esc(cmd)}</code>`
+        : `<span style="color:var(--muted)">⌘</span><code>${esc(cmd)}</code>`;
+      const t = add(el('div', 'tool', `<div class="th">${head}<span class="st"><span class="spin"></span></span></div>${out ? `<div class="out">${esc(out)}</div>` : ''}`));
+      await wait(ms);
+      t.querySelector('.st').innerHTML = '<span style="color:var(--ok)">✓</span>';
+      t.classList.add('done'); scroll();
+      await wait(250);
+      return t;
+    },
+    /* 流式输出：segments 里的字符串逐字出现，{cite} 弹出为引用标签，{html} 直接插入 */
+    async stream(blocks, cps = 70) {
+      const box = add(el('div', 'm-ai'));
+      for (const b of blocks) {
+        const node = el(b.tag || 'p'); box.appendChild(node);
+        for (const seg of b.parts) {
+          if (typeof seg === 'string') {
+            const span = el('span'); node.appendChild(span);
+            for (let i = 0; i < seg.length; i += 2) { span.textContent = seg.slice(0, i + 2); scroll(); await wait(2000 / cps); }
+          } else if (seg.cite) {
+            node.appendChild(el('span', 'cite', esc(seg.cite))); scroll(); await wait(120);
+          } else if (seg.pali) {
+            const s = el('span', 'pali', esc(seg.pali)); node.appendChild(s); scroll(); await wait(200);
+          }
+        }
+      }
+      return box;
+    },
+    add, scroll, stage
+  };
+}
+
+/* ============ 场景脚本 ============ */
+const scenes = {
+  /* 1. 安装（Claude Code 终端） */
+  async s1(ctx) {
+    const { wait, scene } = ctx;
+    const term = Term(scene.querySelector('.terminal'), ctx);
+    term.line('<span class="t-acc">✻</span> Welcome to <b>Claude Code</b>');
+    term.line('<span class="t-dim">  cwd: ~/</span>');
+    term.line();
+    await wait(600);
+    await term.type('<span class="t-acc">&gt; </span>', '/plugin marketplace add iapt-platform/wikipali-plugins');
+    term.line('<span class="t-dim">  Cloning github.com/iapt-platform/wikipali-plugins …</span>');
+    await wait(800);
+    term.line('<span class="t-ok">  ✔ Successfully added marketplace: wikipali</span>');
+    term.line();
+    await wait(500);
+    await term.type('<span class="t-acc">&gt; </span>', '/plugin install wikipali@wikipali');
+    await wait(700);
+    term.line('<span class="t-ok">  ✔ Installed wikipali@wikipali</span> <span class="t-dim">v0.21.0</span>');
+    term.line('<span class="t-dim">  Restart Claude Code to load new plugins.</span>');
+    term.line();
+    await wait(900);
+    await term.type('<span class="t-acc">&gt; </span>', '/exit', 18);
+    await wait(400);
+    term.clear();
+    await term.type('<span class="t-blue">~ $ </span>', 'claude', 14);
+    term.line('<span class="t-acc">✻</span> Welcome to <b>Claude Code</b>');
+    await wait(400);
+    term.line('<span class="t-box"><span class="t-ok">●</span> plugin <b>wikipali</b> 0.21.0 已加载\n'
+      + '  skills: <span class="t-acc">research</span> · <span class="t-acc">citation</span> · <span class="t-acc">write</span> · <span class="t-acc">commentary-align</span>\n'
+      + '  CLI:    wikipali · wikipali-login</span>');
+    await wait(900);
+    term.line();
+    await term.type('<span class="t-acc">&gt; </span>', '! wikipali-login', 18);
+    term.line('<span class="t-dim">  （系统密码框弹出 —— 密码只交给操作系统，不进入对话）</span>');
+    await wait(900);
+    term.line('<span class="t-ok">  ✔ 已登录 WikiPali</span> <span class="t-dim">token 有效期 365 天 · ~/.wikipali/credentials.json</span>');
+    term.line();
+    await wait(600);
+    term.line('<span class="t-acc">  ✓ 安装完成。</span>接下来打开 <b>Claude Desktop</b>，插件已出现在 Plugins 列表里 ↓');
+    await wait(1800);
+  },
+
+  /* 2. 佛教问答 */
+  async s2(ctx) {
+    const { wait, scene } = ctx;
+    const chat = Chat(scene.querySelector('.stage'), ctx, 'dukkha 在长部里的出处');
+    await wait(500);
+    await chat.ask('dukkha 在长部里主要出现在哪些段落？义注怎么解释这个词？');
+    await chat.thinking('思考中', 700);
+    await chat.tool('wikipali:research', '', { skill: true, ms: 600 });
+    await chat.tool('wikipali forms dukkha', 'dukkha · dukkhaṃ · dukkhā · dukkhassa · dukkhe … 共 24 个词形', { ms: 800 });
+    await chat.tool('wikipali dist dukkha --book dn', '根本 312 · 义注 498 · 复注 405\n最集中：DN 22 大念处经 · DN 15 大因缘经 · DN 33 等诵经', { ms: 1000 });
+    await chat.tool('wikipali get dn22 --para 386-389 --related', '巴利原文 4 段 · 对应义注 DN-a 22 · 中译 3 个版本', { ms: 1000 });
+    await chat.stream([
+      { tag: 'p', parts: ['在长部中，', { pali: 'dukkha' }, ' 最集中的论述在《大念处经》的「苦谛释」：生是苦、老是苦、死是苦……「简言之，五取蕴是苦」', { cite: 'DN 22 · §388' }, '。此外《大因缘经》从缘起角度讲苦的生起', { cite: 'DN 15' }, '。'] },
+      { tag: 'p', parts: ['义注把 ', { pali: 'dukkha' }, ' 拆成 ', { pali: 'du' }, '（可厌）+ ', { pali: 'kha' }, '（空虚）：因其可厌、空无常乐净我，故名为苦', { cite: 'DN-a 22' }, { cite: 'Vism XVI' }, '。'] },
+      { tag: 'p', parts: ['需要的话，我可以把这几段的巴利原文与各家中译并列给你对照。'] }
+    ]);
+    await wait(2200);
+  },
+
+  /* 3. 百科生成 */
+  async s3(ctx) {
+    const { wait, scene } = ctx;
+    const chat = Chat(scene.querySelector('.stage'), ctx, '百科：四圣谛');
+    await wait(500);
+    await chat.ask('帮我写一篇「四圣谛」的百科条目，要有巴利出处和义注解释。');
+    await chat.thinking('思考中', 600);
+    await chat.tool('wikipali:research', '', { skill: true, ms: 500 });
+    await chat.tool('wikipali terms ariyasacca', '术语表：ariyasacca → 圣谛（4 个译者条目）', { ms: 700 });
+    await chat.tool('wikipali dist ariyasacca', '根本 214 · 义注 377 · 复注 290 · 相应部 56「谛相应」最集中', { ms: 800 });
+    await chat.tool('wikipali get sn56.11 --related', '《转法轮经》原文 + 义注 SN-a 56.11', { ms: 800 });
+    await chat.stream([{ parts: ['条目已整理好：'] }], 60);
+    const art = chat.add(el('div', 'article'));
+    const blocks = [
+      ['h1', '四圣谛'],
+      ['div.sub', 'cattāri ariyasaccāni · Four Noble Truths · 由 wikipali 语料生成'],
+      ['h3', '定义'],
+      ['p', '佛陀初转法轮所宣说的四条真理：苦谛、苦集谛、苦灭谛、导至苦灭之道谛。<span class="cite">SN 56.11</span>'],
+      ['h3', '词源'],
+      ['p', '<i>ariya</i>（圣者）+ <i>sacca</i>（真实）。义注：「为圣者所通达，故名圣谛」。<span class="cite">Vism XVI</span>'],
+      ['h3', '经典出处'],
+      ['p', '相应部〈谛相应〉集中论述；长部《大念处经》逐一解释四谛。<span class="cite">SN 56</span><span class="cite">DN 22</span>'],
+      ['h3', '义注解释'],
+      ['p', '四谛各有三转：知、应知、已知，合为「三转十二行相」。<span class="cite">SN-a 56.11</span>'],
+      ['h3', '参见'],
+      ['p', '缘起 · 八正道 · 五取蕴']
+    ];
+    for (const [tag, html] of blocks) {
+      const [t, c] = tag.split('.');
+      art.appendChild(el(t, c, html)); chat.scroll();
+      await wait(t === 'h3' ? 250 : 500);
+    }
+    await wait(2200);
+  },
+
+  /* 4. 翻译与回写 */
+  async s4(ctx) {
+    const { wait, scene } = ctx;
+    const chat = Chat(scene.querySelector('.stage'), ctx, '翻译 根本法门经 第一段');
+    await wait(500);
+    await chat.ask('把中部第一经《根本法门经》开头一段译成中文，写回我 WikiPali 的「中部新译」channel，给我阅读链接。');
+    await chat.thinking('思考中', 600);
+    await chat.tool('wikipali:write', '', { skill: true, ms: 500 });
+    await chat.tool('wikipali paras mn1 --para 1', '5 个句子 · book 67 · para 1', { ms: 800 });
+    await chat.tool('wikipali terms bhagavant bhikkhu', '世尊 · 比丘（沿用 channel 术语表）', { ms: 600 });
+
+    const pairs = [
+      ['Evaṃ me sutaṃ – ekaṃ samayaṃ bhagavā ukkaṭṭhāyaṃ viharati subhagavane sālarājamūle.', '如是我闻：一时，世尊住在郁迦罗，在妙乐林中的大娑罗树下。'],
+      ['Tatra kho bhagavā bhikkhū āmantesi – “bhikkhavo”ti.', '在那里，世尊召唤比丘们：「诸比丘！」'],
+      ['“Bhadante”ti te bhikkhū bhagavato paccassosuṃ.', '「大德！」那些比丘回应世尊。'],
+      ['Bhagavā etadavoca –', '世尊如此说：'],
+      ['“Sabbadhammamūlapariyāyaṃ vo, bhikkhave, desessāmi…”', '「诸比丘，我将为你们宣说一切法的根本法门……」']
+    ];
+    await chat.stream([{ parts: ['译文如下（巴利 / 中文对照）：'] }], 60);
+    for (const [pl, zh] of pairs) {
+      chat.add(el('div', 'pair', `<div class="pl">${esc(pl)}</div><div class="zh">${esc(zh)}</div>`));
+      await wait(600);
+    }
+    await chat.tool('wikipali ensure-model --name claude-opus', 'AI 模型身份就绪 · 写入将署名为模型本身', { ms: 700 });
+    await chat.tool('wikipali write mn1-p1.json --channel 中部新译 --dry-run', '将写入 5 句 → channel「中部新译」· 无覆盖冲突', { ms: 900 });
+
+    const perm = chat.add(el('div', 'perm',
+      `<div class="q">Claude 想要运行命令，是否允许？</div><code>wikipali write mn1-p1.json --channel 中部新译</code>
+       <div class="btns"><span class="allow">允许</span><span>拒绝</span></div>`));
+    await wait(1400);
+    const btn = perm.querySelector('.allow');
+    btn.classList.add('press'); await wait(300);
+    perm.style.transition = 'opacity .3s'; perm.style.opacity = '0'; await wait(300); perm.remove();
+
+    await chat.tool('wikipali write mn1-p1.json --channel 中部新译', '✓ 已写入 5 句 · editor = claude-opus（AI 模型身份）', { ms: 1100 });
+    const url = 'https://next.wikipali.cc/library/tipitaka/42d18b9c-ca94-11f1-8000-0343cf6f6273';
+    chat.add(el('div', 'linkcard',
+      `<div class="ic">✓</div><div><b>已回写 WikiPali · 中部新译</b><a href="${url}" target="_blank" rel="noopener">${url}</a></div>`));
+    await wait(300);
+    await chat.stream([{ parts: ['完成。点击链接即可在 WikiPali 阅读器里看到巴利原文与新译文对照。'] }]);
+    await wait(2600);
+  }
+};
+
+/* ============ 播放控制：当前可见场景自动播放、循环 ============ */
+const players = {};
+let current = null;
+
+function play(id) {
+  const scene = document.getElementById(id);
+  stopAll();
+  current = id;
+  document.querySelectorAll('nav.steps a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+  const ctx = makeCtx(scene);
+  players[id] = ctx;
+
+  // 进度条：按脚本实际时长近似推进
+  const bar = scene.querySelector('.progress i');
+  bar.style.transition = 'none'; bar.style.width = '0';
+  const t0 = performance.now();
+  const est = { s1: 24000, s2: 20000, s3: 17000, s4: 26000 }[id] * SPEED;
+  (function tick() {
+    if (!ctx.token.alive) return;
+    bar.style.width = Math.min(100, (performance.now() - t0) / est * 100) + '%';
+    requestAnimationFrame(tick);
+  })();
+
+  scenes[id](ctx).then(async () => {
+    bar.style.width = '100%';
+    await ctx.wait(1500);
+    if (ctx.token.alive && current === id) play(id); // 循环播放
+  }).catch(e => { if (!(e instanceof Cancelled)) console.error(e); });
+}
+
+function stopAll() {
+  for (const k in players) players[k].token.alive = false;
+}
+
+// 场景 2–4 先放一个空的 Desktop 窗口占位
+['s2', 's3', 's4'].forEach(id => {
+  const stage = document.querySelector('#' + id + ' .stage');
+  Chat(stage, makeCtx(stage), document.querySelector('#' + id + ' h2').textContent);
+});
+
+document.querySelectorAll('.replay').forEach(b =>
+  b.addEventListener('click', () => play(b.closest('section').id)));
+
+// 哪个场景占视口最多就播哪个
+const ratios = {};
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => ratios[e.target.id] = e.intersectionRatio);
+  const best = Object.entries(ratios).sort((a, b) => b[1] - a[1])[0];
+  if (best && best[1] > 0.3 && best[0] !== current) play(best[0]);
+}, { threshold: [0, .25, .45, .6, .8, 1] });
+document.querySelectorAll('section.scene').forEach(s => io.observe(s));
+</script>
+</body>
+</html>
