@@ -22,7 +22,8 @@ Claude Code 插件市场 · 读语料做研究，也能以 AI 模型身份写回
 
 ```
 /plugin marketplace add iapt-platform/wikipali-plugins
-/plugin install wikipali@wikipali
+/plugin install wikipali@wikipali             # 底层：检索、阅读、写入
+/plugin install wikipali-workspace@wikipali   # 可选，应用层：翻译、审稿、修订、写论文
 ```
 
 装完**重启会话**——插件命令进 PATH、skill 被加载，都发生在会话启动时。
@@ -47,11 +48,18 @@ Claude Code 插件市场 · 读语料做研究，也能以 AI 模型身份写回
 |---|---|
 | **Library**（无需登录） | 分类目录、词形展开、词典释义、全文检索、出处分布、章节目录、段落清单与整章阅读、根本 ↔ 义注 ↔ 复注段落对应、多版本对照、词频、术语表、公开文章与文集 |
 | **引用缩写**（离线） | 把缅甸著作脚注里的 `ဝိသုဒ္ဓိ၊၂၊၂၄၁` 解析成著作名与坐标 `65-1461`——缅甸版页码经 6.2 万条页码标记索引换算成段落号，离线完成；加 `--text` 可再取整页原文与章节路径 |
-| **Workspace**（需登录） | 以 **AI 模型身份**写入句子、术语与批注；模型身份 token 的签发与撤销；channel 与 access token 管理 |
+| **Account**（需登录） | 以 **AI 模型身份**写入句子、术语与批注；模型身份 token 的签发与撤销；channel 与 access token 管理 |
 
-skill：`research`（只读研究）、`citation`（引用缩写）、`write`（写入）与 `commentary-align`（义注复注对应，带位置批注）。写入的句子 `editor_uid` 记的是 AI 模型的 uid 而不是操作者本人——**谁翻的就是谁翻的**，署名与审计因此准确。
+skill：`research`（只读研究）、`citation`（引用缩写）与 `write`（写入）。这是底层插件，只管存取。写入的句子 `editor_uid` 记的是 AI 模型的 uid 而不是操作者本人——**谁翻的就是谁翻的**，署名与审计因此准确。
 
 详见[插件 README](plugins/wikipali/README.md)：安全边界、权限模型、CLI 用法、站点切换。
+
+### [`wikipali-workspace`](plugins/wikipali-workspace) — 应用层（可选）
+
+规定**怎么做**：`translate`（翻译）、`review`（审稿定级、写 issue、打分）、`revise`（落实审稿意见）、`harmonize`（三层统稿）、`encyclopedia`（百科词条）、
+`commentary-align`（义注复注对应，带位置批注）、`paper`（写论文）、`style`（翻译风格设置）。依赖 `wikipali`，装它会自动装上底层。
+译文风格写在项目或个人的 `.wikipali/styles/translation.md` 里（`wikipali-style init` 建一份），没有就用插件默认。不需要这些做法的
+用户可以只装底层。详见[插件 README](plugins/wikipali-workspace/README.md)。
 
 ## 更新
 
@@ -62,6 +70,7 @@ skill：`research`（只读研究）、`citation`（引用缩写）、`write`（
 ```bash
 claude plugin marketplace update wikipali     # 1. 先刷新目录
 claude plugin update wikipali@wikipali        # 2. 再升插件
+claude plugin update wikipali-workspace@wikipali   # 装了应用层的话也升一下
 ```
 
 然后**重启会话**。

@@ -3,6 +3,9 @@
 本文汇总 `wikipali-plugins`（`plugins/wikipali`）实际调用的全部 WikiPali HTTP 接口，
 用于快速检索「某个能力对应哪个接口、入参是什么、返回什么」。
 
+应用层插件 `plugins/wikipali-workspace` **不直接调用任何接口**，一律经由底层的 `wikipali` 命令，
+所以本清单只覆盖底层。`wikipali guide` 只打印插件自带的文档，也不发请求。
+
 基址记为 `{API}`，`lib/sites.py` 只内置两个地址：
 
 | 简称 | 地址 | 版本 | 数据 |

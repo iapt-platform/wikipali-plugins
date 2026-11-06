@@ -1,0 +1,22 @@
+{
+  "name": "wikipali-workspace",
+  "description": "WikiPali 的应用层：翻译、审稿、修订、三层统稿、注释书对应、百科词条、写论文。依赖底层插件 wikipali 完成存取，本插件只管怎么做。译文风格写在项目或个人的 .wikipali/styles/translation.md 里，没有就用插件默认。",
+  "version": "0.1.0",
+  "author": {
+    "name": "visuddhinanda",
+    "url": "https://github.com/visuddhinanda"
+  },
+  "homepage": "https://github.com/iapt-platform/wikipali-plugins/tree/main/plugins/wikipali-workspace",
+  "repository": "https://github.com/iapt-platform/wikipali-plugins",
+  "license": "MIT",
+  "keywords": [
+    "wikipali",
+    "pali",
+    "translation",
+    "review",
+    "buddhist-studies"
+  ],
+  "dependencies": [
+    "wikipali"
+  ]
+}

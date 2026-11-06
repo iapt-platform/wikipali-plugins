@@ -1,11 +1,14 @@
 ---
 name: research
-description: "Use this skill to research Pali Buddhist texts with WikiPali's corpus — finding where a term occurs across the Tipiṭaka and its commentaries, reading the Pali source, comparing translations, and producing cited scholarly writing. Trigger whenever the user asks to look up a Pali word or concept, find passages about a topic in the canon, analyse how a term is used, compare mūla / aṭṭhakathā / ṭīkā, check a translation against the Pali, or write a paper or summary grounded in Pali sources. Do not use for writing data into WikiPali (that is the write skill)."
+description: "Use this skill to research Pali Buddhist texts with WikiPali's corpus — finding where a term occurs across the Tipiṭaka and its commentaries, reading the Pali source, comparing translations, and producing cited scholarly writing. Trigger whenever the user asks to look up a Pali word or concept, find passages about a topic in the canon, analyse how a term is used, compare mūla / aṭṭhakathā / ṭīkā, or get a cited answer or short summary grounded in Pali sources. Do not use for writing data into WikiPali (that is the write skill), or for translating, reviewing or revising a translation, or writing a full paper or encyclopedia entry (those are wikipali-workspace skills, which use this one for retrieval)."
 ---
 
 # WikiPali 研究
 
-用 WikiPali 的语料做巴利文献研究：定位 → 取证 → 展开 → 交叉验证 → 成文。
+用 WikiPali 的语料做巴利文献研究：定位 → 取证 → 展开 → 交叉验证。
+
+本 skill 管**检索与取证**。把材料写成论文、拿来翻译或审稿是应用层的事，由 `wikipali-workspace`
+插件的 skill 负责，它们的检索步骤照本 skill 走。
 
 命令是 `wikipali <子命令>`。检索与阅读全部只读，**不需要登录**。
 
@@ -32,15 +35,10 @@ skill 共用的规矩，必须遵守。** 端点细节见 `references/api-read.m
 4. **根本、义注、复注不能混。** 引用时必须标明层次——把义注的解释当成经律本身的说法
    是学术错误，不是措辞问题。
 5. **判断依据是巴利原文，译文只作佐证。** 机器生成的译文必须显式标注。
-6. **校对、审稿、评估译文时**，按 `references/translation-evaluate.md` 给问题分类定级
-   （`error` / `warning` / `suggestion`）。其中两条可机械核查、必须查：义注的黑体被解释词
-   与根本同处逐字同译，复注的与义注同处逐字同译（不等即 `error`「用词不符」）；通查全文
-   语言风格是否一致，前后不能一段现代汉语、一段半文半白（`suggestion`「风格统一」）。
-   译文风格默认现代汉语。
-7. **用户在本机登记的自定义站点（开发机、预发布等）是独立的数据库**，不是线上数据的
+6. **用户在本机登记的自定义站点（开发机、预发布等）是独立的数据库**，不是线上数据的
    镜像。在这些站点上查到的结果**不能直接当作线上引用**。所有请求只走当前设定的站点，
    网络不通即报错、不会自动切换；引用前确认当前 endpoint。
-8. **不要把整章往上下文里灌。** 先看体量再决定取多少。
+7. **不要把整章往上下文里灌。** 先看体量再决定取多少。
 
 ## 流程
 
@@ -224,6 +222,34 @@ wikipali get 141:65 141:66      # 读义注怎么解释这一段
 
 约 2% 的段落没有锚点，那时会明确报「没有关联段落」——**如实说，不要转而搜关键词充数**。
 
+#### 整章、整本的跨层对应：用 `cs_para`，不用 `related`
+
+`related` 是**段级**对应：一段注释常常注好几段父层，拿它的段号当章节范围，边界必然错位——
+注释章的首段往往注的是上一章的本文。实测（DN Sīlakkhandhavagga，90 个有义注的本文章）
+有 11 处 `related` 与正确答案不符；本文 93:983-986 `Tayo codanārahā` 对应的义注章是
+103:1469-1472，`related` 给的是 1468-1473。而且它一段一次请求（约 1.5 秒），不适合整本。
+
+章级、书级的对应改用 `paras` 返回的 **`cs_para`**（第六次结集版段号，跨书通用）：
+**同一个 `cs_para` 就是同一处内容**。
+
+```bash
+wikipali paras 93:3 --body --json      # 整本书的段落清单，一次请求
+```
+
+```
+本文 93:984   cs_para=513  book_name=dn1
+义注 103:1470 cs_para=513  book_name=dn1
+复注 185:1345 cs_para=513  book_name=dn1
+```
+
+- 按 `cs_para` 求交集，判定「义注这一章归哪个本文章」；`book_name` 用来挡住跨丛书的误配。
+- **`cs_para` 不是全覆盖**：注释书里本来就没有本文对应的部分（序论 `Ganthārambhakathā`、
+  结集史等）没有 `cs_para`，实测义注约 86%、复注约 70% 的正文段有。这些段按**章名**配对
+  （注释章名通常是父层章名加 `vaṇṇanā`），不能漏。
+- 每行还有 `level`（`< 100` 是标题、`100` 是正文）、`length`（字符数）、`chapter_len`，
+  章节边界与分批都从这里算。
+- `related` 只用来查单段、或在 `cs_para` 缺失时验证某个具体对应。
+
 ### 6. 交叉验证
 
 ```bash
@@ -236,7 +262,8 @@ wikipali get 216:512 --channel <uid>    # 取指定译本
 
 缅文 **nissaya**（`[nissaya]` 类、语言 `my`）是逐词语法讲解，判断主谓宾、修饰、指代时
 是有力佐证。它会重排语序、补出巴利、用释义代替对译，缅文语尾就是语法分析——
-**读之前先看 `references/nissaya-reading.md`**，不要当成普通译本逐字对照。
+**不要当成普通译本逐字对照**。详细读法在 `wikipali-workspace` 插件的 `nissaya-reading.md`
+（翻译、审稿时由那边的 skill 读）。
 
 ⚠ `versions` 依赖的端点在稳定版站点上有缺陷，会提示你切到 `next`（`wikipali endpoint next`）。
 
@@ -267,13 +294,12 @@ wikipali get 216:512 --channel <uid>    # 取指定译本
 |---|---|
 | 快速查询（"parivāsa 什么意思"、"哪几处提到 X"） | 结论 + 坐标。**不报告检索方法**，别把查词变成论文 |
 | 综述 / 分析（"X 在律藏里怎么用"） | 结论 + 坐标 + 一句话交代范围 |
-| 论文 / 研究报告（用户明确说要写论文、要发表、要引用） | 完整方法论：展开了哪些词形（连同频次）、检索范围、总命中词次与段落数、实读段数、黑体与非黑体分布 |
+| 论文 / 研究报告（用户明确说要写论文、要发表、要引用） | 用 `wikipali-workspace` 的 `paper` skill，它规定方法论怎么写。没装就按综述档交付，并告诉用户 |
 
-判断不了属于哪一档时按中间档走，并问用户要不要完整的检索方法说明。
+判断不了属于哪一档时按中间档走。
 
-论文档的方法论不是修辞——"检索 parivāsa 的 13 个词形，得 281 段（449 词次），分布
-于 43 部书，其中律藏根本 159 词次、义注 28、复注 102"这样一句，是读者判断你的检索
-是否穷尽的唯一依据。
+**无论哪一档，检索时都要把这几个数记下来**：展开了哪些词形（连同频次）、检索范围、总命中
+词次与段落数、实读段数。上层写论文时要用，事后补很难。
 
 ## 常见错误
 

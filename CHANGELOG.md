@@ -3,6 +3,38 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.23.0 / wikipali-workspace 0.1.0] - 2026-11-06
+
+插件拆成两层：底层 `wikipali` 只管存取；新增应用层插件 `wikipali-workspace`，规定翻译、审稿、
+修订、写作**怎么做**。
+
+### ⚠ 迁移
+- 翻译风格、术语标记、随文注释、审稿定级、nissaya 读法、`commentary-align` 都从 `wikipali` 移到了
+  `wikipali-workspace`。**只装底层的用户不再有这些默认规则**，译文怎么写完全按对话里的要求。
+  要原来的行为，再装一个：`/plugin install wikipali-workspace@wikipali`（会自动装上底层），然后重启会话。
+- 调用名变了：`/wikipali:commentary-align` → `/wikipali-workspace:commentary-align`。
+
+### 新增
+- **`wikipali-workspace` 0.1.0**，八个 skill：`translate`（按 chunk 翻译，注释层带父层译文对齐被解释词）、
+  `review`（义注定释义、nissaya 定词法，出本地报告，同意后挂 issue、打分）、`revise`（按报告或 issue
+  修订，只写回改过的句子）、`harmonize`（本文 / 义注 / 复注三层统稿）、`encyclopedia`（百科词条）、
+  `paper`（写论文）、`commentary-align`（迁入）、`style`（风格文件的查看、新建、修改）。
+  translate / review / revise / harmonize / encyclopedia 的做法吸收自 pali-translab。
+- **风格文件**：译文风格写在 markdown 文件里，按「项目 `.wikipali/styles/translation.md` → 个人
+  `~/.wikipali/styles/translation.md` → 插件默认」查找，项目与个人只取一份，没写到的事项按插件默认。
+  frontmatter 的 `nissaya` 开关只管翻译，默认 `false`（独立翻译，nissaya 留给审稿当独立标准）。
+  应用层自带命令 `wikipali-style` 查找与 `wikipali-style init [--user]` 新建。
+- **`wikipali guide [conventions|api-read|api-write]`**：打印底层的共享约定与端点参考，供上层插件读取
+  （上层插件读不到底层的文件）。
+
+### 变更
+- `conventions.md` 只留数据层约定（坐标、引用、文献层次、译文来源、站点、凭据）；译文写法拆到应用层的
+  `translation-style.md`，并补入文言禁例对照表。
+- write skill 删去风格类铁律（原 10–13）；research skill 删去审稿定级与论文方法论，新增「整章、整本的
+  跨层对应用 `cs_para`，不用 `related`」。
+- `nissaya-reading.md` 补核心格助词速查表、`ဝါ=` 异释说明。
+- 底层文档里原来叫「Workspace（需登录）」的部分改称 **Account**，Workspace 一名留给应用层插件。
+
 ## [0.22.0] - 2026-11-06
 
 ### 新增

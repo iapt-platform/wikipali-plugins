@@ -10,6 +10,7 @@ import sys
 import cmd_admin
 import cmd_page
 import cmd_discuss
+import cmd_guide
 import cmd_notes
 import cmd_read
 import cmd_site
@@ -63,6 +64,10 @@ def build_parser():
     p = add('whoami', '显示当前凭据状态', needs_json=False)
     p.add_argument('--check', action='store_true', help='额外向服务端校验用户 token')
     p.set_defaults(func=cmd_site.cmd_whoami)
+
+    p = add('guide', '打印共享约定与端点参考（供上层插件读取）', needs_json=False)
+    p.add_argument('topic', nargs='?', choices=sorted(cmd_guide.TOPICS), help='不给就列出全部主题')
+    p.set_defaults(func=cmd_guide.cmd_guide)
 
     # -- 读 ----------------------------------------------------------------
     p = add('forms', '展开词形——一切检索的前置步骤')

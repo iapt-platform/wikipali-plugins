@@ -2,12 +2,17 @@
 
 [WikiPali](https://www.wikipali.org) 巴利三藏平台的 Claude Code 插件。
 
-四个 skill：
+这是**底层插件**：只管存取 WikiPali 数据。三个 skill：
 
 - **`research`** —— 检索与阅读语料做研究：词形展开、按词形检索、出处分布（分根本/义注/复注）、按坐标取原文与各家译本，每条引用可追溯到 WikiPali 坐标与缅/PTS/VRI/泰印本页码。只读，不需要登录。
 - **`citation`** —— 解析缅甸著作的引用缩写：`ဝိသုဒ္ဓိ၊၂၊၂၄၁` → 清净道论第二册，坐标 `65-1461`；加 `--text` 连整页巴利原文与章节路径一起取。查的是插件自带的缩写表与页码索引，不加 `--text` 全程离线。
-- **`write`** —— 以 **AI 模型身份**把句子写入句子库。
-- **`commentary-align`** —— 注释书对应：给定 CST 书名 + 段号 + 译文 channel，对照巴利原文与译文，把义注（复注）句子锚定到根本（义注）译文的具体片段上，作为带位置的批注（`type=commentary`）写回 WikiPali。
+- **`write`** —— 以 **AI 模型身份**把句子、术语、批注写入 WikiPali。
+
+**怎么翻译、怎么审稿**（译文风格、术语标记、随文注释、问题定级、nissaya 读法）不在这里，在应用层插件
+[`wikipali-workspace`](../wikipali-workspace)：translate / review / revise / commentary-align / paper。
+不装它也能用本插件存取数据，此时译文怎么写完全按你在对话里的要求。
+
+上层插件读共享约定用 `wikipali guide [conventions|api-read|api-write]`——CLI 是两层之间的契约。
 
 写入的句子 `editor_uid` 记为 AI 模型的 uid 而不是操作者本人，署名与审计因此是准确的——谁翻的就是谁翻的。
 
