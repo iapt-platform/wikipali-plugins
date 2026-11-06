@@ -3,6 +3,23 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.22.0] - 2026-11-06
+
+### 新增
+- **管理统计（只读）**：`wikipali admin stats agent|reading`、`admin feedback`、`admin runs` / `admin run <run_id>`、
+  `admin digest`，走 `/v3/admin/*`，仅 root / administrator 账号可用。
+- **本机登记 endpoint**：`wikipali endpoint add <简称> <url> [--label 说明]` / `endpoint remove <简称>`。
+  登记的地址只存在本机 `~/.wikipali/credentials.json` 的 `custom_sites` 里，不进插件代码，一律按独立库处理
+  （凭据与缓存单独一桶）。
+
+### 变更
+- **内置 endpoint 只留两个**：`www`（`https://www.wikipali.cc/api`，默认）与 `next`（`https://next.wikipali.cc/api`）。
+  `www.wikipali.org`、`next.wikipali.org`、`staging`、`local` 从代码中删除。旧凭据自动迁移：记着 `.org` 的改成
+  对应的 `.cc`，原 `local` / `staging` 桶转成同名的本机登记站点，已登录的 token 照旧可用；旧简称
+  `www.cc` / `next.cc` 仍可用。
+- **不再自动切换站点**：所有请求只发往当前设定的 endpoint，网络不通即报错退出（退出码 1）。
+- **报错一律带 HTTP 状态码**：服务端错误统一显示为 `HTTP <码>：<服务端说明>`，包括 HTTP 200 + `ok:false`。
+
 ## [0.21.0] - 2026-10-23
 
 ### 新增

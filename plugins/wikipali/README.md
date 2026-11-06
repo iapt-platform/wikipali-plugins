@@ -50,6 +50,16 @@ wikipali channels
 wikipali write sents.json --channel <uid> --dry-run
 ```
 
+管理员（root / administrator 账号）还可以只读地看运营统计，给 agent 做分析：
+
+```bash
+wikipali admin stats agent --since 2026-10-01      # AI 问答汇总（评价、质量检查、工具）
+wikipali admin stats reading                       # 阅读汇总
+wikipali admin feedback --rating down              # 用户点踩与原因
+wikipali admin runs --status error                 # 提问记录；admin run <run_id> 看研究过程
+wikipali admin digest --out digest.jsonl           # 精简导出（只含同意用于改进的提问，不含身份）
+```
+
 句子文件的形状：
 
 ```json
@@ -64,12 +74,21 @@ wikipali write sents.json --channel <uid> --dry-run
 
 ## 站点
 
-线上四个地址（`www` / `next` × `.org` / `.cc`）共享同一个数据库和密钥，凭据通用，可随时切换：
+内置两个线上地址：`www`（`https://www.wikipali.cc/api`，稳定版）与 `next`
+（`https://next.wikipali.cc/api`，最新版）。两者共享同一个数据库和密钥，凭据通用，可随时切换：
 
 ```bash
 wikipali endpoint          # 列出并标出当前
 wikipali endpoint next     # 改默认
 wikipali --api next ...    # 只影响这一次调用
+```
+
+其他地址（如本地测试机）不进插件代码，在本机手工登记，只保存在 `~/.wikipali/credentials.json`：
+
+```bash
+wikipali endpoint add local http://127.0.0.1:8000/api --label 开发机
+wikipali endpoint local            # 切过去（独立库，凭据与缓存单独一桶）
+wikipali endpoint remove local     # 删除登记
 ```
 
 `www` 是稳定版、`next` 是最新版**代码**，不是不同的数据环境。较新的端点在稳定版上返回 404，意思是「该站点代码版本还没到」。

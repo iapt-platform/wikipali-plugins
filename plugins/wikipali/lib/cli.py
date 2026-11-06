@@ -7,6 +7,7 @@
 import argparse
 import sys
 
+import cmd_admin
 import cmd_page
 import cmd_discuss
 import cmd_notes
@@ -50,7 +51,11 @@ def build_parser():
 
     # -- 站点与状态 --------------------------------------------------------
     p = add('endpoint', '查看 / 切换 API 地址', needs_json=False)
-    p.add_argument('target', nargs='?', help='序号、简称（www/www.cc/next/next.cc/staging/local）或完整 url')
+    p.add_argument('target', nargs='?',
+                   help='序号、简称（www/next 或本机登记的简称）或完整 url；'
+                        'add <简称> <url> 登记本机专用地址，remove <简称> 删除')
+    p.add_argument('rest', nargs='*', help=argparse.SUPPRESS)
+    p.add_argument('--label', help='add 时给自定义地址的说明（如「开发机」）')
     p.add_argument('-l', '--list', action='store_true',
                    help='只列出不提示选择（在终端里跑而又不想被追问时用）')
     p.set_defaults(func=cmd_site.cmd_endpoint)
@@ -371,6 +376,9 @@ def build_parser():
     p.add_argument('--dry-run', action='store_true', help='只做校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true', help='跳过交互确认（非交互环境必须显式给）')
     p.set_defaults(func=cmd_write.cmd_write)
+
+    # -- 管理统计（只读） ----------------------------------------------------
+    cmd_admin.add_admin_parser(sub)
 
     return parser
 

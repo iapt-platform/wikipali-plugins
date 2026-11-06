@@ -66,7 +66,7 @@ def nav_page(client, ed, pcds, vol, page):
     try:
         return client.call('GET', f'v2/nav-page/{ident}', timeout=60)
     except ApiError as exc:
-        msg = str(getattr(exc, 'message', '') or exc)
+        msg = exc.message
         if 'not found' in msg.lower() or getattr(exc, 'status', None) == 404:
             return None
         raise explain_api_error(exc, f'查 {ident}')

@@ -246,7 +246,8 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type assessment \
 
 ## 站点
 
-四个线上地址共享同一个数据库和密钥，凭据通用；`www` 是稳定版、`next` 是最新版代码，**不是**不同的数据环境。
+内置两个线上地址 `www`（www.wikipali.cc）与 `next`（next.wikipali.cc），共享同一个数据库和密钥，凭据通用；`www` 是稳定版、`next` 是最新版代码，**不是**不同的数据环境。
+其他地址由用户在本机用 `wikipali endpoint add <简称> <url>` 登记，按独立库处理。
 
 ```bash
 wikipali endpoint            # 列出并标出当前
@@ -268,6 +269,7 @@ wikipali --api next write …  # 只影响这一次调用
 | `count: 0`（签 access token） | 对该 channel 无编辑权。**中止写入**，不要继续 |
 | `count` 小于提交条数 | 逐条差集已由脚本列出，如实转达 |
 | 404（`ai-model-token` 等新端点） | 提示切到 `next` 或稍后再试 |
+| 「连不上 …，不会自动切换站点」 | 网络层不通，脚本已退出、**什么都没写**。如实转告用户，由他决定重试或换站点，不要擅自加 `--api` 换站点 |
 
 凭据泄漏时撤销模型的全部 token：
 

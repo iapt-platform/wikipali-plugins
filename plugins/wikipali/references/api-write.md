@@ -2,7 +2,7 @@
 
 本文只记 Skill 用到的端点。契约以**稳定版**（`www.*`）为准；标注「最新版」的能力可能在稳定版上还是 404。
 
-基址记为 `{API}`，形如 `https://www.wikipali.org/api`。所有响应统一形如：
+基址记为 `{API}`，形如 `https://www.wikipali.cc/api`。所有响应统一形如：
 
 ```json
 { "ok": true, "data": <任意>, "message": "" }
@@ -341,16 +341,15 @@ v3 只收 markdown，没有 `content_type`。`notify` 缺省是 **true**（会�
 
 ## 站点
 
-四个线上地址**共享同一个数据库和同一把 JWT 密钥**，凭据完全通用，可随时切换：
+内置两个线上地址，**共享同一个数据库和同一把 JWT 密钥**，凭据完全通用，可随时切换：
 
-| 地址 | 地区 | 代码版本 |
+| 简称 | 地址 | 代码版本 |
 |---|---|---|
-| `https://www.wikipali.org/api` | .org | 稳定版 |
-| `https://www.wikipali.cc/api` | .cc | 稳定版 |
-| `https://next.wikipali.org/api` | .org | 最新版 |
-| `https://next.wikipali.cc/api` | .cc | 最新版 |
-| `http://127.0.0.1:8000/api` | 开发机 | 另一个库、另一把密钥 |
+| `www` | `https://www.wikipali.cc/api` | 稳定版 |
+| `next` | `https://next.wikipali.cc/api` | 最新版 |
 
-- `.org` / `.cc` 是地区可达性；`www` / `next` 是**代码版本，不是数据环境**。
-- 线上四个之间可以自动 fallback（同一套数据），**但绝不能自动退到 127.0.0.1**。
+- `www` / `next` 是**代码版本，不是数据环境**。
+- 其他地址（开发机等）不在插件代码里，由用户 `wikipali endpoint add <简称> <url>` 在本机登记，
+  按另一个库、另一把密钥处理。
+- 请求**只发往当前设定的地址**，网络不通即报错退出，**不自动切换站点**；换站点由用户 `wikipali endpoint` / `--api` 明确指定。
 - 真正的风险不是写错库（写不错），而是写到不同版本的代码上，所以写入前要回显当前 api_url。

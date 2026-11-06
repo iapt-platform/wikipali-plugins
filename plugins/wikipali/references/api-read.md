@@ -107,8 +107,7 @@ word_start, word_end, editor, channel, updated_at}`。按 `word_start` 排序拼
 
 ## 7b. 段落清单 —— `GET /v2/para-info?book={book}&para={para}`
 
-旧路由 `GET /v2/palitext?view=paragraphs-info&book={book}&para={para}` 仍在部分站点上
-（`staging`），字段除 `lenght`/`length` 外相同；新路由 404 时可回退。
+旧路由 `GET /v2/palitext?view=paragraphs-info&book={book}&para={para}` 仍在部分站点上，字段除 `lenght`/`length` 外相同；新路由 404 时可回退。
 
 `para` 给**章节起始段**，返回该章节辖区内**每一段**一行（含各级子标题与正文段），
 按段号升序，行数 == 该章节的 `chapter_len`。给正文段则只回它自己一行。
@@ -135,8 +134,8 @@ data.rows[] = { book, paragraph, toc, level, length, chapter_len, book_name, cs_
 ⚠ 数据里有 `toc` 为 `(empty)` 的行：level < 8（被归为标题）却挂着上千字符的正文
 （如 185:75）。照实呈现即可，不要当成解析出错。
 
-⚠ **只在最新版代码上**，且没有部署到所有站点——实测 `next.wikipali.org` 可用，
-`www` 与 `next.wikipali.cc` 返回 **500**（框架错误页，不是 404）。客户端遇 5xx 要提示
+⚠ **只在最新版代码上**，且没有部署到所有站点——未部署的站点返回 **500**
+（框架错误页，不是 404）。客户端遇 5xx 要提示
 切站，不要当成「该章节没有段落」。坐标不存在时是 **400** + `message: "no paragraph"`。
 
 ## 8. 段落与章节元信息 —— `GET /v2/palitext/{book}-{paragraph}`

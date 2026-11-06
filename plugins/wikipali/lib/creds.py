@@ -1,6 +1,7 @@
 """凭据文件：~/.wikipali/credentials.json（0600）。
 
-只存 token，不存密码。线上四地址共用 online 桶，开发机 local，其余自成一桶。
+只存 token，不存密码。内置的两个线上地址共用 online 桶；用户手工登记的地址
+（custom_sites，只存在本机这个文件里）各自一桶，桶名 "site:<url>"。
 """
 
 import json
@@ -8,7 +9,7 @@ import os
 import stat
 
 from errors import WpError
-from sites import BUCKET_BY_URL, DEFAULT_API_URL, LOCAL_URL, expand_site_alias, normalize_api_url
+from sites import BUCKET_BY_URL, DEFAULT_API_URL, LEGACY_ONLINE, expand_site_alias, normalize_api_url
 
 
 CREDS_DIR = os.path.join(os.path.expanduser("~"), ".wikipali")
@@ -26,7 +27,42 @@ def load_creds():
     if not isinstance(data, dict):
         raise WpError(f"凭据文件格式不对（{CREDS_PATH}），应为 JSON 对象")
     data.setdefault("current", "online")
+    migrate_legacy(data)
     return data
+
+
+# 旧版把开发机与 staging 写死在代码里，凭据存在固定的 local / staging 桶。
+# 现在它们只能由用户自己登记：把旧桶原样搬到 "site:<url>"，并登记成同名的自定义站点，
+# 已登录的 token 照旧可用。只改内存，下次保存凭据时落盘；重复执行无副作用。
+_LEGACY_BUCKETS = {"local": "开发机", "staging": "预发布"}
+
+
+def migrate_legacy(creds):
+    online = creds.get("online")
+    if isinstance(online, dict) and online.get("api_url") in LEGACY_ONLINE:
+        online["api_url"] = LEGACY_ONLINE[online["api_url"]]
+
+    sites = creds.setdefault("custom_sites", [])
+    for old, label in _LEGACY_BUCKETS.items():
+        bucket = creds.get(old)
+        if not isinstance(bucket, dict):
+            continue
+        url = bucket.get("api_url")
+        if not url:
+            continue
+        url = url.rstrip("/")
+        new = "site:" + url
+        creds.setdefault(new, bucket)
+        bucket["api_url"] = url
+        del creds[old]
+        if creds.get("current") == old:
+            creds["current"] = new
+        if not any(isinstance(x, dict) and x.get("url") == url for x in sites):
+            key = old if not any(isinstance(x, dict) and x.get("key") == old for x in sites) else None
+            if key:
+                sites.append({"key": key, "url": url, "label": label})
+    if not sites:
+        del creds["custom_sites"]
 
 
 def save_creds(creds):
@@ -48,9 +84,9 @@ def save_creds(creds):
 def bucket_name_for(api_url):
     """凭据（与本地缓存）的桶名。
 
-    只有线上四个地址共享同一个库与密钥，共用 online 桶；staging（.org / .cc 共用一桶）、开发机、以及任何
-    自定义地址都是**另一个库**，各自一桶——混用会让凭据失效，更糟的是让查询静默
-    落到错误的数据上。
+    只有内置的线上地址共享同一个库与密钥，共用 online 桶；任何自定义地址（开发机、
+    预发布等）都按**另一个库**处理，各自一桶——混用会让凭据失效，更糟的是让查询
+    静默落到错误的数据上。
     """
     known = BUCKET_BY_URL.get(api_url)
     if known:
@@ -60,7 +96,7 @@ def bucket_name_for(api_url):
 
 def get_bucket(creds, name, api_url=None):
     bucket = creds.setdefault(name, {})
-    bucket.setdefault("api_url", api_url or (DEFAULT_API_URL if name == "online" else LOCAL_URL))
+    bucket.setdefault("api_url", api_url or DEFAULT_API_URL)
     bucket.setdefault("user", {})
     bucket.setdefault("model", {})
     bucket.setdefault("access_tokens", {})
@@ -73,10 +109,10 @@ def resolve_api_url(cli_api, creds):
     前两者是一次性覆盖，不写回凭据文件——否则「上周试了一次 next」会一直粘着。
     """
     if cli_api:
-        return normalize_api_url(expand_site_alias(cli_api)), "cli"
+        return normalize_api_url(expand_site_alias(cli_api, creds)), "cli"
     env = os.environ.get("WIKIPALI_API_URL")
     if env:
-        return normalize_api_url(expand_site_alias(env)), "env"
+        return normalize_api_url(expand_site_alias(env, creds)), "env"
     current = creds.get("current", "online")
     bucket = creds.get(current)
     if isinstance(bucket, dict) and bucket.get("api_url"):
