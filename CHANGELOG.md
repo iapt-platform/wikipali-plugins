@@ -3,6 +3,22 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.23.1 / wikipali-workspace 0.2.0] - 2026-11-06
+
+### 新增
+- **wikipali-workspace：三个批注 skill**——`note`（外挂注释：不改译文，挂 `note` 边注，内容取自义注、复注、
+  nissaya 并标明来源）、`glossary`（外挂术语：找出该挂术语的词并试用，讨论定了 `term-add` 收进术语表、关闭
+  外挂术语）、`discuss`（讨论：把没有定论的译名、理解分歧挂成 `discussion`，正文摆齐原文、译文、依据与
+  可选方案，也负责回复与汇总）。workspace 现在用到 note / commentary / discussion / issue / glossary /
+  assessment 六种类型。
+- **wikipali：批注类型说明**——插件 README 新增「批注类型」一节（8 种类型、怎么说、阅读页上的样子）；
+  `references/api-write.md` §8 新增八种 type 的属性总表，注明对应 api-v13 `Discussion.php` 的常量。
+
+### 变更
+- **wikipali：外挂术语可以挂在粗体里面**。摘录完全落在 `**…**` 之内（不碰两头的 `**`）时不再拒绝，
+  渲染成 `**[[词头#原文]]**`；跨出粗体边界或把 `**` 包进去的仍然拒绝。注释书里加粗的被解释词常就是术语。
+  服务端排版目前仍可能把整个粗体当受保护区间，能否显示以阅读页为准。
+
 ## [0.23.0 / wikipali-workspace 0.1.0] - 2026-11-06
 
 插件拆成两层：底层 `wikipali` 只管存取；新增应用层插件 `wikipali-workspace`，规定翻译、审稿、

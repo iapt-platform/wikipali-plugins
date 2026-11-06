@@ -77,6 +77,31 @@ wikipali admin digest --out digest.jsonl           # 精简导出（只含同意
 }
 ```
 
+## 批注类型
+
+除了写句子，还可以让 Claude 在某一句上加批注（WikiPali 的 discussion）。一共 8 种，直接用自然语言说就行，
+Claude 会选对类型：
+
+| 你可以这样说 | 类型 | 阅读页上的样子 |
+|---|---|---|
+| 「加个批注」「加脚注」 | `note` | 锚点处一条边注，没有出处 |
+| 「加义注对照」「把义注挂到根本上」 | `commentary` | 锚点处一条边注，内容是义注 / 复注那几句的译文，带出处 |
+| 「加审稿意见」「发起讨论」 | `discussion` | 只在批注列表里，可以回复、关闭 |
+| 「加个问答」 | `qa` | 同上 |
+| 「求助」 | `help` | 同上，可标紧急 / 一般 |
+| 「指出这里译错了 / 漏译了」 | `issue` | 有问题的那几个字下面一条波浪线（说不清具体在哪就在句尾放三角叹号），可标错误 / 警告 / 建议；关闭后不再显示 |
+| 「给这个词加外挂术语」 | `glossary` | 那几个字临时显示成术语，供讨论要不要收进术语表；不改译文，关闭后不再显示 |
+| 「给这句译文打分」「评估译文」 | `assessment` | 句尾一个对勾，按分数着色（≥80 绿、≥60 橙、其余红）；一句只留一条，再评就覆盖 |
+
+- 批注要**你的授权**：工具用你的登录身份给模型签一张 7 天的写入授权，署名是你、模型记为协作者（见下文「权限模型」）。
+  你对那个 channel 没有编辑权时写不进去。`note`、`commentary`、`glossary`、`assessment` 只能挂在句子上，
+  `glossary`、`assessment` 只有该句 channel 的编辑者能加。
+- 「外挂术语」和「新建术语」不是一回事：新建术语是正式收进你的术语表（`term-add`），不是批注。
+- 怎么审稿、注什么、挂哪些外挂术语、讨论怎么写，是应用层插件 [`wikipali-workspace`](../wikipali-workspace) 的
+  review / note / glossary / discuss / commentary-align skill 的事；本插件只负责把批注存进去、读出来。
+
+类型以服务端为准（`mint/api-v13` 的 `app/Models/Discussion.php`，`COMMENT_TYPES`）。
+
 ## 站点
 
 内置两个线上地址：`www`（`https://www.wikipali.cc/api`，稳定版）与 `next`

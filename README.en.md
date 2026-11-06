@@ -56,7 +56,7 @@ See the [plugin README](plugins/wikipali/README.md) (in Chinese) for the securit
 
 ### [`wikipali-workspace`](plugins/wikipali-workspace) — application layer (optional)
 
-Defines **how the work is done**: `translate`, `review` (grade problems, file issues, score sentences), `revise` (apply review comments), `harmonize` (unify the mūla / aṭṭhakathā / ṭīkā translations), `encyclopedia` (encyclopedia entries), `commentary-align` (anchor aṭṭhakathā / ṭīkā sentences onto the translation they comment on), `paper`, and `style` (create or edit the translation style file). Depends on `wikipali`, which is installed automatically. Translation style lives in a markdown file — `.wikipali/styles/translation.md` in the project or in your home directory (`wikipali-style init` creates one); without it the plugin default applies. Users who don't need these can install the core plugin alone.
+Defines **how the work is done**: `translate`, `review` (grade problems, file issues, score sentences), `revise` (apply review comments), `harmonize` (unify the mūla / aṭṭhakathā / ṭīkā translations), `note` (side notes), `glossary` (trial glossary terms), `discuss` (discussion threads), `encyclopedia` (encyclopedia entries), `commentary-align` (anchor aṭṭhakathā / ṭīkā sentences onto the translation they comment on), `paper`, and `style` (create or edit the translation style file). Depends on `wikipali`, which is installed automatically. Translation style lives in a markdown file — `.wikipali/styles/translation.md` in the project or in your home directory (`wikipali-style init` creates one); without it the plugin default applies. Users who don't need these can install the core plugin alone.
 
 ## Updating
 

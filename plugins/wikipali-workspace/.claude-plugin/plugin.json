@@ -1,7 +1,7 @@
 {
   "name": "wikipali-workspace",
-  "description": "WikiPali 的应用层：翻译、审稿、修订、三层统稿、注释书对应、百科词条、写论文。依赖底层插件 wikipali 完成存取，本插件只管怎么做。译文风格写在项目或个人的 .wikipali/styles/translation.md 里，没有就用插件默认。",
-  "version": "0.1.0",
+  "description": "WikiPali 的应用层：翻译、审稿、修订、三层统稿、外挂注释、外挂术语、讨论、注释书对应、百科词条、写论文。依赖底层插件 wikipali 完成存取，本插件只管怎么做。译文风格写在项目或个人的 .wikipali/styles/translation.md 里，没有就用插件默认。",
+  "version": "0.2.0",
   "author": {
     "name": "visuddhinanda",
     "url": "https://github.com/visuddhinanda"

@@ -208,7 +208,8 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type assessment \
   不确定就先 `wikipali get <坐标> --json` 看原文。摘录在句中出现多次时，补 `--quote-prefix` /
   `--quote-suffix`（紧挨着的前后文字）指明是哪一处；工具会报错提示。`discuss` 列表会显示锚点。
 - `glossary` **必须给摘录**；摘录不能和句中已有的术语 `[[…]]`、模板 `{{…}}`、粗体等格式重叠
-  （外挂术语不能套在它们上面），工具会提前报错。`issue` 能定位就尽量给摘录，阅读页才高亮得出。
+  （外挂术语不能套在它们上面），工具会提前报错。**例外**：摘录完全落在 `**…**` 里面（不碰两头的 `**`）
+  可以挂，如加粗的被解释词；摘录有多处时用 `--quote-prefix '“**'` 之类指明是粗体那一处。`issue` 能定位就尽量给摘录，阅读页才高亮得出。
 - `discuss-edit <id>` 只提交改了的字段（v3 是局部更新），给新的 `--quote-exact` 会重新定位，
   锚点给空串即清空；批注没有 `--status`。`discuss-edit` 改不了 type。`discuss-delete <id>`：作者或该句所在 channel 的编辑者可删，是软删除。
 - 列表按 type 分：`discuss … --type <type>`，不给就是 `discussion`——找不到刚写的批注

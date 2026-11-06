@@ -56,7 +56,7 @@ skill：`research`（只读研究）、`citation`（引用缩写）与 `write`�
 
 ### [`wikipali-workspace`](plugins/wikipali-workspace) — 应用层（可选）
 
-规定**怎么做**：`translate`（翻译）、`review`（审稿定级、写 issue、打分）、`revise`（落实审稿意见）、`harmonize`（三层统稿）、`encyclopedia`（百科词条）、
+规定**怎么做**：`translate`（翻译）、`review`（审稿定级、写 issue、打分）、`revise`（落实审稿意见）、`harmonize`（三层统稿）、`note`（外挂注释）、`glossary`（外挂术语）、`discuss`（讨论）、`encyclopedia`（百科词条）、
 `commentary-align`（义注复注对应，带位置批注）、`paper`（写论文）、`style`（翻译风格设置）。依赖 `wikipali`，装它会自动装上底层。
 译文风格写在项目或个人的 `.wikipali/styles/translation.md` 里（`wikipali-style init` 建一份），没有就用插件默认。不需要这些做法的
 用户可以只装底层。详见[插件 README](plugins/wikipali-workspace/README.md)。
