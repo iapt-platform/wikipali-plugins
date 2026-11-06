@@ -2,7 +2,7 @@
 
 本文只记 Skill 用到的端点。契约以**稳定版**（`www.*`）为准；标注「最新版」的能力可能在稳定版上还是 404。
 
-基址记为 `{API}`，形如 `https://www.wikipali.org/api`。所有响应统一形如：
+基址记为 `{API}`，形如 `https://www.wikipali.cc/api`。所有响应统一形如：
 
 ```json
 { "ok": true, "data": <任意>, "message": "" }
@@ -197,6 +197,28 @@ channel 级的，代持不了 studio 权限。因此**不属于任何 channel �
 `meta` 分页），失败是 Problem Details（`{type, title, status, detail}`），**成败只看状态码**；
 请求带 `Accept-Language: zh-Hans` 时 `detail` 是中文。
 
+### 八种 type 一览
+
+出处：`mint/api-v13` 的 `app/Models/Discussion.php`（`COMMENT_TYPES` 及下列各常量），新建时按它校验
+（`StoreDiscussionRequest`）。不传 type 默认 `discussion`。服务端加了新 type，照这张表补一行，再看
+本节后面哪些段落、write skill 的对照表、`cmd_discuss.py` 要跟着改。
+
+| type | 分组 | 开 / 关状态 | 锚点 | 只能挂句子 | 注入阅读页 | severity |
+|---|---|---|---|---|---|---|
+| `discussion` | 话题 | ✅ | — | — | — | 不收 |
+| `qa` | 话题 | ✅ | — | — | — | 不收 |
+| `help` | 话题 | ✅ | — | — | — | `urgent` / `normal` |
+| `issue` | 话题 | ✅ | ✅ | — | ✅ 高亮锚点（无锚点句尾三角），只注入未关闭的 | `error` / `warning` / `suggestion` |
+| `glossary` | 话题 | ✅ | ✅（服务端可省，但没有锚点阅读页不显示；CLI 要求必须给） | ✅ | ✅ 锚点处换成术语，只注入未关闭的 | 不收 |
+| `note` | 批注 | — | ✅ | ✅ | ✅ 边注，无出处 | 不收 |
+| `commentary` | 批注 | — | ✅ | ✅ | ✅ 边注，带 `<cite>` 出处 | 不收 |
+| `assessment` | 评估 | — | — | ✅ | ✅ 句尾按分数着色的对勾 | **必填**，存评估方法（`^[A-Za-z0-9][A-Za-z0-9._-]{0,15}$`） |
+
+各列对应的常量：分组 = `THREAD_TYPES` / `INJECTED_TYPES` / `TYPE_ASSESSMENT`；没有开关 =
+`STATELESS_TYPES`；锚点 = `ANCHORED_TYPES`；只能挂句子 = `SENTENCE_ONLY_TYPES`；注入阅读页 =
+`READING_TYPES`；severity = `SEVERITIES`。另外：`assessment` 还必须带 `score`（0–100 的整数），
+一句只留一条；`glossary` 与 `assessment` 只有该句的管理者能发起；`commentary` 的 content 必须匹配 `COMMENTARY_PATTERN`（一个或多个 `{{book-para-start-end}}`）。
+
 ### 写入要人类授权：agent-grants
 
 模型自己没有任何 channel 权限。写批注前，人类用 **userToken** 为模型签一张写入授权：
@@ -277,7 +299,9 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 `glossary`（外挂术语）**不改译文**，给一段译文临时挂上术语，供讨论该词值不值得正式收进术语表；
 与术语表（`v2/terms`，`term-add`）是两回事。只能挂在句子上，只有该句所在 channel 的编辑者能建。
 词头与被挂的那段原文里都不能有 `[ ] { } | #`，那段原文也不能和句中已有的 `[[…]]` / `{{…}}` /
-粗体等标记重叠——否则渲染不了，服务端会直接不显示这条。
+粗体等标记重叠——否则渲染不了，服务端会直接不显示这条。CLI 对**完全落在 `**…**` 之内**的摘录放行
+（替换成 `**[[词头#原文]]**` 不切断粗体）；服务端 `AnnotationLayout` 的注释仍写着碰到受保护区间就放弃，
+这种情况能否显示以阅读页为准。
 
 **锚点字段**（W3C Web Annotation 的 TextPosition / TextQuote 选择器），`note` / `commentary` /
 `issue` / `glossary` 收，其余类型传了 422：
@@ -341,16 +365,15 @@ v3 只收 markdown，没有 `content_type`。`notify` 缺省是 **true**（会�
 
 ## 站点
 
-四个线上地址**共享同一个数据库和同一把 JWT 密钥**，凭据完全通用，可随时切换：
+内置两个线上地址，**共享同一个数据库和同一把 JWT 密钥**，凭据完全通用，可随时切换：
 
-| 地址 | 地区 | 代码版本 |
+| 简称 | 地址 | 代码版本 |
 |---|---|---|
-| `https://www.wikipali.org/api` | .org | 稳定版 |
-| `https://www.wikipali.cc/api` | .cc | 稳定版 |
-| `https://next.wikipali.org/api` | .org | 最新版 |
-| `https://next.wikipali.cc/api` | .cc | 最新版 |
-| `http://127.0.0.1:8000/api` | 开发机 | 另一个库、另一把密钥 |
+| `www` | `https://www.wikipali.cc/api` | 稳定版 |
+| `next` | `https://next.wikipali.cc/api` | 最新版 |
 
-- `.org` / `.cc` 是地区可达性；`www` / `next` 是**代码版本，不是数据环境**。
-- 线上四个之间可以自动 fallback（同一套数据），**但绝不能自动退到 127.0.0.1**。
+- `www` / `next` 是**代码版本，不是数据环境**。
+- 其他地址（开发机等）不在插件代码里，由用户 `wikipali endpoint add <简称> <url>` 在本机登记，
+  按另一个库、另一把密钥处理。
+- 请求**只发往当前设定的地址**，网络不通即报错退出，**不自动切换站点**；换站点由用户 `wikipali endpoint` / `--api` 明确指定。
 - 真正的风险不是写错库（写不错），而是写到不同版本的代码上，所以写入前要回显当前 api_url。

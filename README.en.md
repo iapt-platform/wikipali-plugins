@@ -16,11 +16,14 @@ A Claude Code plugin marketplace · read the corpus for research, write back as 
 
 ---
 
+> ▶ **[Live demo](https://raw.githack.com/iapt-platform/wikipali-plugins/main/docs/demo/index.html)**: an animated walkthrough from installation to Q&A, encyclopedia entries, and translating and writing back to WikiPali ([source](docs/demo/index.html))
+
 ## Quick start
 
 ```
 /plugin marketplace add iapt-platform/wikipali-plugins
-/plugin install wikipali@wikipali
+/plugin install wikipali@wikipali             # core: search, read, write
+/plugin install wikipali-workspace@wikipali   # optional, application layer: translate, review, revise, papers
 ```
 
 **Restart your session** afterwards — plugin commands enter `PATH` and skills are loaded at session startup.
@@ -45,11 +48,15 @@ Then just ask in plain language:
 |---|---|
 | **Library** (no login) | Category browsing, inflection expansion, dictionary lookup, full-text search, hit distribution, chapter TOC, paragraph listing and whole-chapter reading, mūla ↔ aṭṭhakathā ↔ ṭīkā paragraph alignment, translation comparison, word frequency, glossaries, public articles and anthologies |
 | **Citations** (offline) | Resolves abbreviated Burmese footnote citations such as `ဝိသုဒ္ဓိ၊၂၊၂၄၁` to the work and the coordinate `65-1461` — Burmese edition page numbers are converted to paragraphs through a bundled index of 62k page markers, offline; `--text` additionally fetches the full page of Pali and its chapter path |
-| **Workspace** (login required) | Write sentences, terms and annotations **as an AI model identity**; issue and revoke model identity tokens; manage channels and access tokens |
+| **Account** (login required) | Write sentences, terms and annotations **as an AI model identity**; issue and revoke model identity tokens; manage channels and access tokens |
 
-Skills: `research` (read-only), `citation`, `write`, and `commentary-align` (anchors aṭṭhakathā / ṭīkā sentences onto the translated text they comment on, as positioned notes). Written sentences record the AI model's uid as `editor_uid`, not the human operator's — **credit goes to whoever actually did the translating**, which keeps attribution and audit trails honest.
+Skills: `research` (read-only), `citation` and `write`. This is the core plugin: data access only. Written sentences record the AI model's uid as `editor_uid`, not the human operator's — **credit goes to whoever actually did the translating**, which keeps attribution and audit trails honest.
 
 See the [plugin README](plugins/wikipali/README.md) (in Chinese) for the security boundary, permission model, CLI usage and endpoint switching.
+
+### [`wikipali-workspace`](plugins/wikipali-workspace) — application layer (optional)
+
+Defines **how the work is done**: `translate`, `review` (grade problems, file issues, score sentences), `revise` (apply review comments), `harmonize` (unify the mūla / aṭṭhakathā / ṭīkā translations), `note` (side notes), `glossary` (trial glossary terms), `discuss` (discussion threads), `encyclopedia` (encyclopedia entries), `commentary-align` (anchor aṭṭhakathā / ṭīkā sentences onto the translation they comment on), `paper`, and `style` (create or edit the translation style file). Depends on `wikipali`, which is installed automatically. Translation style lives in a markdown file — `.wikipali/styles/translation.md` in the project or in your home directory (`wikipali-style init` creates one); without it the plugin default applies. Users who don't need these can install the core plugin alone.
 
 ## Updating
 
@@ -60,6 +67,7 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each release (written in Ch
 ```bash
 claude plugin marketplace update wikipali     # 1. refresh the catalog first
 claude plugin update wikipali@wikipali        # 2. then upgrade the plugin
+claude plugin update wikipali-workspace@wikipali   # also, if you installed the application layer
 ```
 
 Then **restart your session**.

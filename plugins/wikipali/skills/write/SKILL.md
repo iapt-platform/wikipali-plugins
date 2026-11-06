@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries (新建术语 / 加术语), or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / 问题 / 标出译文某处的问题 / 外挂术语 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help, issue, glossary, assessment), or to score / assess a translation sentence (译文评估 / 给译文打分 / 评分), or to list all discussions / issues / 外挂术语 / assessments in a chapter, paragraph range, book or whole channel, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data or for unrelated Laravel/API work."
+description: "Use this skill to write sentences (translations, commentary) into the WikiPali sentence database over its HTTP API, from any project. Trigger whenever the user asks to upload, push, publish, sync, or save translated Pali sentences to WikiPali / 巴利文 / wikipali.org, or mentions writing to a WikiPali channel, or asks to list / add / edit their own WikiPali 术语表 / term glossary entries (新建术语 / 加术语), or to read / write / reply to 批注 / 脚注 / 审稿意见 / 问答 / 求助 / 问题 / 标出译文某处的问题 / 外挂术语 / discussions / annotations on a sentence (types note, commentary, discussion, qa, help, issue, glossary, assessment), or to score / assess a translation sentence (译文评估 / 给译文打分 / 评分), or to list all discussions / issues / 外挂术语 / assessments in a chapter, paragraph range, book or whole channel, or asks about the wikipali CLI, wikipali-login, or ~/.wikipali/credentials.json. Also covers the user's own term glossary (dhamma terms) and per-sentence annotations (discussions): listing, creating, editing, and replying. Handles login, AI-model identity tokens, channel selection, access tokens, and batched writes with attribution as the AI model rather than the human operator. Do not use for reading WikiPali data, for unrelated Laravel/API work, or for deciding how to translate, review or revise a text — translation style, review grading and issue wording belong to the wikipali-workspace plugin; this skill only stores the result."
 metadata:
   author: mint
 ---
@@ -18,7 +18,9 @@ metadata:
 
 ⚠ **刚装好或刚更新插件时，这两个命令可能还不在 PATH 上**——PATH 注入在会话启动时完成，装完要重启会话。若 `command -v wikipali` 为空，改用 `${CLAUDE_PLUGIN_ROOT}/bin/wikipali`，并提醒用户重启会话。
 
-**坐标、引用格式、术语链接与注释、译文来源判定、凭据规矩见 `references/conventions.md`——那是所有 skill 共用的，必须遵守。** 审稿、评估译文的问题分级见 `references/translation-evaluate.md`。端点细节见 `references/api-write.md`。
+**坐标、引用格式、文献层次、译文来源判定、凭据规矩见 `references/conventions.md`——那是所有 skill 共用的，必须遵守。** 端点细节见 `references/api-write.md`。
+
+本 skill 只管**存取**：写进去的东西对不对位、署名对不对、有没有漏。**译文怎么写**（风格、术语标记、随文注释）、**审稿怎么定级**不归这里——那是应用层插件 `wikipali-workspace` 的事（translate / review / revise 等 skill）。没装它时，按用户在对话里的要求写，不要自己加规矩。
 
 ## 铁律
 
@@ -53,23 +55,12 @@ metadata:
    一个段落常有多句，原文和各译本又各有各的 uid。命令在多义时会拒绝并列出候选，
    **不要随手挑一个了事**——挂错地方的批注几乎不会被发现。写前看回显里那句正文对不对。
 
-### 译文内容
+### 坐标与署名
 
 9. **坐标不能编造。** 写之前用 `wikipali get <book>-<para> --json` 取真实句子，
    把要写的 `(book_id, paragraph, word_start, word_end)` 与之做集合比对，确认
    无编造、无遗漏；写完独立读回，不要只信 `write` 自报的条数。
-10. **默认现代汉语。** 通顺易读的书面语。不要古汉语，不要半文半白，不要译经腔——
-   「尔时」「复次」「者……也」「谓」「如是」这类仿古句式一概不用。用户指定风格时
-   才改。
-11. **术语标记默认不用。** 用户明确要求时才把巴利术语写成 `[[词根]]`；必须用**词典形**
-   而非原文的变格形，且**写前用 `wikipali forms <词>` 验证**——展不出词形的不是有效
-   词根，链接会落空。普通名词不算术语（`asuci` 就是「不净」，不加标记）。
-12. **注释默认不加。** 用户明确要求时才加，且必须：紧跟被注释词、反引号包裹、
-   **不能换行**、**标出来源**（`**义注**：`、`**复注**：`）。注释内容只能取自
-   `wikipali related` 找到的义注复注，**不许自己发挥**；注释里的巴利词不再加 `[[ ]]`。
-13. **被解释词必须与所注文本逐字同译。** 义注的黑体引自根本、复注的引自义注；
-    同一 channel 内译法不一致，读者就看不出这条注在注哪个词。这条可机械核查。
-14. **文献层次必须标明**，根本、义注、复注不能混——把义注的解释当成经律本身的
+10. **文献层次必须标明**，根本、义注、复注不能混——把义注的解释当成经律本身的
     说法是学术错误，不是措辞问题。**机器生成的译文必须显式标注。**
 
 ## 首次准备
@@ -108,16 +99,6 @@ wikipali channels
 ```
 
 或直接是句子数组（此时用 `--channel` 指定目标）。`content_type` 可省略，默认 `markdown`；`channel_uid` 可以逐句给，用于跨 channel 批量写。
-
-译文**默认用现代汉语**（通顺易读的书面语，不要古汉语、不要半文半白、不要译经腔），
-**默认正常翻译、不加注释**。用户明确要求时才用这两种标记，格式见 conventions.md：
-
-- **术语标记**：巴利术语写成 `[[词根]]`（`[[seyyasaka]]`），用词典形而非变格形
-- **注释**：紧跟被注释词、反引号包裹、不能换行，来源要标出——
-  ``不乐于`**义注**：被欲贪的热恼所烧，但**并非希求还俗**`修习 [[brahmacariya]]``
-
-**硬约束**：译义注、复注时，其中的**被解释词**（义注的黑体引自根本，复注的引自义注）
-必须与所注文本在同一 channel 里逐字同译，否则读者看不出这条注在注哪个词。
 
 ```bash
 wikipali write sentences.json --channel <uid或名字片段> --dry-run   # 先看回显
@@ -166,7 +147,7 @@ wikipali term-edit <guid> --meaning 念住          # 只改给出的字段，�
 | 用户说 | `--type` | 是什么 |
 |---|---|---|
 | 加批注、加脚注 | `note` | 正文就是注解本身；阅读页在锚点处渲染成一条**没有出处**的边注 |
-| 加注释对照、义注对照、复注对照 | `commentary` | 正文是下一层的句子模板 `{{book-para-start-end}}`；阅读页渲染成带 `<cite>` 出处的边注。批量做用 `commentary-align` skill |
+| 加注释对照、义注对照、复注对照 | `commentary` | 正文是下一层的句子模板 `{{book-para-start-end}}`；阅读页渲染成带 `<cite>` 出处的边注。批量做用 wikipali-workspace 的 `commentary-align` skill |
 | 加审稿意见、讨论 | `discussion`（默认） | 给人看的意见，只在批注列表里 |
 | 加问答 | `qa` | 同上 |
 | 加求助 | `help` | 同上 |
@@ -211,8 +192,7 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type assessment \
 - `--title`：`discussion` / `qa` / `help` / `issue` **必填**；`glossary` **必填且就是术语词头**
   （巴利词，如 `bhikkhu`，不能含 `[ ] { } | #`），阅读页按它显示术语；`note` / `commentary` 可不给。
 - `--severity`：`issue` 可选 `error` / `warning` / `suggestion`（用户说「错误」「警告」「建议」时给）。
-  **审稿、评估译文时按 `references/translation-evaluate.md` 归类定级**，标题写成
-  `[类别] 简要描述`，正文固定四项：原文、译文、理由、建议修改为，正文不用反引号、引文用 `*斜体*`（格式见该文件）；
+  怎么定级、标题与正文怎么写，由应用层规定（wikipali-workspace 的 `review` skill）；
   `help` 可选 `urgent` / `normal`；其它类型不收。前端以彩色标签显示。
   `discuss-reply` 只要 `--content`，不能回复一条回复（回复它所在的话题）。
 - 正文是 markdown，也可以从文件或 stdin 读：`--content-file <文件>`、`--content -`。
@@ -228,7 +208,8 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type assessment \
   不确定就先 `wikipali get <坐标> --json` 看原文。摘录在句中出现多次时，补 `--quote-prefix` /
   `--quote-suffix`（紧挨着的前后文字）指明是哪一处；工具会报错提示。`discuss` 列表会显示锚点。
 - `glossary` **必须给摘录**；摘录不能和句中已有的术语 `[[…]]`、模板 `{{…}}`、粗体等格式重叠
-  （外挂术语不能套在它们上面），工具会提前报错。`issue` 能定位就尽量给摘录，阅读页才高亮得出。
+  （外挂术语不能套在它们上面），工具会提前报错。**例外**：摘录完全落在 `**…**` 里面（不碰两头的 `**`）
+  可以挂，如加粗的被解释词；摘录有多处时用 `--quote-prefix '“**'` 之类指明是粗体那一处。`issue` 能定位就尽量给摘录，阅读页才高亮得出。
 - `discuss-edit <id>` 只提交改了的字段（v3 是局部更新），给新的 `--quote-exact` 会重新定位，
   锚点给空串即清空；批注没有 `--status`。`discuss-edit` 改不了 type。`discuss-delete <id>`：作者或该句所在 channel 的编辑者可删，是软删除。
 - 列表按 type 分：`discuss … --type <type>`，不给就是 `discussion`——找不到刚写的批注
@@ -242,11 +223,12 @@ wikipali discuss-add 216:35 --channel <译文> --words 2-17 --type assessment \
   ```
   `--channel` 必填；`--type` 逗号多选，不给只列话题（含 issue / 外挂术语，不含批注）。
   每条带句子坐标与 id，要回复 / 修改 / 关闭就拿 id 用 `discuss-reply` / `discuss-edit`。
-- 批量建立注释对照用 `note-context` / `note-push`，流程见 `commentary-align` skill。
+- 批量建立注释对照用 `note-context` / `note-push`，流程见 wikipali-workspace 的 `commentary-align` skill。
 
 ## 站点
 
-四个线上地址共享同一个数据库和密钥，凭据通用；`www` 是稳定版、`next` 是最新版代码，**不是**不同的数据环境。
+内置两个线上地址 `www`（www.wikipali.cc）与 `next`（next.wikipali.cc），共享同一个数据库和密钥，凭据通用；`www` 是稳定版、`next` 是最新版代码，**不是**不同的数据环境。
+其他地址由用户在本机用 `wikipali endpoint add <简称> <url>` 登记，按独立库处理。
 
 ```bash
 wikipali endpoint            # 列出并标出当前
@@ -268,6 +250,7 @@ wikipali --api next write …  # 只影响这一次调用
 | `count: 0`（签 access token） | 对该 channel 无编辑权。**中止写入**，不要继续 |
 | `count` 小于提交条数 | 逐条差集已由脚本列出，如实转达 |
 | 404（`ai-model-token` 等新端点） | 提示切到 `next` 或稍后再试 |
+| 「连不上 …，不会自动切换站点」 | 网络层不通，脚本已退出、**什么都没写**。如实转告用户，由他决定重试或换站点，不要擅自加 `--api` 换站点 |
 
 凭据泄漏时撤销模型的全部 token：
 

@@ -3,17 +3,18 @@
 本文汇总 `wikipali-plugins`（`plugins/wikipali`）实际调用的全部 WikiPali HTTP 接口，
 用于快速检索「某个能力对应哪个接口、入参是什么、返回什么」。
 
-基址记为 `{API}`，由 `lib/sites.py` 定义，七个地址：
+应用层插件 `plugins/wikipali-workspace` **不直接调用任何接口**，一律经由底层的 `wikipali` 命令，
+所以本清单只覆盖底层。`wikipali guide` 只打印插件自带的文档，也不发请求。
 
-| 地址 | 版本 | 数据 |
-|---|---|---|
-| `https://www.wikipali.org/api` | 稳定版 | 线上共享库 |
-| `https://www.wikipali.cc/api` | 稳定版 | 线上共享库 |
-| `https://next.wikipali.org/api` | 最新版 | 线上共享库 |
-| `https://next.wikipali.cc/api` | 最新版 | 线上共享库 |
-| `https://staging.wikipali.org/api` | 预发布 | 独立库（与 staging.cc 同库） |
-| `https://staging.wikipali.cc/api` | 预发布 | 独立库（与 staging 同库） |
-| `http://127.0.0.1:8000/api` | 开发机 | 独立库 |
+基址记为 `{API}`，`lib/sites.py` 只内置两个地址：
+
+| 简称 | 地址 | 版本 | 数据 |
+|---|---|---|---|
+| `www` | `https://www.wikipali.cc/api` | 稳定版 | 线上共享库 |
+| `next` | `https://next.wikipali.cc/api` | 最新版 | 线上共享库 |
+
+其他地址（开发机、预发布等）不写进插件代码：用 `wikipali endpoint add <简称> <url>` 登记，
+只保存在本机 `~/.wikipali/credentials.json` 的 `custom_sites` 里，一律按独立库处理。
 
 **响应约定**
 
@@ -77,6 +78,12 @@
 | 批注(v3) | `PATCH {API}/v3/discussions/{id}` | 局部修改批注/话题 |
 | 批注(v3) | `DELETE {API}/v3/discussions/{id}` | 软删除批注/话题 |
 | 批注(v3) | `GET {API}/v3/tipitaka-discussions/{channel}` | 列出一段经文（章 / 段落区间 / 书 / 整个 channel）里的话题/批注，带句子坐标 |
+| 管理(v3) | `GET {API}/v3/admin/reading-stats` | 阅读统计汇总（活跃读者、时长、热门章节；仅管理员） |
+| 管理(v3) | `GET {API}/v3/admin/agent-stats` | AI 问答统计汇总（提问、耗时、评价、质量检查、工具；仅管理员） |
+| 管理(v3) | `GET {API}/v3/admin/agent-runs` | AI 提问记录列表（仅管理员） |
+| 管理(v3) | `GET {API}/v3/admin/agent-runs/{run}` | 一次提问的研究过程（步骤、证据、回答；仅管理员） |
+| 管理(v3) | `GET {API}/v3/admin/agent-runs/digest` | 精简导出：同意用于改进的提问，不含身份，给 agent 分析（仅管理员） |
+| 管理(v3) | `GET {API}/v3/admin/agent-feedback` | 用户评价列表（点赞点踩、原因、说明，带对应提问；仅管理员） |
 
 ---
 
@@ -470,7 +477,7 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
   ```
   - `type` 八类：`note`/`commentary`（批注，收锚点，注入阅读页）、`discussion`/`qa`/`help`
     （话题，**title 必填**，不收锚点）、`issue`（话题，title 必填，收锚点，注入阅读页高亮）、
-    `glossary`（外挂术语：话题，**title 必填且为术语词头**，必须有锚点，只能挂句子，
+    `glossary`（外挂术语：话题，**title 必填且为术语词头**，锚点服务端可省但没有就不显示（CLI 要求必须给，完全落在 `**…**` 内的摘录也放行），只能挂句子，
     注入阅读页显示成术语）、`assessment`（译文评估：**`score`（0–100 的整数）与 `severity`=评估方法必填**，
     title 可省、`content` 写理由，不收锚点，只能挂句子，只有该句 channel 的编辑者能建，
     注入阅读页在句尾显示按分数着色的对勾）。
@@ -521,9 +528,75 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
   `meta` 分页。channel 不存在或范围内没有批注返回空列表；`chapter` 不存在 404；参数非法 422。
 - 可见性同 §37：未登录看不到 discussion，basic 角色在不能编辑的 channel 上只看得到自己发的。
 
+# 五、管理统计（只读，仅 root / administrator）
+
+`wikipali admin …` 用。全部用**用户 token**（`Authorization: Bearer`），v3 原生信封，
+非管理员 403（CLI 译成「当前账号不是管理员」）。日期一律 UTC 日 `YYYY-MM-DD`，`to` 含当天；
+统计与 digest 不给 `from`/`to` 时服务端取最近 30 天，跨度上限 366 天（超了 422）；
+评价列表不给就不限日期。
+
+## 46. 阅读统计 —— `GET {API}/v3/admin/reading-stats`
+
+`admin stats reading` 用。
+
+- **入参**：`from`、`to`、`client`（`all`/`web`/`mobile`）。
+- **返回**：`data: { range, summary{active_readers, chapters_opened, reading_seconds, reading_users,
+  page_views, dict_lookups}, previous{同 summary，上一个等长区间}, sticky{dau, mau}, daily[],
+  top_chapters[{article_id, book, paragraph, title, readers, records}], pitaka_share[], layer_share[],
+  duration_buckets[], reading_credits }`。`reading_seconds` 等只有 App 上报，网页为 null。
+
+## 47. AI 问答统计 —— `GET {API}/v3/admin/agent-stats`
+
+`admin stats agent` 用。
+
+- **入参**：`from`、`to`、`account_type`（`all`/`user`/`guest`）。
+- **返回**：`data: { range, summary{runs, deep, passage, denied, errors, cancelled, improve, askers,
+  askers_user, askers_guest, latency_p50_ms, latency_p95_ms, tokens_in, tokens_out, feedback_up,
+  feedback_down, feedback_asked, quality_assessed, quality_unverified, quality_missing, quality_thin},
+  previous, daily[], clients[], tools[{name, calls, errors, avg_ms}], feedback_reasons[{reason, count}],
+  quality_by_route[{route, assessed, unverified, missing, thin}], credits{…} }`。
+
+## 48. 提问记录 —— `GET {API}/v3/admin/agent-runs`、`GET {API}/v3/admin/agent-runs/{run}`
+
+`admin runs` / `admin run` 用。
+
+- **列表入参**：`filter[status]`（`ok`/`error`/`cancelled`/`denied`/`unchecked`）、`filter[route]`、
+  `filter[account_type]`、`filter[client]`、`filter[improve]`、`filter[q]`（问题文字）、`page`、`per_page`（≤100）。
+- **列表返回**：`data: [{run_id, thread_id, account_type, client, question, route, deep, improve, status,
+  latency_ms, tokens_in, tokens_out, started_at, quality, …}]` + `meta` 分页。
+- **详情**另含 `answer`、`evidence`、`plan`、`passage`、`citations`、`error`、`model`、`prompt_version`、
+  `steps[{seq, kind, name, args, result, result_chars, tokens_in, tokens_out, ms, error}]`。
+  详情带账号信息（`user`、`device_id`、`client_ip`），CLI 文本输出不显示，`--json` 会原样输出。
+
+## 49. 精简导出 —— `GET {API}/v3/admin/agent-runs/digest`
+
+`admin digest` 用，输出 JSONL（一行一次提问），给 agent 做问题聚类与改进分析。
+**只含用户同意「用于改进」（improve=true）的提问，不含任何身份字段。**
+
+- **入参**：`from`、`to`、`limit`（≤2000，默认 500）。
+- **返回**：`data: [{run_id, started_at, question, route, route_raw, confidence, deep, from_reader, client,
+  status, latency_ms, lemmas[], keywords["lemma|tags"], retries, llm_calls, tokens, tools[{name, ms, chars, error}],
+  quality, feedback[{rating, tags, comment, asked}], events{kind: n}, next_question_after_s}]`，
+  `meta: {from, to, count, has_more}`。`has_more` 为真时缩小日期范围或加大 `limit`。
+
+## 50. 用户评价 —— `GET {API}/v3/admin/agent-feedback`
+
+`admin feedback` 用。
+
+- **入参**：`filter[rating]`（`1`/`-1`）、`filter[tag]`（点赞标签 `accurate`/`useful_citations`/`clear`/`inspiring`，
+  点踩原因 `citation_wrong`/`missed`/`off_topic`/`incorrect`/`too_long`/`too_academic`/`slow`/`other`）、
+  `filter[has_comment]`、`from`、`to`、`page`、`per_page`（≤100）。
+- **返回**：`data: [{id, message_id, rating, tags[], comment, asked, client, created_at, updated_at,
+  account_type, run_id, question, route, status, deep, latency_ms, quality}]` + `meta` 分页。
+  `run_id` 为 null 表示那次提问还没入库（评价先到）。不含账号身份。
+
 # 附录
 
 ## 常见错误约定
+
+客户端的报错**一律带 HTTP 状态码**：`ApiError` 的文本固定为 `HTTP <码>：<服务端 message>`
+（v2 取 `message`，v3 取 `detail` / `title`；服务端没给说明时只有 `HTTP <码>`）。
+HTTP 200 但 `ok: false` 也按 `HTTP 200：<message>` 报。网络层失败没有状态码，报「连不上 …」。
 
 | 现象 | 含义 | 处置 |
 |---|---|---|
@@ -537,10 +610,11 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 | `message: "word existed"` + 200 | 同 channel 下 `word + tag` 已存在 | 不是成功，改 PUT |
 | `message: "no date"` + 200 | 缺 `sentences` 字段 | 客户端 bug |
 
-## 自动 fallback
+## 不自动切换站点
 
-线上四站共享同一数据库和 JWT 密钥，网络层不可达时会按「同版本另一域名 → 另一版本同域名 →
-其余」的顺序自动 fallback，但**绝不回退到 127.0.0.1**（那是另一个库）。
+所有请求**只发往当前设定的 `{API}`**（`--api` > `WIKIPALI_API_URL` > 凭据文件 > 内置默认）。
+网络层不可达（连接失败、超时、传输中断）时直接报错退出，**不会自动换到别的站点**——
+即使 `www` 与 `next` 同库，代码版本也不同。要换站点由用户执行 `wikipali endpoint` 或给 `--api`。
 
 ## 未调用 / 已知故障
 

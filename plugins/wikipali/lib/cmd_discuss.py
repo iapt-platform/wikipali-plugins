@@ -123,7 +123,7 @@ def call_as_model(client, method, path, what, body=None, query=None, timeout=REA
 def explain_discuss_error(exc, what):
     """403 / 409 / 422 带上服务端的说明（v3 Problem 的 detail），其余按通用口径。"""
     if exc.status in (403, 409, 422):
-        return WpError(f'{what}：HTTP {exc.status} {exc}')
+        return WpError(f'{what}：{exc}')
     return explain_api_error(exc, what)
 
 
@@ -162,7 +162,7 @@ def agent_grant(client, channel_uid, book, force=False):
     except ApiError as exc:
         if exc.status == 403:
             raise WpError(
-                f'签发写入授权：403 {exc}\n'
+                f'签发写入授权：403 无权限（{exc.message or "服务端未给说明"}）\n'
                 f'当前登录账号对 channel {channel_uid} 没有编辑权，或模型 {model.get("name")} 不归它所有。\n'
                 '不要继续写入。确认选对了 channel，或让 owner 授予编辑权限。'
             )

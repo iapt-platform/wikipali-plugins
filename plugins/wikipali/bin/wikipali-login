@@ -58,7 +58,7 @@ def main(argv=None):
 
     print(f"登录站点：{client.api_note()}")
     if client.bucket_name != "online":
-        print("注意：该站点的凭据与线上四站不通用。")
+        print("注意：该站点的凭据与内置线上站点不通用。")
 
     interactive = sys.stdin.isatty()
     use_gui = not interactive and not args.password_stdin and askpass.gui_available()
@@ -112,9 +112,9 @@ def main(argv=None):
     except ApiError as exc:
         # sign-in 失败时服务端返回 400 + 'invalid token'，措辞会让人以为是 token 问题
         if exc.status in (400, 401):
-            print("错误：用户名或密码不正确。", file=sys.stderr)
+            print(f"错误：用户名或密码不正确（HTTP {exc.status}）。", file=sys.stderr)
         else:
-            print(f"错误：登录失败（HTTP {exc.status}）：{exc}", file=sys.stderr)
+            print(f"错误：登录失败：{exc}", file=sys.stderr)
         return 1
     except WpError as exc:
         print(f"错误：{exc}", file=sys.stderr)

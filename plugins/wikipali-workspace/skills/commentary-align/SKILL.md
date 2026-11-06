@@ -1,6 +1,6 @@
 ---
 name: commentary-align
-description: "Use this skill to align a Pali commentary with the text it comments on and upload the alignment to WikiPali — given a CST book name (an6, dn1, mn1 …), a cs_para number and a translation channel, work out which aṭṭhakathā sentences explain which phrase of the mūla translation (and ṭīkā → aṭṭhakathā), then write them as position-anchored notes (discussion type=commentary). Trigger when the user asks for 义注复注对应 / 注释书对应 / 注释对齐 / 把义注挂到根本上 / commentary alignment / anchor commentary notes, or gives a book_name + cs_para + channel for that purpose. Do not use for plain per-sentence discussions (that is the write skill) or for reading commentaries for research (research skill)."
+description: "Use this skill to align a Pali commentary with the text it comments on and upload the alignment to WikiPali — given a CST book name (an6, dn1, mn1 …), a cs_para number and a translation channel, work out which aṭṭhakathā sentences explain which phrase of the mūla translation (and ṭīkā → aṭṭhakathā), then write them as position-anchored notes (discussion type=commentary). Trigger when the user asks for 义注复注对应 / 注释书对应 / 注释对齐 / 把义注挂到根本上 / commentary alignment / anchor commentary notes, or gives a book_name + cs_para + channel for that purpose. Do not use for plain per-sentence discussions (that is the wikipali write skill) or for reading commentaries for research (wikipali research skill)."
 metadata:
   author: mint
 ---
@@ -21,8 +21,8 @@ metadata:
 
 阅读页渲染根本句时，在 `pos_end` 处插入该义注句在同一 channel 的译文作边注。
 
-命令与登录的通用规矩见 `write` skill（模型身份、`ensure-model`、不索要密码），
-坐标约定见 `references/conventions.md`。
+命令由底层插件 `wikipali` 提供。命令与登录的通用规矩见它的 `write` skill（模型身份、
+`ensure-model`、不索要密码），坐标约定用 `wikipali guide conventions` 读。
 
 ## 流程
 

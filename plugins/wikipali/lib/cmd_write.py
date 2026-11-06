@@ -61,7 +61,7 @@ def cmd_ensure_model(args):
             rows = (listed or {}).get("rows") or []
             found = next((r for r in rows if r.get("name") == name), None)
             if not found:
-                raise WpError(f"服务端说 {name} 已存在（409），但列表里查不到，无法继续。")
+                raise WpError(f"服务端说 {name} 已存在（HTTP 409），但列表里查不到，无法继续。")
             print(f"已存在模型记录：{name}  uid={found['uid']}")
 
     # 2) 增量补字段（update 是增量的，未提交的字段保持原值）

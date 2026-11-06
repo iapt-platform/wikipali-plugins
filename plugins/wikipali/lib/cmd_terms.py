@@ -100,7 +100,7 @@ def term_by_guid(client, guid):
         return client.call('GET', f'v2/terms/{guid}', token=client.user_token, timeout=60)
     except ApiError as exc:
         if exc.status == 404 or '没有查询到' in str(exc):
-            raise WpError(f'找不到术语 {guid}。guid 要给完整的，用 wikipali my-terms 查。')
+            raise WpError(f'找不到术语 {guid}（{exc}）。guid 要给完整的，用 wikipali my-terms 查。')
         raise explain_api_error(exc, f'读取术语 {guid}')
 
 
@@ -119,14 +119,14 @@ def post_as_model(client, method, path, body, what):
                 raise explain_api_error(retry_exc, f'{what}（已重签模型 token 后重试）')
         if exc.status == 403:
             raise WpError(
-                f'{what}：403 无权限。可能的原因：\n'
+                f'{what}：HTTP 403 无权限。可能的原因：\n'
                 '  · 人类账号对这个 channel 没有编辑权（让 owner 授予 ≥ editor）；\n'
                 '  · access token 签给了别的 channel；\n'
                 '  · 目标术语不属于任何 channel——AI 只能改 channel 内的术语。'
             )
         if exc.status == 200 and 'existed' in str(exc):
             raise WpError(
-                f'{what}：该 channel 下已有同 word + tag 的术语。\n'
+                f'{what}：该 channel 下已有同 word + tag 的术语（{exc}）。\n'
                 '要改就用 wikipali term-edit <guid>；先用 my-terms 找到它的 guid。'
             )
         raise explain_api_error(exc, what)

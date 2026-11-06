@@ -21,7 +21,7 @@ PALI_CHANNEL_NAME = '_System_Pali_VRI_'
 def pali_channel(client):
     """本站点的巴利原文 channel uid。
 
-    PALI_CHANNEL 只对线上四站（共用一个库）成立；开发机与自定义地址是另一个库，
+    PALI_CHANNEL 只对内置线上站点（共用一个库）成立；自定义地址是另一个库，
     系统 channel 的 uid 不同，拿线上的 uid 去查只会得到「没有内容」。所以非线上站点
     按名字从 v2/channel?view=system 查一次，按站点分桶缓存。
     """
@@ -616,7 +616,7 @@ def fetch_tipitaka_content(client, book, para, args):
     except ApiError as exc:
         if 'found' in str(exc) and 'false' in str(exc):
             raise WpError(
-                f'{book}:{para} 这一章没有该版本的预建内容。\n'
+                f'{book}:{para} 这一章没有该版本的预建内容（{exc}）。\n'
                 '这是「该 channel 在本章无文本」，不是服务故障——如实报告，'
                 '不要拿别的版本顶替。\n'
                 f'用 wikipali versions {book}:{para} 看这一段实际有哪些版本。'
@@ -845,7 +845,7 @@ def cmd_count(args):
 def cache_path(client, name):
     """缓存文件按**站点分桶**存放。
 
-    线上四站共享同一个库，可以共用；但开发机（local）与任何自定义地址是**另一个
+    内置线上站点共享同一个库，可以共用；但任何自定义地址（开发机等）是**另一个
     数据库**。不分桶的话，用过一次 --api local 之后，之后打线上会静默拿到开发机的
     数据——看起来一切正常，数据却是错的。凭据早就是按桶存的，缓存同理。
     """

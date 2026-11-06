@@ -80,5 +80,10 @@ def check_glossary(text, start, end, title):
         raise WpError(f'摘录「{covered}」里有 [ ] {{ }} | # 或换行，渲染不了外挂术语；换个摘录范围。')
     for m in PROTECTED.finditer(text):
         if m.start() < end and start < m.end():
+            # 完全落在 **…** 里面（不碰到两头的 **）时放行：替换成 **[[词头#原文]]** 不切断粗体。
+            # 注释书里加粗的是被解释词，本身常就是术语。（服务端 AnnotationLayout 目前仍把整个粗体
+            # 当受保护区间，能否渲染以阅读页为准。）
+            if m.group(0).startswith('**') and m.start() + 2 <= start and end <= m.end() - 2:
+                continue
             raise WpError(f'摘录「{covered}」与句中已有的标记「{m.group(0)}」重叠，'
                           '外挂术语不能套在已有术语 / 模板 / 格式上；换个摘录范围。')
