@@ -93,6 +93,14 @@ def build_parser():
     p.add_argument('--width', type=int, default=200, help='每条摘要的字符数')
     p.set_defaults(func=cmd_read.cmd_search)
 
+    p = add('find', '回答问题的第一轮检索：逐词 + 多词合并两路一起搜，按名次融合（RRF）')
+    p.add_argument('words', nargs='+', help='一个或多个巴利词，空格分隔；给词根或任一词形均可')
+    p.add_argument('--limit', type=int, default=20, help='合并后取几段，默认 20')
+    p.add_argument('--per', type=int, default=8, help='逐词检索每个词取几段，默认 8')
+    p.add_argument('--ref', action='store_true', help='给没有出处的段逐条补出处（每条多 2–4 次请求）')
+    p.add_argument('--width', type=int, default=200, help='每条摘要的字符数')
+    p.set_defaults(func=cmd_read.cmd_find)
+
     p = add('phrase', '多词检索：几个词一起搜，黑体定义优先（不用先展开词形）')
     p.add_argument('words', nargs='+', help='一个或多个巴利词，空格分隔；给词根或任一词形均可')
     p.add_argument('--mode', choices=['definition', 'fuzzy'], default='definition',

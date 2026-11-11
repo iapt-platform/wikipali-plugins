@@ -85,6 +85,9 @@ data.hits: { total: {value, relation}, hits: [ { _score, _source: {related_id, t
 - 与 `search-pali-wbw` 的召回在 10 个词根上实测 98.7%–100%（2026-11），缺的是同义词词典
   没收的词形与正文里粘了连音的词。**单词查全仍以 `search` 为准**，`phrase` 用于多词。
 
+`wikipali find` 把第 3 节（逐词）与本节的合并 fuzzy 两路结果按名次融合（RRF，k=60），
+前 3 段沿用逐词的排序；回答具体问题时用它做第一轮检索。
+
 ## 4. 出处分布 —— `GET /v2/search-pali-wbw-books?key={词形,…}`
 
 ```

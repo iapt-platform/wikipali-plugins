@@ -368,6 +368,156 @@ def cmd_phrase(args):
 
 
 # ---------------------------------------------------------------------------
+# find —— 多路检索 + RRF 合并（默认入口）
+# ---------------------------------------------------------------------------
+
+RRF_K = 60                # Reciprocal Rank Fusion 的常数，社区惯用 60
+FIND_PER_WORD = 8         # 每个词逐词检索取几段
+FIND_PHRASE_DEPTH = 30    # 合并查询每种模式取几段参与融合
+FIND_TOO_MANY = 1000      # 逐词命中超过这个数，再补一份只看黑体的
+FIND_HEAD = 3             # 前几段沿用逐词检索的轮流排序（见 cmd_find）
+PALI_STOPWORDS = {'na', 'no', 'ca', 'va', 'vā', 'hi', 'pana', 'iva', 'eva'}  # 与服务端一致
+
+
+def rrf_fuse(lists):
+    """Reciprocal Rank Fusion：每个列表按名次给 1/(k+rank)，相加后降序。返回 [(coord, score)]。"""
+    score = {}
+    for coords in lists:
+        for rank, coord in enumerate(coords, 1):
+            score[coord] = score.get(coord, 0) + 1 / (RRF_K + rank)
+    return sorted(score.items(), key=lambda kv: -kv[1])
+
+
+def round_robin(lists):
+    """各列表轮流取第 1、第 2……名，去重。"""
+    out = []
+    for i in range(max((len(c) for c in lists), default=0)):
+        for coords in lists:
+            if i < len(coords) and coords[i] not in out:
+                out.append(coords[i])
+    return out
+
+
+def cmd_find(args):
+    """逐词（search-pali-wbw，每词全部词形）+ 合并查询（v3 fuzzy），RRF 合并。
+
+    逐词检索擅长「这个词最重要的段落」，合并查询擅长「几个概念同时出现的段落」，
+    两者各有对方漏掉的题。排序：前 FIND_HEAD 段沿用逐词检索各词轮流取的顺序（各词的
+    头名，读全文时最常用到），其余名额按 RRF 融合补入。
+    在问藏真实问题的留出集上，这样比只用逐词多召回约一成，近九成的题更好或持平，
+    前 3 段不变；再加一路 definition 没有额外收益（定义类问题也一样），所以不放进来，
+    要查黑体定义时单独用 phrase。服务端不支持 v3 时退回只用逐词。
+    """
+    client = make_client(args)
+    words = [w.strip() for item in args.words for w in item.split() if w.strip()]
+    if not words:
+        raise WpError('没有给出检索词。')
+    content_words = [w for w in words if w.lower() not in PALI_STOPWORDS] or words
+
+    lists, word_lists, sources, info = [], [], {}, {}
+
+    def add_list(coords, label, per_word=False):
+        lists.append(coords)
+        if per_word:
+            word_lists.append(coords)
+        for coord in coords:
+            sources.setdefault(coord, [])
+            if label not in sources[coord]:
+                sources[coord].append(label)
+
+    unresolved = []
+    for word in content_words:
+        rows = fetch_forms(client, word)
+        key = forms_arg(rows[0]) if rows else ''
+        if not key:
+            unresolved.append(word)
+            continue
+        passes = [False]
+        try:
+            data = client.call('GET', 'v2/search-pali-wbw', query={'key': key, 'limit': args.per}, timeout=READ_TIMEOUT)
+        except ApiError as exc:
+            raise explain_api_error(exc, f'逐词检索 {word}')
+        if int((data or {}).get('count') or 0) > FIND_TOO_MANY:
+            passes.append(True)
+        for bold in passes:
+            if bold:
+                try:
+                    data = client.call('GET', 'v2/search-pali-wbw',
+                                       query={'key': key, 'limit': args.per, 'bold': 'on'}, timeout=READ_TIMEOUT)
+                except ApiError:
+                    continue
+            coords = []
+            for r in (data or {}).get('rows') or []:
+                coord = fmt_coord(r.get('book'), r.get('paragraph'))
+                coords.append(coord)
+                info.setdefault(coord, {'book': r.get('book'), 'paragraph': r.get('paragraph'),
+                                        'paliTitle': r.get('paliTitle'), 'path': r.get('path'),
+                                        'ref': r.get('ref'), 'link': r.get('link'),
+                                        'text': strip_markup(r.get('highlight'))})
+            add_list(coords, word + ('(黑体)' if bold else ''), per_word=True)
+
+    phrase_ok = True
+    for mode, label in (('fuzzy', '合并'),):
+        query = {'q': ' '.join(words), 'search_mode': mode, 'resource_type': 'tipitaka',
+                 'granularity': 'paragraph', 'page_size': max(args.limit, FIND_PHRASE_DEPTH)}
+        try:
+            data = client.call('GET', 'v3/search', query=query, timeout=READ_TIMEOUT, v3=True) or {}
+        except ApiError:
+            phrase_ok = False
+            break
+        coords = []
+        for hit in (data.get('hits') or {}).get('hits') or []:
+            r = phrase_row(hit)
+            if r['book'] is None:
+                continue
+            coord = fmt_coord(r['book'], r['paragraph'])
+            coords.append(coord)
+            info.setdefault(coord, {'book': r['book'], 'paragraph': r['paragraph'], 'paliTitle': r['paliTitle'],
+                                    'path': None, 'ref': None, 'link': None,
+                                    'text': mark_to_hl(r['highlight']) if r['highlight'] else (r['text'] or '')})
+        add_list(coords, label)
+
+    rrf_scores = dict(rrf_fuse(lists))
+    head = round_robin(word_lists)[:FIND_HEAD]
+    ordered = head + [c for c, _ in rrf_fuse(lists) if c not in head]
+    rows = []
+    for coord in ordered[: args.limit]:
+        score = rrf_scores[coord]
+        r = dict(info[coord])
+        r['coord'] = coord
+        r['rrf'] = round(score, 4)
+        r['sources'] = sources[coord]
+        if args.ref and r.get('ref') is None:
+            found = lookup_ref(client, int(r['book']), int(r['paragraph'])) or {}
+            r.update({k: found.get(k) for k in ('ref', 'link', 'path')})
+        rows.append(r)
+
+    def render():
+        print(f'多路检索 {" ".join(words)}：{len(lists)} 路结果，RRF 合并后取前 {len(rows)} 段')
+        if unresolved:
+            print(f'⚠ 展不出词形、没做逐词检索：{", ".join(unresolved)}（拼写？或换词根）')
+        if not phrase_ok:
+            print('⚠ 当前站点不支持 /v3/search 多词检索，只用了逐词检索。')
+        if not rows:
+            print('\n0 条。依次怀疑：选词不对（选答案里会出现的原文用词）→ 拼写 → 真的没有。')
+            return
+        print()
+        for idx, r in enumerate(rows, 1):
+            print(f'[{idx}] {r["coord"]}  {r.get("paliTitle") or ""}   来源 {"＋".join(r["sources"])}')
+            if r.get('ref') is not None:
+                if r.get('path'):
+                    print(f'     {fmt_path(r.get("path"))}')
+                print(f'     出处 {fmt_cite(r["book"], r["paragraph"], r["ref"], r.get("link"))}')
+            print(f'     {snippet(r.get("text") or "", args.width, "【")}')
+        print('\n「来源」列出找到这段的检索路数：几路都找到的最可信。'
+              '没有出处行的用 wikipali ref <坐标…> 补，或加 --ref。')
+        print(f'取原文：wikipali get {rows[0]["coord"]}')
+
+    emit(args, {'words': words, 'unresolved': unresolved, 'phrase': phrase_ok, 'rows': rows}, render)
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # dist —— 出处分布
 # ---------------------------------------------------------------------------
 

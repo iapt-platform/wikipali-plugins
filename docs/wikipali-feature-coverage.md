@@ -60,6 +60,7 @@
 | 检索 | ✅ | `search` → `GET /v2/search-pali-wbw` |
 | 出处分布 | ✅ | `dist` → `GET /v2/search-pali-wbw-books` |
 | 多词 / 短语检索 | ✅ | `phrase` → `GET /v3/search`（`search_mode=definition` / `fuzzy`） |
+| 多路融合检索 | ✅ | `find` → `search-pali-wbw`（逐词）＋ `v3/search`（fuzzy），RRF 合并、前 3 段保留逐词排序 |
 | 相似句 | ⬜ | `GET /v2/sent-sim`？实测 500 |
 
 ### 4. 相关经文（根本 ↔ 义注 ↔ 复注）
