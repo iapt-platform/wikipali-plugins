@@ -131,11 +131,17 @@ def build_parser():
     p.add_argument('coords', nargs='+', help='book:paragraph，可给多个')
     p.set_defaults(func=cmd_read.cmd_ref)
 
-    p = add('toc', '章节目录')
-    p.add_argument('coord', help='book:paragraph，任意段号即可，服务端会找到所属丛书')
-    p.add_argument('--depth', type=int, default=4, help='最多显示到第几层，默认 4')
-    p.add_argument('--all', action='store_true', help='显示整套丛书而不只当前这本')
+    p = add('toc', '一本书（或其中一章）的全部标题，按经文顺序，带中文译名与字符数')
+    p.add_argument('coord', help='书号（如 162），或 book:para 只列这一章下面的标题')
+    p.add_argument('--depth', type=int, default=4, help='只列层级不深于它的标题（1 是书名），默认 4')
     p.set_defaults(func=cmd_read.cmd_toc)
+
+    p = add('locate', '按章节名找坐标：经名 / 品名 / 偈名 / 律的章节名，或中文译名；不分变音符号，容错')
+    p.add_argument('name', nargs='+', help='章节名，如 mahāparinibbāna、ānandattheragāthā、大般涅槃经')
+    p.add_argument('--layer', help='只要某几层，逗号分隔：mula（根本）/ atthakatha（义注）/ tika（复注）/ anna')
+    p.add_argument('--book', type=int, help='只在这本书里找')
+    p.add_argument('--limit', type=int, default=10, help='最多列几个，默认 10')
+    p.set_defaults(func=cmd_read.cmd_locate)
 
     p = add('paras', '章节内全部段落的清单：标题层级 + 每段字符数（不取正文）')
     p.add_argument('coord', help='book:paragraph，正文段也行，会自动向上找章节')
@@ -151,10 +157,10 @@ def build_parser():
     p.add_argument('--channel', action='append', help='channel uid，可重复；缺省取巴利原文')
     p.add_argument('--warn-at', type=int, default=8000, help='超过多少字符就提示，默认 8000')
     p.add_argument('--text', action='store_true', help='输出纯文本而非 html（黑体转成 **）')
-    p.add_argument('--via', choices=['tipitaka-content', 'chapter-content'],
-                   default='tipitaka-content',
-                   help='取文走哪个端点。默认 tipitaka-content；chapter-content 返回逐句的'
-                        '多版本结构，写入侧需要它')
+    p.add_argument('--via', choices=['tipitaka-reading', 'tipitaka-content', 'chapter-content'],
+                   default='tipitaka-reading',
+                   help='取文走哪个端点。默认 tipitaka-reading（直接读库，取全章）；tipitaka-content 是'
+                        '预建 HTML，正文里夹版本页码（M1.1 等）；chapter-content 返回逐句的多版本结构，写入侧需要它')
     p.add_argument('--limit', type=int, default=200)
     p.set_defaults(func=cmd_read.cmd_chapter)
 

@@ -620,28 +620,114 @@ def cmd_get(args):
 # ---------------------------------------------------------------------------
 
 
+CHAPTERS_PAGE = 1000      # /v3/tipitaka-chapters 每页上限
+LAYER_LABEL = {'mula': '根本', 'atthakatha': '义注', 'tika': '复注', 'anna': '其他'}
+
+
+def fetch_chapters(client, query, what, limit=None):
+    """GET /v3/tipitaka-chapters，翻页取齐（或取到 limit 条）。返回 (rows, total)。"""
+    rows, page, total = [], 1, 0
+    while True:
+        per_page = CHAPTERS_PAGE if limit is None else min(CHAPTERS_PAGE, limit - len(rows))
+        try:
+            body = client.call('GET', 'v3/tipitaka-chapters', v3=True, envelope=True, timeout=READ_TIMEOUT,
+                               query={**query, 'page': page, 'per_page': per_page}) or {}
+        except ApiError as exc:
+            if exc.status == 404:
+                raise WpError(
+                    f'站点 {client.api_url} 还没有章节标题接口（v3/tipitaka-chapters，mint 2026-11 起）。\n'
+                    '切到最新版再试：wikipali endpoint next，或本次调用加 --api next。'
+                )
+            raise explain_api_error(exc, what)
+        batch = body.get('data') or []
+        meta = body.get('meta') or {}
+        total = int(meta.get('total') or len(batch))
+        rows.extend(batch)
+        if not batch or len(rows) >= total or (limit is not None and len(rows) >= limit) \
+                or page >= int(meta.get('last_page') or page):
+            return rows, total
+        page += 1
+
+
+def fmt_chars(n):
+    n = int(n or 0)
+    return f'{n / 1000:.1f}k字' if n >= 1000 else f'{n}字'
+
+
+def zh_name(row):
+    """一章的中文译名（公开译本里的第一个），没有就空。"""
+    for t in row.get('translations') or []:
+        if str(t.get('lang') or '').startswith('zh'):
+            return t.get('title') or ''
+    return ''
+
+
 def cmd_toc(args):
+    """一本书（或其中一章）的全部标题，按经文顺序——给 agent「从整本书的标题里选章」用。"""
     client = make_client(args)
-    book, para = parse_coord(args.coord)
-    try:
-        data = client.call('GET', 'v2/palitext', query={'view': 'book-toc', 'book': book, 'para': para},
-                           timeout=READ_TIMEOUT)
-    except ApiError as exc:
-        raise explain_api_error(exc, f'取 {book}:{para} 的章节目录')
-    rows = (data or {}).get('rows') or []
-    # 服务端返回的是整套丛书的目录，默认只留当前这本，避免刷屏
-    shown = rows if args.all else [r for r in rows if r.get('book') == book]
+    book, para = parse_coord(args.coord) if ':' in args.coord else (int(args.coord), None)
+    query = {'book': book}
+    if args.depth:
+        query['max_level'] = args.depth
+    scope = f'book {book}'
+    rows = []
+    if para:
+        rows, _ = fetch_chapters(client, {**query, 'para': para}, f'取 {book}:{para} 的章节目录')
+        scope = f'{book}:{para} 这一章'
+        if not rows:
+            note(f'{book}:{para} 不是章节起始段，改列整本书的目录。')
+            scope = f'book {book}'
+    if not rows:
+        rows, _ = fetch_chapters(client, query, f'取 book {book} 的章节目录')
+    if not rows:
+        raise WpError(f'book {book} 没有章节目录（书号不对？用 wikipali books 看全部书）。')
 
     def render():
-        print(f'{len(rows)} 条目录条目'
-              + ('' if args.all else f'，其中 book {book} 有 {len(shown)} 条（--all 看整套丛书）'))
-        for r in shown:
-            level = int(r.get('level') or 1)
-            if level > args.depth:
-                continue
-            print(f'{"  " * (level - 1)}{r.get("book")}:{r.get("paragraph")}  {r.get("toc")}')
+        layer = LAYER_LABEL.get(rows[0].get('layer'), '')
+        print(f'{scope}：{len(rows)} 条标题（{layer}；层级 ≤ {args.depth}，--depth 调整）')
+        base = min(int(r.get('level') or 1) for r in rows)
+        for r in rows:
+            indent = '  ' * (int(r.get('level') or 1) - base)
+            zh = zh_name(r)
+            print(f'{indent}{r["book"]}:{r["para"]}  {r.get("title")}'
+                  + (f'  〔{zh}〕' if zh else '') + f'  {fmt_chars(r.get("chars"))}')
+        print(f'\n选好一章后：wikipali chapter <book:para> 看体量，确认再加 --fetch 取文。')
 
-    emit(args, shown, render)
+    emit(args, rows, render)
+    return 0
+
+
+def cmd_locate(args):
+    """按章节名找坐标：经名、品名、偈名、律的章节名，或公开译本里的中文译名。容错。"""
+    client = make_client(args)
+    name = ' '.join(args.name)
+    query = {'q': name}
+    if args.layer:
+        query['layer'] = args.layer
+    if args.book:
+        query['book'] = args.book
+    rows, total = fetch_chapters(client, query, f'按名字找章节「{name}」', limit=args.limit)
+
+    def render():
+        if not rows:
+            print(f'没有名字像「{name}」的章节。')
+            print('换个写法再试（只写名字的核心部分，如 parinibbāna；或用中文译名），'
+                  '或者先 wikipali books 选书、再 wikipali toc <书号> 从整本书的标题里挑。')
+            return
+        print(f'{total} 个章节名字像「{name}」' + (f'，列前 {len(rows)} 个' if total > len(rows) else '') + '：\n')
+        for r in rows:
+            score = float(r.get('score') or 0)
+            mark = '' if score >= 0.86 else '  ≈拼写不同'
+            zh = zh_name(r)
+            where = ' › '.join(str(x.get('title') or '') for x in (r.get('path') or [])[1:])
+            print(f'  {r["book"]}:{r["para"]:<6} [{LAYER_LABEL.get(r.get("layer"), "?")}] {r.get("title")}'
+                  + (f'  〔{zh}〕' if zh else '') + f'  {r.get("paragraphs")}段 {fmt_chars(r.get("chars"))}{mark}')
+            if where:
+                print(f'      {where}')
+        print('\n同名的根本典、义注、复注都会列出来；≈拼写不同 的是容错命中，先核对名字再用。')
+        print('下一步：wikipali toc <book:para> 看下面的小节，wikipali chapter <book:para> 看体量再取文。')
+
+    emit(args, rows, render)
     return 0
 
 
@@ -840,7 +926,9 @@ def cmd_chapter(args):
 
     if args.via == 'chapter-content':
         return fetch_chapter_content(client, book, start, args)
-    return fetch_tipitaka_content(client, book, start, args)
+    if args.via == 'tipitaka-content':
+        return fetch_tipitaka_content(client, book, start, args)
+    return fetch_tipitaka_reading(client, book, start, args)
 
 
 # tipitaka-content 返回的是一整串 HTML，每句包在 data-sid 里；sid 就是
@@ -849,7 +937,7 @@ SENTENCE_RE = re.compile(r"data-sid='([^']+)'\s*>(.*?)</div>", re.S)
 
 
 def fetch_tipitaka_content(client, book, para, args):
-    """整章取文：走 tipitaka-content（OpenSearch 预建文档）。
+    """整章取文（`--via tipitaka-content`）：走 OpenSearch 预建文档，正文里夹版本页码。
 
     与 chapter-content 的区别：一次只取**一个** channel（参数是单数 channel），
     返回已渲染好的 HTML 串而不是嵌套 JSON。没有该 channel 的预建文档时服务端
@@ -912,8 +1000,71 @@ def fetch_tipitaka_content(client, book, para, args):
     return 0
 
 
+def fetch_tipitaka_reading(client, book, para, args):
+    """整章取文（默认）：走 v3/tipitaka-reading，直接读库，按游标翻页取全。
+
+    缺省取巴利原文；`--channel` 可给多个，逐个取、分开输出。指定的 channel 在本章没有句子时
+    明确说「该版本在本章无文本」，不拿别的版本顶替。正文里不夹版本页码——要页码用 `--ref`
+    或 `wikipali ref`，或改用 `--via tipitaka-content`（预建 HTML）。
+    """
+    channels = args.channel or [pali_channel(client)]
+    out = []
+    for channel in channels:
+        query = {'book': book, 'chapter': para, 'unit': 'para', 'page_size': 200,
+                 'format': 'text' if args.text else 'html', 'include': 'sentences'}
+        rows = []
+        while True:
+            try:
+                body = client.call('GET', f'v3/tipitaka-reading/{channel}', query=query, v3=True,
+                                   envelope=True, timeout=READ_TIMEOUT) or {}
+            except ApiError as exc:
+                if exc.status == 404:
+                    raise WpError(
+                        f'站点 {client.api_url} 没有 v3/tipitaka-reading，或 channel {channel} 不存在。\n'
+                        f'旧站点可改用：wikipali chapter {book}:{para} --fetch --via tipitaka-content'
+                    )
+                raise explain_api_error(exc, f'取 {book}:{para} 的整章内容')
+            rows += body.get('data') or []
+            cursor = (body.get('meta') or {}).get('next_cursor')
+            if not cursor:
+                break
+            query['after'] = cursor
+        paras = []
+        for row in rows:
+            sentences = []
+            for sent in row.get('sentences') or []:
+                html = sent.get('html') or ''
+                text = strip_markup(html) if args.text else re.sub(r'\s+', ' ', html).strip()
+                if text.strip():
+                    sentences.append({'id': sent.get('sid'), 'text': text.strip()})
+            if sentences:
+                paras.append({'para': int(row.get('para')), 'sentences': sentences})
+        out.append({'channel': channel if args.channel else None, 'paragraphs': paras})
+
+    def render():
+        for block in out:
+            total = sum(len(x['sentences']) for x in block['paragraphs'])
+            src = f'channel {block["channel"]}' if block['channel'] else '巴利原文'
+            if not total:
+                print(f'\n{src} 在本章**没有任何内容**。')
+                print(f'用 wikipali versions {book}:{para} --chapter 看这一章实际有哪些版本。')
+                continue
+            print(f'\n{len(block["paragraphs"])} 段 / {total} 句（{src}）')
+            for item in block['paragraphs']:
+                print(f'\n## {book}:{item["para"]}')
+                for sent in item['sentences']:
+                    print(f'  {sent["id"]}  {sent["text"]}')
+        print('\n句子 id 就是引用坐标（book-para-wordStart-wordEnd）。')
+
+    emit(args, out if args.channel else (out[0]['paragraphs'] if out else []), render)
+    return 0
+
+
 def fetch_chapter_content(client, book, para, args):
     """整章取文：走 chapter-content，一次拿回全章并按句对齐。
+
+    FIXME: chapter-content 是阅读页的懒加载接口，一次只回约 3000 字符（服务端
+    ChapterContentController 的 $maxLen），要靠 from/to 续取；这里只取了第一块，长章会被截断。
 
     服务端返回的结构极厚（每句都带 channel / studio / editor / 各类计数，
     24–36 KB），直接丢给模型是浪费。这里只留每句的 id 与 html——id 本身就是
@@ -1661,7 +1812,7 @@ def cmd_books(args):
             print(f'  …… 其余 {len(hits) - args.limit} 部（--limit 调整）')
         if hits:
             first = hits[0]
-            print(f'\n看某本书的章节：wikipali toc {first.get("book")}:{first.get("paragraph")}')
+            print(f'\n看某本书的全部标题：wikipali toc {first.get("book")}')
 
     emit(args, hits, render)
     return 0

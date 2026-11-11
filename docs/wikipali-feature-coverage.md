@@ -51,9 +51,10 @@
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
 | 分类目录（按 tag 找书） | ✅ | `books` → `GET /v2/book-title`（服务端已扩展返回 toc/tags/related_name） |
-| 某本书的章节目录 | ✅ | `toc` → `GET /v2/palitext?view=book-toc` |
+| 某本书的章节目录 | ✅ | `toc` → `GET /v3/tipitaka-chapters?book=`（带中文译名与字符数） |
+| 按章节名找坐标（经名 / 品名 / 偈名 / 中文译名，容错） | ✅ | `locate` → `GET /v3/tipitaka-chapters?q=` |
 | 章节体量与导航 | ✅ | `chapter` → `GET /v2/palitext/{book}-{para}` |
-| 整章内容 | ✅ | `chapter --fetch` → `GET /v2/tipitaka-content/{book}-{para}` |
+| 整章内容 | ✅ | `chapter --fetch` → `GET /v3/tipitaka-reading/{channel}`（默认）；`--via tipitaka-content` → `GET /v2/tipitaka-content/{book}-{para}`（夹版本页码） |
 | 按坐标取句 | ✅ | `get` → `GET /v2/sentence?view=paragraph` |
 | 某坐标有哪些版本 | ✅ | `versions` → `GET /v2/channel?view=paragraphs` |
 | 某章有哪些版本 + 完成度 | ✅ | `versions --chapter` → `GET /v3/tipitaka-chapter-channels/{book}/{para}` |

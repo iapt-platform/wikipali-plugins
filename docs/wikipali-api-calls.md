@@ -37,11 +37,13 @@
 | 读 | `GET {API}/v3/search` | 多词检索（OpenSearch）：几个词一起搜，黑体定义优先，不用先展开词形 |
 | 读 | `GET {API}/v2/sentence` | 按坐标取原文/译文句子（view=paragraph / chapter） |
 | 读 | `GET {API}/v2/sentence/{uid}` | 取单句，拿到它所属的 channel 与 book、原始 content |
-| 读 | `GET {API}/v2/palitext` | 目录类查询（view=book-toc / paragraphs-info 等） |
+| 读 | `GET {API}/v2/palitext` | 目录类查询（view=paragraphs-info 旧段落清单回退） |
+| 读 | `GET {API}/v3/tipitaka-chapters` | 章节标题：按名字找章节（容错、可用中文译名，`locate`），或列出一本书的全部标题（`toc`） |
 | 读 | `GET {API}/v2/para-info` | 取某章辖区的段落清单（每段是标题还是正文、多长） |
 | 读 | `GET {API}/v2/palitext/{book}-{para}` | 段落/章节元信息（chapter_len / strlen / pcd_book_id / path） |
 | 读 | `GET {API}/v2/chapter-content/{book}-{para}` | 整章内容（嵌套 JSON，逐句带 origin/translation） |
-| 读 | `GET {API}/v2/tipitaka-content/{book}-{para}` | 整章内容（预建 HTML，首选，一次一个 channel） |
+| 读 | `GET {API}/v3/tipitaka-reading/{channel}` | 整章内容（直接读库，`chapter --fetch` 默认；按游标翻页取全） |
+| 读 | `GET {API}/v2/tipitaka-content/{book}-{para}` | 整章内容（OpenSearch 预建 HTML，正文夹版本页码；`--via tipitaka-content`） |
 | 读 | `GET {API}/v2/channel` | channel 列表（view=paragraphs 查译本、view=system 查巴利原文 uid） |
 | 读 | `GET {API}/v2/term-vocabulary` | 社区权威译名对照表（整表拉取，本地过滤） |
 | 读 | `GET {API}/v2/nav-page/{版本}-{pcd}-{册}-{页}` | 印本页码 → WikiPali 坐标 |
@@ -197,15 +199,32 @@
 
 ## 7. 目录 —— `GET {API}/v2/palitext`
 
-目录类查询，按 `view` 区分。
+只剩 `paras` 的旧段落清单回退在用（`view=paragraphs-info`，字段含 `lenght`/`length`）：行
+`{book, paragraph, toc, level, length, chapter_len, book_name, cs_para}`，见 §8 的字段说明。
+`toc` 原来走的 `view=book-toc` 已改用 §7b。
 
-- **入参**：`view`（`book-toc` / `chapter` / `chapter_children` / `children` / `paragraph` /
-  `paragraphs-info`），参数 `book` / `para` / `series` 随 view 而定。
-- **返回**：
-  - `view=book-toc`：整套丛书目录，行 `{book, paragraph, toc, level}`（`para` 给该书任意段号即可，
-    返回常含多本书，需按 `book` 过滤）。
-  - `view=paragraphs-info`（旧段落清单，字段含 `lenght`/`length`）：行
-    `{book, paragraph, toc, level, length, chapter_len, book_name, cs_para}`，见 §8 的字段说明。
+## 7b. 章节标题 —— `GET {API}/v3/tipitaka-chapters`
+
+取代 `v2/search-title-index`（只回标题文字、不带坐标）与 `toc` 原来用的 `v2/palitext?view=book-toc`。
+mint 2026-11 起；旧站点 404，命令提示切 `next`。
+
+- **入参**（都在查询串，`q` 与 `book` 至少给一个）：
+  - `q`：章节名。巴利名不分大小写与变音符号、去序号与丛书缩写，可只写一部分，拼错一两个字母也能命中；
+    也可用公开译本里的章节译名（如「大般涅槃经」）。
+  - `book`：只在这本书里；不给 `q` 时 = 按经文顺序列出整本书的标题。`para`：只列 book 里这一章下面的（含它自己）。
+  - `layer`：`mula` / `atthakatha` / `tika` / `anna`，逗号多选。`max_level`：层级不深于它（1 是书名）。
+  - `page`、`per_page`（最大 1000）。
+- **返回**：`{data: [...], meta}`，行 `{book, para, level, title, translations: [{lang, title}], layer,
+  paragraphs, chars, parent, prev, next, path: [{book, para, title, level}], score?}`。
+  `score` 只在给了 `q` 时有：相等 1、开头相同 0.95、包含 0.9、拼错的按相似度最高 0.85（≥0.86 = 拼对）。
+  同一档里根本典在前。
+- **谁在用**：
+  - `locate <名称>`：`q` + 可选 `layer` / `book`，取前 `--limit` 条（1 次请求）。
+  - `toc <书号>` / `toc <book:para>`：`book`（+`para`）+ `max_level=--depth`，按 1000 一页翻完（通常 1 次）；
+    `para` 不是章节起始段时服务端返回空，命令再请求一次整本书。
+- **TODO**：服务端的按名匹配目前写在 PHP 里，只用来验证效果；正式实现走 OpenSearch 后，`locate` 改调
+  `GET {API}/v3/search`（`granularity=chapter`），输出不变（mint `api-v13/documents/search-recall.md` 4.6）。
+  `toc` 继续用本端点按书列标题。
 
 ## 8. 段落清单 —— `GET {API}/v2/para-info`
 
@@ -243,15 +262,29 @@
     nissaya 的 content 是 markdown（巴利词=缅文释义）。
   - 请求的 channel 在本句无内容时，仍返回等量空占位条目，客户端须滤掉。
 
-## 11. 整章内容（HTML，首选）—— `GET {API}/v2/tipitaka-content/{book}-{para}`
+## 11. 整章内容（默认）—— `GET {API}/v3/tipitaka-reading/{channel}`
 
-走 OpenSearch 预建文档，返回一整串渲染好的 HTML。
+`chapter --fetch` 的默认取文路径，直接读库（不依赖 OpenSearch 预建文档）。
+
+- **入参**：路径 `{channel}`（缺省巴利原文，按站点查 `_System_Pali_VRI_` 的 uid）；查询串 `book`、
+  `chapter`（章节起始段，服务端按 chapter_len 展开）、`unit=para`、`page_size=200`、
+  `format=text|html`（`--text` 用 text）、`include=sentences`、`after`（游标，取 `meta.next_cursor` 原样回传）。
+- **返回**：`{data: [{book, para, sentences: [{sid, html}]}], meta: {next_cursor, total, remaining}}`；
+  sid 即引用坐标。`next_cursor` 为 null 表示取完。
+- **请求次数**：每个 channel `ceil(段数 / 200)` 次（一般 1 次）；`--channel` 可给多个，逐个取。
+- 指定的 channel 在本章没有句子时返回空列表，命令报「该版本在本章没有任何内容」，不拿别的版本顶替。
+- 正文里**不夹版本页码**；要页码用 `--ref` / `wikipali ref`，或改用 §11b。
+
+## 11b. 整章内容（预建 HTML）—— `GET {API}/v2/tipitaka-content/{book}-{para}`
+
+`chapter --fetch --via tipitaka-content`。走 OpenSearch 预建文档，返回一整串渲染好的 HTML。
 
 - **入参**：路径 `{book}-{para}`；`channel`（**单数**，一次一个；缺省巴利原文）。
 - **返回**：一整串 HTML。每句包在 `data-sid='93-6-31-46'` 中，sid 即引用坐标
   `book-para-wordStart-wordEnd`。
   - 三种响应分开处理：正常（200 且含 `data-sid`）；有文档但没句子（200 但 sid 数为 0）；
-    **无预建文档返回 400，message 里带 OpenSearch `found:false`**（不是服务故障）。
+    **无预建文档返回 400，message 里带 OpenSearch `found:false`**（不是服务故障，是这一章没建索引
+    或该版本无文本）。
   - 正文夹 `<code>M1.1</code>` 是版本页码（M/V/P/T），须留在原位。
 
 ## 12. channel 列表 —— `GET {API}/v2/channel`

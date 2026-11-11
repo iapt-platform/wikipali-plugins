@@ -122,12 +122,13 @@ word_start, word_end, editor, channel, updated_at}`。按 `word_start` 排序拼
 `view=book-toc` / `chapter` / `chapter_children` / `children` / `paragraph`，
 参数 `book` / `para` / `series`。
 
-## 7. 章节目录 —— `GET /v2/palitext?view=book-toc&book={book}&para={任意段号}`
+## 7. 章节标题 —— `GET /v3/tipitaka-chapters`
 
-`para` 给该书内任意段号即可，服务端自己往上找顶级目录。返回的是**整套丛书**的目录
-（如给 book 216 会连 213/214/… 一起返回，实测 951 条），要按 `book` 自行过滤。
-
-行字段：`book` / `paragraph` / `toc`（巴利标题）/ `level`（1–7，1 为顶层）。
+两种用法，可叠加：`q=<章节名>` 按名字找（不分变音符号、容错、可用中文译名），按匹配度排序；
+`book=<书号>`（可加 `para=<章节起始段>`、`max_level`）按经文顺序列出全部标题。`layer=mula|atthakatha|tika|anna`
+筛层。行字段：`book` / `para` / `level` / `title` / `translations[{lang,title}]` / `layer` /
+`paragraphs`（段数）/ `chars`（字符数）/ `parent` / `prev` / `next` / `path[]` / `score`（有 `q` 时）。
+命令：`locate`、`toc`。
 
 ## 7b. 段落清单 —— `GET /v2/para-info?book={book}&para={para}`
 
@@ -246,9 +247,15 @@ nissaya 的 `html` 里每条 gloss 包在 `<MdTpl props="<base64>">` 里，base6
 整章原始返回 24 KB（仅原文）到 86 KB（带 nissaya）。只保留每句的 `id` 与正文后分别是
 3.3 KB 与 9.0 KB（**14% 与 10%**）。整章直接喂给模型是浪费，务必先过滤。
 
-## 11b. 整章内容（首选）—— `GET /v2/tipitaka-content/{book}-{para}`
+## 11a. 整章内容（首选）—— `GET /v3/tipitaka-reading/{channel}?book=&chapter=`
 
-**取整章内容用这个，不用 `chapter-content`。** 走 OpenSearch 的预建文档
+**取整章内容用这个**（`chapter --fetch` 默认）：直接读库，`unit=para&page_size=200&include=sentences`，
+`format=text|html`，按 `meta.next_cursor`（回传给 `after`）翻页取全。返回 `data[] = {book, para,
+sentences: [{sid, html}]}`，sid 即引用坐标。一次一个 channel，路径上给。正文不夹版本页码。
+
+## 11b. 整章内容（预建 HTML）—— `GET /v2/tipitaka-content/{book}-{para}`
+
+要版本页码夹在正文里时用（`--via tipitaka-content`）。走 OpenSearch 的预建文档
 （`tipitaka_chapter_{book}-{para}_{channelId}`），返回的 `data` 是一整串渲染好的 HTML。
 
 | | `tipitaka-content` | `chapter-content` |
