@@ -93,6 +93,17 @@ def build_parser():
     p.add_argument('--width', type=int, default=200, help='每条摘要的字符数')
     p.set_defaults(func=cmd_read.cmd_search)
 
+    p = add('phrase', '多词检索：几个词一起搜，黑体定义优先（不用先展开词形）')
+    p.add_argument('words', nargs='+', help='一个或多个巴利词，空格分隔；给词根或任一词形均可')
+    p.add_argument('--mode', choices=['definition', 'fuzzy'], default='definition',
+                   help='definition（默认）：命中的单独黑体字越多越前，找定义段落；'
+                        'fuzzy：词序与拼写越一致越前，找某句话出现在哪')
+    p.add_argument('--limit', type=int, default=20, help='本页条数，默认 20，最大 100')
+    p.add_argument('--page', type=int, default=1, help='页码，从 1 起')
+    p.add_argument('--ref', action='store_true', help='逐条补出处（citation + 链接），每条多 2–4 次请求')
+    p.add_argument('--width', type=int, default=200, help='每条摘要的字符数')
+    p.set_defaults(func=cmd_read.cmd_phrase)
+
     p = add('dist', '出处分布：命中散布在哪些书、各多少、什么层次')
     p.add_argument('forms', nargs='*')
     p.add_argument('--lemma')

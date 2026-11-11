@@ -266,6 +266,108 @@ def cmd_search(args):
 
 
 # ---------------------------------------------------------------------------
+# phrase —— 多词检索（v3 /search，OpenSearch）
+# ---------------------------------------------------------------------------
+
+PHRASE_MAX_PAGE_SIZE = 100  # 服务端 page_size 上限
+
+
+def mark_to_hl(raw, hl='【】'):
+    """v3 高亮用 <mark> 包命中词，换成与 search 一致的【】。"""
+    if not raw:
+        return ''
+    text = re.sub(r'<mark>(.*?)</mark>', hl[0] + r'\1' + hl[1], raw, flags=re.S)
+    text = html_mod.unescape(re.sub(r'<[^>]+>', '', text))
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+def phrase_row(hit):
+    """把一条 OpenSearch 命中压成与 search 结果相近的形状。"""
+    src = hit.get('_source') or {}
+    book, _, para = str(src.get('related_id') or '').partition('-')
+    title = ((src.get('title') or {}).get('text') or {}).get('pali')
+    highlight = (hit.get('highlight') or {}).get('content.text.pali') or []
+    content = ((src.get('content') or {}).get('text') or {}).get('pali') or ''
+    bold_single = src.get('bold_single') or ''
+    if isinstance(bold_single, list):
+        bold_single = ' '.join(bold_single)
+    return {
+        'book': int(book) if book.isdigit() else None,
+        'paragraph': int(para) if para.isdigit() else None,
+        'score': hit.get('_score'),
+        'paliTitle': title,
+        'bold': bold_single.split(),
+        'highlight': highlight[0] if highlight else None,
+        # 有高亮片段就不带整段原文，免得 --json 把上下文撑爆；要全文用 wikipali get
+        'text': None if highlight else content,
+    }
+
+
+def cmd_phrase(args):
+    client = make_client(args)
+    q = ' '.join(w.strip() for w in args.words if w.strip())
+    if not q:
+        raise WpError('没有给出检索词。')
+    if args.limit > PHRASE_MAX_PAGE_SIZE:
+        raise WpError(f'--limit 最大 {PHRASE_MAX_PAGE_SIZE}（服务端上限），更多请用 --page 翻页。')
+    query = {
+        'q': q,
+        'search_mode': args.mode,
+        'resource_type': 'tipitaka',
+        'granularity': 'paragraph',
+        'page_size': args.limit,
+        'page': args.page,
+    }
+    try:
+        data = client.call('GET', 'v3/search', query=query, timeout=READ_TIMEOUT, v3=True) or {}
+    except ApiError as exc:
+        raise explain_api_error(exc, '多词检索')
+    hits = (data.get('hits') or {})
+    total_info = hits.get('total') or {}
+    total = total_info.get('value', 0)
+    # 服务端默认只精确统计到 10000，relation=gte 表示「至少这么多」
+    total_label = f'{total}+' if total_info.get('relation') == 'gte' else str(total)
+    rows = [phrase_row(h) for h in hits.get('hits') or []]
+
+    if args.ref:
+        for r in rows:
+            if r['book'] is None:
+                continue
+            found = lookup_ref(client, r['book'], r['paragraph']) or {}
+            r['ref'] = found.get('ref')
+            r['link'] = found.get('link')
+            r['path'] = found.get('path')
+
+    def render():
+        offset = (args.page - 1) * args.limit
+        print(f'命中 {total_label} 段，本页 {len(rows)}（第 {args.page} 页）  [{args.mode}] {q}')
+        if not rows:
+            print('\n0 条。先确认拼写；若只给了一个罕见词形，换成词根再试。')
+            return
+        print()
+        for idx, r in enumerate(rows, 1 + offset):
+            coord = fmt_coord(r['book'], r['paragraph'])
+            title = r.get('paliTitle') or ''
+            print(f'[{idx}] {coord}  {title}   score {r["score"]:.1f}')
+            if args.ref:
+                if r.get('ref') is None:
+                    print('     出处 ⚠ 取不到（只给坐标，不要推算页码）')
+                else:
+                    print(f'     {fmt_path(r.get("path"))}')
+                    print(f'     出处 {fmt_cite(r["book"], r["paragraph"], r["ref"], r.get("link"))}')
+            if r['bold']:
+                print(f'     黑体 {" · ".join(r["bold"][:8])}')
+            text = mark_to_hl(r['highlight']) if r['highlight'] else (r['text'] or '')
+            print(f'     {snippet(text, args.width, "【")}')
+        if not args.ref:
+            print('\n出处：wikipali ref <坐标…> 补，或重跑加 --ref（每条多 2–4 次请求）。')
+        print(f'取原文：wikipali get {rows[0]["book"]}:{rows[0]["paragraph"]}')
+
+    emit(args, {'count': total, 'rows': rows}, render)
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # dist —— 出处分布
 # ---------------------------------------------------------------------------
 

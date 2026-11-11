@@ -125,6 +125,16 @@ wikipali search --lemma parivāsa --limit 50
 命中总量特别大、前 50 条噪声明显时，可以加 `--bold` 只看黑体命中来收窄——那是收窄
 手段，不是默认做法，因为不加黑体的定义段落会被它漏掉。
 
+**几个词一起查定义**（如一对概念、复合概念）用 `phrase`，它不要求先展开词形：
+
+```bash
+wikipali phrase vitakka vicāra --limit 20          # 两个词都是黑体词条的段落排最前
+wikipali phrase evaṃ me sutaṃ --mode fuzzy         # 找某句话：词序与拼写越一致越前
+```
+
+`phrase` 的结果不带出处，引用前用 `wikipali ref <坐标…>` 补（或加 `--ref`）。
+**单个词查全仍用 `search --lemma`**——`phrase` 依赖同义词词典，个别罕见词形会漏。
+
 ### 3b. 留意注疏有没有枚举子类
 
 注疏解释术语时常会枚举它的子类（`catubbidho X`、`duvidho X` 这类体例很常见，但**不是
@@ -311,5 +321,5 @@ wikipali get 216:512 --channel <uid>    # 取指定译本
 | 查定义时结果全是义注、复注 | 正常，大部分名词解释在注疏里。但根本中也有部分解释，别据此断定根本里没有 |
 | 查案例时找不到根本 | 这才是问题。用 `dist` 的 `--book` 值收窄到 mūla 再搜 |
 | 某段落取不到译文 | 该 channel 在该段落没有内容。如实报告 |
-| 想按短语检索 | 平台的词组检索目前不可用（服务端 500）。把短语拆成词，分别展开词形再检索 |
+| 想按短语检索 / 几个词一起查 | 用 `wikipali phrase 词1 词2`（不用先展开词形）。找某句话出现在哪加 `--mode fuzzy` |
 | `get` 报 500 | 忘了 channel。`get` 缺省会带巴利原文的 channel，若你手动传了参数要确保 channel 在内 |

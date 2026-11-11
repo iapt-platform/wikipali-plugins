@@ -34,6 +34,7 @@
 | 读 | `GET {API}/v2/dict` | 查词典释义与形态分析（形→根），用于确认选对了词根 |
 | 读 | `GET {API}/v2/search-pali-wbw` | 按词形列表检索命中的段落，带页码出处与黑体高亮 |
 | 读 | `GET {API}/v2/search-pali-wbw-books` | 统计词形在各部书里的词次分布（数词次，不是段落数） |
+| 读 | `GET {API}/v3/search` | 多词检索（OpenSearch）：几个词一起搜，黑体定义优先，不用先展开词形 |
 | 读 | `GET {API}/v2/sentence` | 按坐标取原文/译文句子（view=paragraph / chapter） |
 | 读 | `GET {API}/v2/sentence/{uid}` | 取单句，拿到它所属的 channel 与 book、原始 content |
 | 读 | `GET {API}/v2/palitext` | 目录类查询（view=book-toc / paragraphs-info 等） |
@@ -140,6 +141,27 @@
 - **返回**：`data.rows[] = { pcdBookId, count, book, paragraph, paliTitle, tags: [{name}] }`
   - ⚠ `count` 数的是**词次**，不是段落数；段落数看 `search-pali-wbw` 的 `count`。
   - `tags` 含 `mūla` / `aṭṭhakathā` / `ṭīkā`，区分根本、义注、复注。
+
+## 4b. 多词检索 —— `GET {API}/v3/search`
+
+`phrase` 命令用。OpenSearch 索引，同义词词典的一行就是一个词的全部变格变位，所以给词根或
+任一词形都能召回全部词形——**不用先跑 `forms`**。多个词之间不是 OR 词形列表，而是「几个不同的词」。
+
+- **入参**（插件固定 `resource_type=tipitaka`、`granularity=paragraph`）：
+  | 参数 | 说明 |
+  |---|---|
+  | `q` | 空格分隔的巴利词 |
+  | `search_mode` | `definition`（默认）：每个词命中单独黑体 +100、多词黑体 +30，命中的单独黑体字越多越前，正文只作次级排序；`fuzzy`：整句原样 +20、相邻两词原样 +5、拼写相同 +10、同义词 +2，逐项累加 |
+  | `page` / `page_size` | 分页，`page_size` 上限 100 |
+- **返回**：OpenSearch 原始结果 `data.hits = { total: {value, relation}, hits: [ {_score, _source, highlight} ] }`
+  - `_source.related_id` 是 `{book}-{paragraph}`；`_source.title.text.pali` 是段落标题；
+    `_source.bold_single` 是该段的单独黑体字；
+  - `highlight['content.text.pali'][0]` 是命中片段，命中词包在 `<mark>`；
+  - `total.relation=gte` 表示只统计到 10000，实际更多。
+  - ⚠ **不带 `ref` / `link` / `path`**：`phrase --ref` 逐条用 `lookup_ref` 补（见第 3 节）。
+  - ⚠ 停用词（`na no ca va vā hi pana iva eva`）只参与词序打分，单独不召回。
+  - ⚠ `search_mode=definition` 需要服务端 2026-11 之后的版本；旧版服务端不认识这个值，
+    会静默按旧的模糊检索处理（不报错），排序不是黑体优先。
 
 ## 5. 取文 —— `GET {API}/v2/sentence`
 

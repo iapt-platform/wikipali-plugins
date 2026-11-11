@@ -64,6 +64,27 @@ data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle
 - `highlight` 里命中词包在 `<span class='hl'>`，**并保留原文的 `<span class="bld">`**——
   后者是黑体，判断"这段是不是定义"要靠它，清洗 HTML 时不能一并丢掉。
 
+## 3b. 多词检索 —— `GET /v3/search`（`wikipali phrase`）
+
+几个词一起搜。给词根或任一词形均可（同义词词典已含全部变格变位），**不用先展开词形**。
+
+| 参数 | 说明 |
+|---|---|
+| `q` | 空格分隔的巴利词 |
+| `search_mode` | `definition`：黑体定义优先——每个词命中单独黑体字 +100、多词黑体 +30，命中的单独黑体字越多越前；`fuzzy`：词序与拼写越一致越前（整句原样 > 乱序但拼写相同 > 同义词） |
+| `resource_type=tipitaka` + `granularity=paragraph` | 只搜三藏段落 |
+| `page` / `page_size` | 分页，`page_size` 上限 100 |
+
+```
+data.hits: { total: {value, relation}, hits: [ { _score, _source: {related_id, title, bold_single, …}, highlight } ] }
+```
+
+- `related_id` = `{book}-{paragraph}`；命中片段在 `highlight['content.text.pali']`，命中词包 `<mark>`；
+- **不带 `ref` / `link` / `path`**，出处用 `wikipali ref` 补（或 `phrase --ref`）；
+- 部分词命中也会召回，只是分数低；`na ca vā` 这类停用词单独不召回；
+- 与 `search-pali-wbw` 的召回在 10 个词根上实测 98.7%–100%（2026-11），缺的是同义词词典
+  没收的词形与正文里粘了连音的词。**单词查全仍以 `search` 为准**，`phrase` 用于多词。
+
 ## 4. 出处分布 —— `GET /v2/search-pali-wbw-books?key={词形,…}`
 
 ```
@@ -313,7 +334,7 @@ PTS 页码是西方巴利学界的标准引用依据，别丢。
 | `GET /v2/search-book-list` | **500**，同上 |
 
 这两个是**词组/短语**检索（多词按全文匹配）。单词检索走 `search-pali-wbw`，不受影响。
-遇到需要短语检索时，把短语拆成词分别展开词形再检索。
+多词检索改用 `GET /v3/search`（见 3b，`wikipali phrase`）。
 
 `GET /v2/search?view=title`（按标题）与 `view=page`（按页码）不走 gRPC，可用。
 
