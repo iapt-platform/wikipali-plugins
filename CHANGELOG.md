@@ -3,6 +3,26 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.27.0] - 2026-11-11
+
+### 新增
+- **`wikipali locate <章节名>`**：按章节名找坐标——经名、品名、偈名、律的章节名，或公开译本里的中文译名。
+  不分变音符号，拼错一两个字母也能找到（标「≈拼写不同」）；同名的根本典、义注、复注一起列出，带段数、
+  字符数与路径。走 `GET /v3/tipitaka-chapters`（mint 2026-11 起）。
+- research skill「2b. 先判断问题类型，选第一条路」：回答具体问题有三条路——检索（`find`）、定位
+  （`locate` → `toc` → `chapter`）、选章（`books` → `toc` → `chapter`），按问题类型决定先走哪条，没有答案
+  再换下一条。依据：148 道真实问题，只用检索 40 题能作答，三条路依次走到有答案为止 90 题。
+
+### 变更
+- **`toc`** 改走 `GET /v3/tipitaka-chapters`：参数是书号或 `book:para`，每个标题带中文译名与字符数，
+  可直接当选章清单；去掉 `--all`（整套丛书用 `books`）。
+- **`chapter --fetch`** 默认改走 `GET /v3/tipitaka-reading/{channel}`：直接读库、翻页取全，`--channel`
+  可给多个；原来的 OpenSearch 预建 HTML 改为 `--via tipitaka-content`（正文夹版本页码）。
+- API 调用清单、API 参考、功能覆盖表同步。
+
+### 修复
+- 没有预建整章文档的章节（多见于小节）`chapter --fetch` 报「该版本在本章无文本」，现在默认路径不再依赖预建文档。
+
 ## [0.26.0] - 2026-11-11
 
 ### 新增
