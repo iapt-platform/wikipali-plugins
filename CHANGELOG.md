@@ -3,6 +3,18 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.25.0] - 2026-11-11
+
+### 新增
+- **`wikipali phrase 词1 词2 …`**：多词检索，走 `GET /v3/search`（OpenSearch）。给词根或任一词形即可，
+  不用先跑 `forms`。默认 `definition` 模式黑体定义优先——每个词命中单独黑体字的段落排前，命中越多越前；
+  `--mode fuzzy` 按词序与拼写一致程度排序，用来找某句话出现在哪。`--ref` 逐条补出处。
+  需要服务端支持 `search_mode=definition`（mint 2026-11 起）；旧服务端会静默按模糊检索处理。
+
+### 变更
+- `docs/wikipali-api-calls.md` 加第 4b 节；`api-read.md` 加第 3b 节，删去「短语检索拆词绕行」的说明；
+  research skill 加 `phrase` 用法，单词查全仍以 `search --lemma` 为准。
+
 ## [0.24.0] - 2026-11-09
 
 ### 新增
