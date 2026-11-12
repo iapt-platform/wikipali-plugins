@@ -8,6 +8,7 @@ import argparse
 import sys
 
 import cmd_admin
+import cmd_credits
 import cmd_page
 import cmd_discuss
 import cmd_guide
@@ -64,6 +65,9 @@ def build_parser():
     p = add('whoami', '显示当前凭据状态', needs_json=False)
     p.add_argument('--check', action='store_true', help='额外向服务端校验用户 token')
     p.set_defaults(func=cmd_site.cmd_whoami)
+
+    p = add('credit-policy', 'AI 对话积分策略：每日赠送、提问价格、读经 / 编辑换积分（公开，不需要登录）')
+    p.set_defaults(func=cmd_credits.cmd_credit_policy)
 
     p = add('guide', '打印共享约定与端点参考（供上层插件读取）', needs_json=False)
     p.add_argument('topic', nargs='?', choices=sorted(cmd_guide.TOPICS), help='不给就列出全部主题')

@@ -1,7 +1,8 @@
 """管理统计（只读，仅 root / administrator 账号）：wikipali admin stats|runs|run|digest|feedback。
 
 都走 v3 的 /v3/admin/*，用登录用户 token。服务端不回账号身份（提问者只分登录用户 / 游客），
-digest 只含用户同意「用于改进」的提问——给 agent 做问题聚类、改进建议用。
+digest 只含用户同意「用于改进」的提问——给 agent 做问题聚类、改进建议用；回答质量由 agent
+拉 `digest --full` / `run --evidence` 自己评估，服务端不做。
 """
 
 import json
@@ -97,16 +98,6 @@ def render_agent(d):
     print(f"  可用于改进   {s['improve']}（{pct(s['improve'], runs)}）")
     print(f"\n  评价         👍 {s['feedback_up']}  👎 {s['feedback_down']}"
           f"（主动询问得到 {s['feedback_asked']}）")
-    qa = s['quality_assessed']
-    print(f"  质量检查     已检查 {qa}：引用不在证据里 {s['quality_unverified']}，"
-          f"说没找到 {s['quality_missing']}，证据不足 {s['quality_thin']}")
-    by_route = d.get('quality_by_route') or []
-    if by_route:
-        print('\n质量问题按路由（条数 / 检查数）：')
-        print(f"  {'路由':<10} {'引用不在证据里':>10} {'说没找到':>8} {'证据不足':>8}")
-        for row in by_route:
-            n = row['assessed']
-            print(f"  {row['route']:<12} {row['unverified']:>6}/{n:<6} {row['missing']:>6}/{n:<4} {row['thin']:>6}/{n}")
     reasons = d.get('feedback_reasons') or []
     if reasons:
         print('\n点踩原因：')
@@ -160,8 +151,6 @@ def cmd_admin_run(args):
         print(f"问：{data.get('question')}")
         print(f"路由 {data.get('route')}  状态 {data.get('status')}"
               f"  耗时 {data.get('latency_ms')}ms  深度 {bool(data.get('deep'))}")
-        if data.get('quality'):
-            print(f"质量：{json.dumps(data['quality'], ensure_ascii=False)}")
         for step in data.get('steps') or []:
             name = step.get('name') or step.get('kind')
             err = f"  ✗ {step['error']}" if step.get('error') else ''
@@ -170,6 +159,12 @@ def cmd_admin_run(args):
         if data.get('answer'):
             print('\n答：')
             print(data['answer'][:args.chars] if args.chars else data['answer'])
+        if args.evidence:
+            # 评估回答质量用：给作答模型的证据全文与引用（回答里的出处应当都能在这里找到）
+            print(f"\n证据（{len(data.get('evidence') or '')} 字）：")
+            print(data.get('evidence') or '（无）')
+            for c in data.get('citations') or []:
+                print(f"  引用 {c.get('link') or c}")
 
     emit(args, data, render)
     return 0
@@ -181,8 +176,10 @@ def cmd_admin_run(args):
 
 def cmd_admin_digest(args):
     client = make_client(args)
-    payload = admin_get(client, '/v3/admin/agent-runs/digest',
-                        {**range_query(args), 'limit': args.limit}, envelope=True)
+    query = {**range_query(args), 'limit': args.limit}
+    if args.full:
+        query['full'] = 1
+    payload = admin_get(client, '/v3/admin/agent-runs/digest', query, envelope=True)
     rows = payload.get('data') or []
     meta = payload.get('meta') or {}
     out = open(args.out, 'w', encoding='utf-8') if args.out else sys.stdout
@@ -271,11 +268,14 @@ def add_admin_parser(sub):
     q = add('run', '一次提问的研究过程')
     q.add_argument('run_id')
     q.add_argument('--chars', type=int, default=2000, help='回答最多显示多少字符，0 为不截断')
+    q.add_argument('--evidence', action='store_true', help='连给作答模型的证据全文与引用一起显示（评估回答用）')
     q.set_defaults(func=cmd_admin_run)
 
     q = asub.add_parser('digest', help='精简导出（JSONL，一行一次提问），给 agent 做聚类与改进分析')
     add_range(q)
-    q.add_argument('--limit', type=int, default=500, help='最多多少条，服务端上限 2000')
+    q.add_argument('--limit', type=int, help='最多多少条；缺省 500（--full 时 100），服务端上限 2000（--full 时 200）')
+    q.add_argument('--full', action='store_true',
+                   help='每条再带回答、给作答模型的证据全文与引用——给 agent 评估回答质量用（服务端不做质量评估）')
     q.add_argument('--out', help='写到文件；缺省输出到 stdout')
     q.set_defaults(func=cmd_admin_digest)
 

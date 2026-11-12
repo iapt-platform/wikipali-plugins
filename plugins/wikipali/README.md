@@ -55,14 +55,17 @@ wikipali channels
 wikipali write sents.json --channel <uid> --dry-run
 ```
 
+任何人都能查 AI 对话的积分规则（不需要登录）：`wikipali credit-policy`。
+
 管理员（root / administrator 账号）还可以只读地看运营统计，给 agent 做分析：
 
 ```bash
-wikipali admin stats agent --since 2026-10-01      # AI 问答汇总（评价、质量检查、工具）
+wikipali admin stats agent --since 2026-10-01      # AI 问答汇总（评价、工具）
 wikipali admin stats reading                       # 阅读汇总
 wikipali admin feedback --rating down              # 用户点踩与原因
 wikipali admin runs --status error                 # 提问记录；admin run <run_id> 看研究过程
 wikipali admin digest --out digest.jsonl           # 精简导出（只含同意用于改进的提问，不含身份）
+wikipali admin digest --full --out full.jsonl      # 另带回答、证据全文与引用，给 agent 评估回答质量
 ```
 
 句子文件的形状：

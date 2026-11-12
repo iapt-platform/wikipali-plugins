@@ -82,8 +82,9 @@
 | 批注(v3) | `PATCH {API}/v3/discussions/{id}` | 局部修改批注/话题 |
 | 批注(v3) | `DELETE {API}/v3/discussions/{id}` | 软删除批注/话题 |
 | 批注(v3) | `GET {API}/v3/tipitaka-discussions/{channel}` | 列出一段经文（章 / 段落区间 / 书 / 整个 channel）里的话题/批注，带句子坐标 |
+| 读 | `GET {API}/v3/credit-policy` | AI 对话积分策略（公开：每日赠送、提问价格、读经 / 编辑换积分） |
 | 管理(v3) | `GET {API}/v3/admin/reading-stats` | 阅读统计汇总（活跃读者、时长、热门章节；仅管理员） |
-| 管理(v3) | `GET {API}/v3/admin/agent-stats` | AI 问答统计汇总（提问、耗时、评价、质量检查、工具；仅管理员） |
+| 管理(v3) | `GET {API}/v3/admin/agent-stats` | AI 问答统计汇总（提问、耗时、评价、工具；仅管理员） |
 | 管理(v3) | `GET {API}/v3/admin/agent-runs` | AI 提问记录列表（仅管理员） |
 | 管理(v3) | `GET {API}/v3/admin/agent-runs/{run}` | 一次提问的研究过程（步骤、证据、回答；仅管理员） |
 | 管理(v3) | `GET {API}/v3/admin/agent-runs/digest` | 精简导出：同意用于改进的提问，不含身份，给 agent 分析（仅管理员） |
@@ -618,9 +619,9 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 - **入参**：`from`、`to`、`account_type`（`all`/`user`/`guest`）。
 - **返回**：`data: { range, summary{runs, deep, passage, denied, errors, cancelled, improve, askers,
   askers_user, askers_guest, latency_p50_ms, latency_p95_ms, tokens_in, tokens_out, feedback_up,
-  feedback_down, feedback_asked, quality_assessed, quality_unverified, quality_missing, quality_thin},
+  feedback_down, feedback_asked},
   previous, daily[], clients[], tools[{name, calls, errors, avg_ms}], feedback_reasons[{reason, count}],
-  quality_by_route[{route, assessed, unverified, missing, thin}], credits{…} }`。
+  credits{…} }`。
 
 ## 48. 提问记录 —— `GET {API}/v3/admin/agent-runs`、`GET {API}/v3/admin/agent-runs/{run}`
 
@@ -629,7 +630,7 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 - **列表入参**：`filter[status]`（`ok`/`error`/`cancelled`/`denied`/`unchecked`）、`filter[route]`、
   `filter[account_type]`、`filter[client]`、`filter[improve]`、`filter[q]`（问题文字）、`page`、`per_page`（≤100）。
 - **列表返回**：`data: [{run_id, thread_id, account_type, client, question, route, deep, improve, status,
-  latency_ms, tokens_in, tokens_out, started_at, quality, …}]` + `meta` 分页。
+  latency_ms, tokens_in, tokens_out, started_at, …}]` + `meta` 分页。
 - **详情**另含 `answer`、`evidence`、`plan`、`passage`、`citations`、`error`、`model`、`prompt_version`、
   `steps[{seq, kind, name, args, result, result_chars, tokens_in, tokens_out, ms, error}]`。
   详情带账号信息（`user`、`device_id`、`client_ip`），CLI 文本输出不显示，`--json` 会原样输出。
@@ -639,11 +640,14 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 `admin digest` 用，输出 JSONL（一行一次提问），给 agent 做问题聚类与改进分析。
 **只含用户同意「用于改进」（improve=true）的提问，不含任何身份字段。**
 
-- **入参**：`from`、`to`、`limit`（≤2000，默认 500）。
+- **入参**：`from`、`to`、`full`（`1`/`0`，默认 0）、`limit`（≤2000，默认 500；`full` 时 ≤200，默认 100）。
 - **返回**：`data: [{run_id, started_at, question, route, route_raw, confidence, deep, from_reader, client,
   status, latency_ms, lemmas[], keywords["lemma|tags"], retries, llm_calls, tokens, tools[{name, ms, chars, error}],
-  quality, feedback[{rating, tags, comment, asked}], events{kind: n}, next_question_after_s}]`，
+  feedback[{rating, tags, comment, asked}], events{kind: n}, next_question_after_s}]`，
   `meta: {from, to, count, has_more}`。`has_more` 为真时缩小日期范围或加大 `limit`。
+- `full=1`（`admin digest --full`）时每条再带 `answer`、`evidence`（给作答模型的证据全文）、`citations[]`。
+  **服务端不做回答质量评估**，由 agent 拉这些自己评（引用是否都在证据里、是不是证据里有却说没找到等）。
+  单条也可以 `admin run <run_id> --evidence`（走 §48 详情接口）。
 
 ## 50. 用户评价 —— `GET {API}/v3/admin/agent-feedback`
 
@@ -653,7 +657,7 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
   点踩原因 `citation_wrong`/`missed`/`off_topic`/`incorrect`/`too_long`/`too_academic`/`slow`/`other`）、
   `filter[has_comment]`、`from`、`to`、`page`、`per_page`（≤100）。
 - **返回**：`data: [{id, message_id, rating, tags[], comment, asked, client, created_at, updated_at,
-  account_type, run_id, question, route, status, deep, latency_ms, quality}]` + `meta` 分页。
+  account_type, run_id, question, route, status, deep, latency_ms}]` + `meta` 分页。
   `run_id` 为 null 表示那次提问还没入库（评价先到）。不含账号身份。
 
 # 附录
@@ -670,6 +674,16 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
   按 `progress`（0–1）降序；`meta` 是 Laravel 分页。
   - 不带凭据调用，只列**公开** channel（服务端按登录身份过滤可见性）。
   - 旧站点没有这条路由时 404，客户端提示退回段落粒度的 `versions`。
+
+## 52. 积分策略 —— `GET {API}/v3/credit-policy`
+
+`credit-policy` 用。公开，不需要登录，不带 token。
+
+- **入参**：无。
+- **返回**：`data: {version, day_timezone, daily_free{guest, user}, cost{normal, deep}, guest_ip_daily_cap,
+  earn{reading{credits_per_minute, daily_cap}, editing{credits_per_minute, daily_cap}}}`。
+  `version` 是策略生效日（YYYYMMDD），也是积分流水里记的版本号；`daily_cap` / `guest_ip_daily_cap` 为 null 表示不限。
+  服务端只有当前生效的一版，没有历史接口。
 
 ## 常见错误约定
 
