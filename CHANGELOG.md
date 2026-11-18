@@ -3,6 +3,32 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.28.0] - 2026-11-18
+
+### 新增
+- **`term-add` / `term-edit`** 新增 `--summary`（摘要）、`--quality`（featured / standard / draft / pending）、
+  `--content-type`（markdown-e2 / markdown）、`--redirect`（重定向到 `word` 或 `word@tag`）；`term-edit`
+  给空串即清掉该字段。分类写在 `--note` 里的 `{{category|名}}`，由服务端抽取。
+- `my-terms --studio` 可给 uuid、自己的用户名或所在团队的名字（经 `GET /v3/me/groups` 按名找团队）。
+
+### 变更
+- **用户术语表改走 v3**：`my-terms` → `GET /v3/studios/{studio}/terms`、`GET /v3/channels/{uid}/terms`；
+  `term-add` → `POST /v3/channels/{uid}/terms`；`term-edit` → `PATCH /v3/terms/{guid}`。写入改用模型 token +
+  人类签的 `X-Agent-Grant`（与批注同一条链路），记录上 editor 是授权人、co_editor 是模型；修改带 `If-Match`
+  乐观锁，被别人改过时回 412 并提示重跑。
+- **word + tag 建立后不能改**：`term-edit --word/--tag` 报错并提示新建 + `--redirect`；`--language` 不再提交，
+  channel 里的术语语言跟随 channel。
+- `terms` 改走 `GET /v3/glossaries/{community|grammar}`（取代 v2 `term-vocabulary`），`--view` 限定两种取值；
+  服务端没有所要语言时提示实际返回的语言。
+- `versions` 改走 `GET /v3/tipitaka-paragraph-channels/{book}/{para}`，登录后能看到有权限的私有 channel。
+- 可写 channel 列表改走 `GET /v3/channels/editable`，channel 回显改走 `GET /v3/channels/{uid}`；
+  非线上站点找巴利原文 channel 改走 `GET /v3/channels?system=true`。
+- `chapter --fetch`（`v3/tipitaka-reading`）登录后带上用户 token，读私有 channel 被拒时给出登录提示。
+- API 调用清单、API 参考、功能覆盖表、write skill 同步。
+
+### 修复
+- 去掉稳定版 `channel?view=paragraphs` 已知缺陷的切站提示（`versions` 已不再用它）。
+
 ## [0.27.0] - 2026-11-11
 
 ### 新增

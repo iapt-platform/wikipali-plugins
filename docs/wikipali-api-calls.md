@@ -44,8 +44,9 @@
 | 读 | `GET {API}/v2/chapter-content/{book}-{para}` | 整章内容（嵌套 JSON，逐句带 origin/translation） |
 | 读 | `GET {API}/v3/tipitaka-reading/{channel}` | 整章内容（直接读库，`chapter --fetch` 默认；按游标翻页取全） |
 | 读 | `GET {API}/v2/tipitaka-content/{book}-{para}` | 整章内容（OpenSearch 预建 HTML，正文夹版本页码；`--via tipitaka-content`） |
-| 读 | `GET {API}/v2/channel` | channel 列表（view=paragraphs 查译本、view=system 查巴利原文 uid） |
-| 读 | `GET {API}/v2/term-vocabulary` | 社区权威译名对照表（整表拉取，本地过滤） |
+| 读 | `GET {API}/v3/tipitaka-paragraph-channels/{book}/{para}` | 某段有内容的 channel（`versions`） |
+| 读 | `GET {API}/v3/channels?system=true` | 系统 channel（非线上站点按名字找巴利原文 uid） |
+| 读 | `GET {API}/v3/glossaries/{kind}` | 社区权威译名 / 语法术语对照表（整表拉取，本地过滤） |
 | 读 | `GET {API}/v2/nav-page/{版本}-{pcd}-{册}-{页}` | 印本页码 → WikiPali 坐标 |
 | 读 | `GET {API}/v2/related-paragraph` | 根本/义注/复注段落对应（v2，按 book:para） |
 | 读 | `GET {API}/v2/article` | 文章列表 |
@@ -64,14 +65,16 @@
 | 认证/模型 | `PUT {API}/v2/ai-model/{uid}` | 增量修改 AI 模型记录 |
 | 认证/模型 | `GET {API}/v2/ai-model-token/{uid}` | 取模型身份 token（写句子的 Authorization） |
 | 认证/模型 | `DELETE {API}/v2/ai-model-token/{uid}` | 撤销模型已签出的全部 token |
-| 认证/模型 | `GET {API}/v2/channel?view=user-edit` | 列出当前账号可编辑的 channel |
-| 认证/模型 | `GET {API}/v2/channel/{uid}` | 回显单个 channel 的名字 |
+| 认证/模型 | `GET {API}/v3/channels/editable` | 列出当前账号可写内容的 channel |
+| 认证/模型 | `GET {API}/v3/channels/{uid}` | 回显单个 channel 的名字 |
 | 认证/模型 | `POST {API}/v2/access-token` | 为 channel 签发 access token（写句子的 body 字段） |
 | 写 | `POST {API}/v2/sentence` | 按坐标写/覆盖译文句子 |
-| 写 | `GET {API}/v2/terms` | 列用户自己的术语（view=user/studio/channel） |
-| 写 | `GET {API}/v2/terms/{guid}` | 取单条术语 |
-| 写 | `POST {API}/v2/terms` | 新建术语（落在 channel 名下） |
-| 写 | `PUT {API}/v2/terms/{guid}` | 增量修改术语 |
+| 术语(v3) | `GET {API}/v3/studios/{studio}/terms` | 列某 studio 名下的术语（缺省是当前账号本人） |
+| 术语(v3) | `GET {API}/v3/channels/{uid}/terms` | 列某 channel 的术语 |
+| 术语(v3) | `GET {API}/v3/me/groups` | `--studio` 给团队名时按名字找团队 uuid |
+| 术语(v3) | `GET {API}/v3/terms/{guid}` | 取单条术语（改之前读原值与 `etag`） |
+| 术语(v3) | `POST {API}/v3/channels/{uid}/terms` | 新建术语（模型 + `X-Agent-Grant`） |
+| 术语(v3) | `PATCH {API}/v3/terms/{guid}` | 增量修改术语（模型 + `X-Agent-Grant` + `If-Match`） |
 | 批注(v3) | `POST {API}/v3/agent-grants` | 人类为模型签发「某 channel、某 book」写入授权 |
 | 批注(v3) | `GET {API}/v3/discussions` | 列出某句上的话题/批注 |
 | 批注(v3) | `GET {API}/v3/discussions/summary` | 某句上的批注统计 |
@@ -273,6 +276,8 @@ mint 2026-11 起；旧站点 404，命令提示切 `next`。
 - **返回**：`{data: [{book, para, sentences: [{sid, html}]}], meta: {next_cursor, total, remaining}}`；
   sid 即引用坐标。`next_cursor` 为 null 表示取完。
 - **请求次数**：每个 channel `ceil(段数 / 200)` 次（一般 1 次）；`--channel` 可给多个，逐个取。
+- **权限**（2026-11-16 起）：私有 channel 只有拥有者、团队成员、被共享的人能读，其余 403；公开与「公开不列出」
+  不用登录。客户端登录了就带 Bearer = userToken，403 时提示先 `wikipali-login`。
 - 指定的 channel 在本章没有句子时返回空列表，命令报「该版本在本章没有任何内容」，不拿别的版本顶替。
 - 正文里**不夹版本页码**；要页码用 `--ref` / `wikipali ref`，或改用 §11b。
 
@@ -288,23 +293,26 @@ mint 2026-11 起；旧站点 404，命令提示切 `next`。
     或该版本无文本）。
   - 正文夹 `<code>M1.1</code>` 是版本页码（M/V/P/T），须留在原位。
 
-## 12. channel 列表 —— `GET {API}/v2/channel`
+## 12. channel 列表（读侧）—— v3（2026-11-16 起，取代 v2 `channel?view=paragraphs|system`）
 
-按 `view` 区分用途；读侧用 `view=paragraphs` 和 `view=system`。
+- **某段有哪些 channel** `GET {API}/v3/tipitaka-paragraph-channels/{book}/{para}`（`versions`）：
+  query `per_page`（最大 200）；登录了就带 Bearer = userToken，能看到自己有权限的私有 channel，
+  没登录只看公开的与系统 channel。
+- **系统 channel** `GET {API}/v3/channels?system=true`（非线上站点按名字找巴利原文 uid）：
+  query `search`、`per_page`。系统 channel 不论 status 都列（巴利原文是 status 10）。
+- **返回**：v3 信封 `{ data: [ { id, name, type, lang, status, is_system, owner{kind,id,…}, abilities, … } ], meta }`。
+  客户端把 `id` 映射成内部一直用的 `uid`。
 
-- **入参**：
-  - `view=paragraphs`：`book_id`、`para` —— 查某坐标有哪些译本。
-  - `view=system`：`limit`（如 500）—— 查系统 channel，非线上站点据此找巴利原文 uid。
-- **返回**：`data.rows[] = { uid, name, type, lang, status, … }`。
-  - ⚠ 稳定版站点 `view=paragraphs` 会 500（修复只在最新版），客户端提示切 `next`。
+## 13. 术语表（权威译名）—— `GET {API}/v3/glossaries/{kind}`
 
-## 13. 术语表（权威译名）—— `GET {API}/v2/term-vocabulary`
+权威译名对照，只读、公开（取代 v2 `term-vocabulary`）。
 
-权威译名对照，只读。
-
-- **入参**：`view`（默认 `community`）、`lang`（如 `zh-Hans`）。
-- **返回**：`data.rows[] = { guid, word, tag, meaning, other_meaning }`。
-  - ⚠ 不支持按词查询，只能拉全表（zh-Hans 约 17074 条），客户端缓存后本地过滤。
+- **入参**：路径 `{kind}` = `community`（社区译名，`terms` 默认）/ `grammar`（语法术语），对应命令的 `--view`；
+  查询 `lang`（如 `zh-Hans`，缺省按 `Accept-Language`）。
+- **返回**：`{ data: [ { id, word, tag, meaning, other_meaning } ], meta: { kind, lang, total } }`，按词排序、整表不分页。
+  - `meta.lang` 是实际用到的语言：该语言没有这张表时回退到 `en`，命令会提示。
+  - ⚠ 不支持按词查询，只能拉全表（zh-Hans 上万条），客户端缓存后本地过滤。
+  - 与批注的 `glossary` 类型（外挂术语）不是一回事。
 
 ## 14. 版本页码 → 坐标 —— `GET {API}/v2/nav-page/{版本}-{pcd_book_id}-{册}-{页}`
 
@@ -372,7 +380,7 @@ mint 2026-11 起；旧站点 404，命令提示切 `next`。
 |---|---|---|---|---|
 | userToken | `POST /v2/sign-in` | 人类操作者 | 查/建 ai-model、签 access token、列 channel | 365 天 |
 | modelToken | `GET /v2/ai-model-token/{uid}` | AI 模型身份 | 写句子/术语/批注的 `Authorization` | 30 天 |
-| accessToken | `POST /v2/access-token` | 被委托的 channel 编辑权 | 写句子/术语时的 body 字段 | 7 天 |
+| accessToken | `POST /v2/access-token` | 被委托的 channel 编辑权 | 写句子时的 body 字段（术语、批注改用 v3 的 agent grant） | 7 天 |
 
 ## 21. 登录 —— `POST {API}/v2/sign-in`
 
@@ -418,16 +426,19 @@ mint 2026-11 起；旧站点 404，命令提示切 `next`。
 - **入参**：`Authorization: Bearer <userToken>`；路径 `{uid}`。
 - **返回**：`data: { uid, name, token_version }`；作废该模型已签出的**全部** token。
 
-## 28. 可编辑 channel —— `GET {API}/v2/channel?view=user-edit`
+## 28. 可写 channel —— `GET {API}/v3/channels/editable`
 
-- **入参**：`Authorization: Bearer <userToken>`；query `order`/`dir`/`limit`（默认 200）/
-  `offset`/`search`。
-- **返回**：`data: { rows: [ { uid, name, summary, type, owner_uid, lang, status, updated_at, created_at, role, studio } ], count }`。
+取代 v2 `channel?view=user-edit`（v2 那条的搜索一直不生效：前端传 `key`、后端读 `search`）。
 
-## 29. 单 channel 回显 —— `GET {API}/v2/channel/{uid}`
+- **入参**：`Authorization: Bearer <userToken>`；query `order`/`dir`/`per_page`（最大 200）/`search`。
+- **语义**：本人名下的 ∪ 本人是团队 editor 及以上的团队名下的 ∪ 共享权限 ≥20 的。
+- **返回**：`{ data: [ { id, name, summary, type, lang, status, owner{kind,id,nickName,…}, abilities{read,write,update,delete}, … } ], meta }`。
+  客户端把 `id` 映射成 `uid`，`role` 由 abilities 推出（能删 owner / 能改信息 manager / 能写 editor）。
+
+## 29. 单 channel 回显 —— `GET {API}/v3/channels/{uid}`
 
 - **入参**：`Authorization: Bearer <userToken>`；路径 `{uid}`。
-- **返回**：`data: { uid, name, … }`（主要用于显示 channel 名字）。
+- **返回**：`{ data: { id, name, … } }`（主要用于显示 channel 名字）；看不见的私有 channel 403。
 
 ## 30. 签发 channel access token —— `POST {API}/v2/access-token`
 
@@ -458,43 +469,48 @@ mint 2026-11 起；旧站点 404，命令提示切 `next`。
   - ⚠ 逐句鉴权失败会被**静默跳过**：提交 N 条、HTTP 200、`count` < N 即有句子没写进去，
     须逐条比对报差集。缺 `sentences` 字段时 HTTP 200 且 `message: "no date"`（客户端 bug）。
 
-## 32. 列术语 —— `GET {API}/v2/terms`
+## 32. 列术语 —— `GET {API}/v3/studios/{studio}/terms`、`GET {API}/v3/channels/{uid}/terms`
 
 - **入参**：`Authorization: Bearer <userToken>`（人类身份）。
-  | view | 额外参数 | 含义 |
+  | 命令参数 | 接口 | 说明 |
   |---|---|---|
-  | `user` | 无 | 当前账号名下全部 |
-  | `studio` | `name`=studio 名 | 某 studio 的 |
-  | `channel` | `id`=channel uid | 某 channel 的 |
-  通用：`search`、`order`、`dir`、`offset`、`limit`。
-- **返回**：`data: { rows: [ … ], count }`；行含 `guid`/`word`/`meaning`/`other_meaning`/
-  `note`/`tag`/`channel`/`editor` 等。
+  | （缺省） | `GET /v3/studios/{当前账号 id}/terms` | 当前账号名下全部（它的 channel 里的 + studio 级的）；id 取自 `GET /v3/me` |
+  | `--studio` | `GET /v3/studios/{uuid}/terms` | 给 uuid 直接用；给自己的用户名 → 本人；给团队名 → 经 `GET /v3/me/groups?search=` 找 uuid |
+  | `--channel` | `GET /v3/channels/{uid}/terms` | 某 channel 的 |
+  查询参数：`search`（词 / 释义包含匹配，不分大小写）、`order`（`updated_at`/`created_at`/`word`）、
+  `dir`、`page`、`per_page`（≤200；命令行的 `--offset`/`--limit` 换算成它们）。
+- **返回**：v3 列表 `{ data: [ … ], meta: { total, … } }`；行含 `id`（guid）/`word`/`tag`/`meaning`/
+  `other_meaning`/`quality`/`categories`/`channel{id,name}`（studio 级为空）/`editor`/`co_editor`/`etag`。
 
-## 33. 单条术语 —— `GET {API}/v2/terms/{guid}`
+## 33. 单条术语 —— `GET {API}/v3/terms/{guid}`
 
 - **入参**：`Authorization: Bearer <userToken>`；路径 `{guid}`（uuid，不是雪花 id）。
-- **返回**：`data: { guid, word, meaning, …, channel_id, channel }`（改术语前读原值用）。
+- **返回**：`data: { id, word, tag, meaning, …, channel_id, channel, etag, body }`。改术语前用它读
+  原值与 **`etag`**（乐观锁版本）。不存在 / 已删 404，所在 channel 看不见 403。
 
-## 34. 新建术语 —— `POST {API}/v2/terms`
+## 34. 新建术语 —— `POST {API}/v3/channels/{uid}/terms`
 
-- **入参**：`Authorization: Bearer <modelToken>`；body
+- **入参**：`Authorization: Bearer <modelToken>` + 请求头 `X-Agent-Grant: <授权>`（第 36 步，
+  `book` 签 0——**按 book 限定的授权不覆盖术语**）；body
   ```json
-  { "word": "satipaṭṭhāna", "meaning": "念处", "other_meaning": "念住",
-    "note": "markdown", "tag": "abhidhamma",
-    "channel": "<uid>", "access_token": "<JWT>" }
+  { "word": "satipaṭṭhāna", "meaning": "念处", "tag": "abhidhamma",
+    "other_meaning": "念住", "note": "正文 {{category|分类}}", "summary": "摘要",
+    "quality": "draft", "content_type": "markdown-e2", "redirect": "word@tag" }
   ```
-  - 参数名是 **`channel`**（不是 `channel_uid`）；`word_en` 由服务端生成；
-    AI 写术语**必须落在 channel 里**（studio 级术语模型 403）。
-- **返回**：`data: { guid, word, meaning, …, editor }`。
-  - 同 channel 下 `word + tag` 唯一，冲突时**拒绝**（HTTP 200 且 `message: "word existed"`），
-    与句子「覆盖」相反。
+  - `word` + `meaning` 必填；**`language` 不能给**（跟随 channel）；`content_type` 缺省 `markdown-e2`；
+    `quality` 取 `featured`/`standard`/`draft`/`pending`；分类不是字段，服务端从 `note` 的
+    `{{category|…}}` 抽出。AI 写术语**必须落在 channel 里**（studio 级术语模型 403）。
+- **返回**：**201** `data: { id, word, …, editor（授权人）, co_editor（模型）, categories, etag }`。
+  - 同 channel 下 `word + tag` 唯一，冲突 **409**（与句子「覆盖」相反）。
+  - **`word` + `tag` 建立后不能改**，拼错只能新建一条再把旧的 `redirect` 过去。
 
-## 35. 修改术语 —— `PUT {API}/v2/terms/{guid}`
+## 35. 修改术语 —— `PATCH {API}/v3/terms/{guid}`
 
-- **入参**：`Authorization: Bearer <modelToken>`；路径 `{guid}`；body 只提交要改字段
-  （增量更新），另带 `access_token`。
-- **返回**：`data: { guid, word, meaning, …, editor }`；`editor_uid` 判断是否模型所写
-  （模型没有 `editor_id`，记 -1）。
+- **入参**：`Authorization: Bearer <modelToken>` + `X-Agent-Grant` + **`If-Match: <etag>`**（第 33 步读到的）；
+  body 只提交要改的字段（`meaning`/`other_meaning`/`note`/`summary`/`quality`/`content_type`/`redirect`，
+  给 `null` 清掉）。**`word`、`tag` 给了就 422**；channel 里的术语不能改 `language`。
+- **返回**：`data: { …, editor, co_editor, etag }`（新的 etag）。
+  - 不带 `If-Match` **428**；读取之后被别人改过 **412**——CLI 提示重新运行、不自动重试（会覆盖别人的修改）。
 
 ---
 
@@ -665,7 +681,7 @@ v3 约定：成功 `{data:…}`（列表带 `meta` 分页），失败 Problem De
 ## 51. 一章有哪些 channel —— `GET {API}/v3/tipitaka-chapter-channels/{book}/{para}`
 
 `versions --chapter` 用。取代 v2 `progress?view=chapter_channels`；段落粒度的 `versions`
-（`v2/channel?view=paragraphs`）不变。
+走 `v3/tipitaka-paragraph-channels`（见 §12）。
 
 - **入参**：路径 `book`、`para`（章节起始段，不是章内任意段——非起始段返回空列表）；
   查询 `per_page`（最大 200，客户端传 200 一次取全，单章最多几十个）、`page`。

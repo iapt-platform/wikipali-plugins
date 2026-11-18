@@ -23,7 +23,7 @@ def pali_channel(client):
 
     PALI_CHANNEL 只对内置线上站点（共用一个库）成立；自定义地址是另一个库，
     系统 channel 的 uid 不同，拿线上的 uid 去查只会得到「没有内容」。所以非线上站点
-    按名字从 v2/channel?view=system 查一次，按站点分桶缓存。
+    按名字从 v3/channels?system=true 查一次，按站点分桶缓存。
     """
     if client.bucket_name == 'online':
         return PALI_CHANNEL
@@ -35,12 +35,12 @@ def pali_channel(client):
     except (OSError, ValueError, KeyError):
         pass
     try:
-        data = client.call('GET', 'v2/channel', query={'view': 'system', 'limit': 500},
+        data = client.call('GET', 'v3/channels', v3=True,
+                           query={'system': 'true', 'search': PALI_CHANNEL_NAME, 'per_page': 200},
                            timeout=READ_TIMEOUT)
     except ApiError as exc:
         raise explain_api_error(exc, '查本站的巴利原文 channel')
-    uid = next((r.get('uid') for r in (data or {}).get('rows') or []
-                if r.get('name') == PALI_CHANNEL_NAME), None)
+    uid = next((r.get('id') for r in (data or []) if r.get('name') == PALI_CHANNEL_NAME), None)
     if not uid:
         raise WpError(f'该站点的系统 channel 里没有 {PALI_CHANNEL_NAME}，取不了巴利原文。')
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -1015,9 +1015,16 @@ def fetch_tipitaka_reading(client, book, para, args):
         rows = []
         while True:
             try:
+                # 私有 channel 要登录且有权限才读得到正文；登录了就带上，没登录只读公开的
                 body = client.call('GET', f'v3/tipitaka-reading/{channel}', query=query, v3=True,
-                                   envelope=True, timeout=READ_TIMEOUT) or {}
+                                   envelope=True, timeout=READ_TIMEOUT,
+                                   token=(client.bucket.get('user') or {}).get('token')) or {}
             except ApiError as exc:
+                if exc.status == 403:
+                    raise WpError(
+                        f'channel {channel} 是私有的，当前身份看不到它的正文。\n'
+                        '若这是你自己的、你所在团队的或共享给你的 channel，先执行 wikipali-login 再试。'
+                    )
                 if exc.status == 404:
                     raise WpError(
                         f'站点 {client.api_url} 没有 v3/tipitaka-reading，或 channel {channel} 不存在。\n'
@@ -1168,18 +1175,15 @@ def cmd_versions(args):
     client = make_client(args)
     book, para = parse_coord(args.coord)
     try:
-        data = client.call('GET', 'v2/channel',
-                           query={'view': 'paragraphs', 'book_id': book, 'para': para},
+        # 只列看得见的（私有 channel 要登录且有权限）；一段的版本最多几十个，一页取全
+        data = client.call('GET', f'v3/tipitaka-paragraph-channels/{book}/{para}', v3=True,
+                           # 登录了就带上，能看到自己有权限的私有 channel；没登录只看公开的，不报错
+                           token=(client.bucket.get('user') or {}).get('token'),
+                           query={'per_page': 200},
                            timeout=READ_TIMEOUT)
     except ApiError as exc:
-        if exc.status and exc.status >= 500:
-            raise WpError(
-                f'查 {book}:{para} 的可用译本失败（HTTP {exc.status}）。\n'
-                '稳定版站点上 channel?view=paragraphs 有已知缺陷，修复只在最新版代码上。\n'
-                '请切到最新版再试：wikipali endpoint next，或本次调用加 --api next。'
-            )
         raise explain_api_error(exc, f'查 {book}:{para} 的可用译本')
-    rows = (data or {}).get('rows') or []
+    rows = [{**r, 'uid': r.get('id')} for r in (data or [])]
 
     def render():
         if not rows:
@@ -1320,11 +1324,15 @@ def cmd_terms(args):
     if rows is None:
         note('正在拉取术语表全表（服务端不支持按词查询，只能整表拉后本地过滤）…')
         try:
-            data = client.call('GET', 'v2/term-vocabulary',
-                               query={'view': args.view, 'lang': args.lang}, timeout=120)
+            # v3 /glossaries/{grammar|community}（取代 v2 term-vocabulary）；整表、不分页
+            payload = client.call('GET', f'v3/glossaries/{args.view}', query={'lang': args.lang},
+                                  v3=True, envelope=True, timeout=120)
         except ApiError as exc:
             raise explain_api_error(exc, '取术语表')
-        rows = (data or {}).get('rows') or []
+        rows = (payload or {}).get('data') or []
+        served = ((payload or {}).get('meta') or {}).get('lang')
+        if served and served.lower() != (args.lang or '').lower():
+            note(f'服务端没有 {args.lang} 的术语表，返回的是 {served} 的。')
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w', encoding='utf-8') as fh:
             json.dump(rows, fh, ensure_ascii=False)

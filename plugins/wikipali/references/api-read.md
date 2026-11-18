@@ -178,24 +178,25 @@ data.rows[] = { book, paragraph, toc, level, length, chapter_len, book_name, cs_
 
 从正文段找所属章节：取 `path` 的**末项**，那就是直接父章节；没有 path 才退回 `parent`。
 
-## 9. 某段有哪些译本 —— `GET /v2/channel?view=paragraphs&book_id={book}&para={para}`
+## 9. 某段有哪些译本 —— `GET /v3/tipitaka-paragraph-channels/{book}/{para}`
 
-返回该坐标下有内容的全部 channel（`uid` / `name` / `type` / `lang` / `status`）。
+返回该坐标下有内容、且当前身份看得见的 channel（`id` / `name` / `type` / `lang` / `status` / `owner`），
+最近更新的在前；系统 channel（巴利原文等）谁都看得见。登录后带 token 能多看到自己有权限的私有 channel。
+（2026-11-16 起取代 v2 `channel?view=paragraphs`，v2 那条不判断可见性，私有 channel 也列。）
 
-⚠ **稳定版站点上这个分支会 500**，修复只在最新版代码里（`c392d33c3 :bug: view=paragraphs
-只显示一行`）。客户端遇到 5xx 要提示切到 `next`，不要当成「该段没有译本」。
+## 10. 术语表 —— `GET /v3/glossaries/community?lang=zh-Hans`
 
-## 10. 术语表 —— `GET /v2/term-vocabulary?view=community&lang=zh-Hans`
+权威译名对照（取代 v2 `term-vocabulary`）。`community` 是社区译名，`grammar` 是语法术语。
+返回 `{ data: [...], meta: { kind, lang, total } }`；行字段：`id`（术语 guid）/ `word`（巴利词形）/ `tag` /
+`meaning` / `other_meaning`。该语言没有这张表时回退到英文，`meta.lang` 是实际用到的语言。
 
-权威译名对照。行字段：`guid` / `word`（巴利词形）/ `tag` / `meaning` / `other_meaning`。
+⚠ **不支持按词查询**，只能拉全表（zh-Hans 上万条），客户端要缓存后本地过滤。
 
-⚠ **不支持按词查询**（带 `word=` 参数返回的不是 JSON），只能拉全表——实测 zh-Hans
-共 **17074 条**，客户端要缓存后本地过滤。
+## 其他 channel 查询（v3）
 
-## 其他 channel 视图
-
-`view` 取值：`public`（status=30）/ `studio` / `studio-all` / `user-edit` / `user-in-chapter`
-/ `system` / `paragraphs` / `id`。
+公开目录 `GET /v3/channels`（`system=true` 只要系统 channel）、我能写的 `GET /v3/channels/editable`、
+某个 studio（个人或团队 uuid）的 `GET /v3/studios/{studio}/channels?relation=own|shared|all`、
+详情 `GET /v3/channels/{channel}`。v2 `channel?view=…` 的各分支都已被它们取代。
 
 `status` 不止 10/30：实测 5（610 个，basic 用户新建的）、30（559，公开）、10（495）、0、1 都在用。
 

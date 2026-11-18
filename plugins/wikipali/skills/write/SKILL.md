@@ -47,10 +47,13 @@ metadata:
 4. **`count` 不等于提交条数就是有句子没写进去**，必须如实报告给用户，不要说「已全部写入」。
 5. **收到 401 不要自动重试**，按脚本的提示走。
 6. **术语只能写进 channel。** 不属于任何 channel 的 studio 级术语，模型一律无权建、
-   无权改（access token 是 channel 级的，代持不了 studio 权限）。撞上这种情况就如实
+   无权改（写入授权是 channel 级的，代持不了 studio 权限）。撞上这种情况就如实
    告诉用户「这条得你自己在网站上改」，不要换着法子重试。
 7. **术语冲突时服务端拒绝而不是覆盖**（与句子相反）。报「已存在」就去 `my-terms` 找到
-   那条的 guid 用 `term-edit` 改，不要改个 tag 绕过去建重复条目。
+   那条的 guid 用 `term-edit` 改，不要改个 tag 绕过去建重复条目。**word 与 tag 建立后不能改**
+   （引用方写的是 `[[word@tag]]`）：拼写拿不准先 `--dry-run`；拼错了用 `term-add` 新建正确的，
+   再 `term-edit <旧guid> --redirect <新word>@<新tag>`。改术语时报「被别人改过」（412）就重跑命令，
+   不要想办法绕过。
 8. **批注必须确认挂在哪一句上。** `res_id` 是**逐句、逐 channel** 的句子 uid，不是坐标；
    一个段落常有多句，原文和各译本又各有各的 uid。命令在多义时会拒绝并列出候选，
    **不要随手挑一个了事**——挂错地方的批注几乎不会被发现。写前看回显里那句正文对不对。
@@ -111,7 +114,7 @@ wikipali write sentences.json --channel <uid或名字片段>            # 再真
 
 ## 术语表
 
-用户自己的术语表（`v2/terms`），与只读的社区权威译名表（`wikipali terms`）**不是一回事**——
+用户自己的术语表（v3 术语接口），与只读的社区权威译名表（`wikipali terms`）**不是一回事**——
 后者是全网通用的译名对照，这里是用户自己 channel 名下、可增可改的条目。
 
 ```bash
@@ -120,19 +123,26 @@ wikipali my-terms --channel <名字片段>  # 只看某个 channel
 wikipali my-terms satipa               # 按词/释义过滤
 ```
 
-列出走人类身份（只读）；建和改走模型身份 + access token，和写句子同一条链路：
+列出走人类身份（只读）；建和改走模型身份 + 人类签的写入授权（`X-Agent-Grant`），和批注同一条链路。
+记录上 editor 是授权人、co_editor 是模型：
 
 ```bash
 wikipali term-add satipaṭṭhāna 念处 --channel <名字片段> \
-    --other-meaning 念住 --note '注解（markdown）' --tag abhidhamma --dry-run
+    --other-meaning 念住 --note '正文 {{category|法义}}' --summary '一句话摘要' \
+    --quality draft --tag abhidhamma --dry-run
 wikipali term-edit <guid> --meaning 念住          # 只改给出的字段，其余保持原值
+wikipali term-edit <guid> --quality ''            # 空串 = 清掉这个字段
+wikipali term-edit <旧guid> --redirect <新word>@<新tag>   # 拼写变了：新建后把旧的重定向过去
 ```
 
 - `term-add` / `term-edit` **必须有 channel**，见铁律第 6 条。`term-edit` 的 channel
   从术语本身读出，不用给。
 - guid 用 `my-terms` 查（输出行首是 guid 前 8 位，`--json` 拿完整值）。
 - `--dry-run` 先看回显，确认无误再真跑；用户没明确同意本次写入之前不要加 `-y`。
-- 改动是**增量**的：没给的字段保持原值，不会被清空。
+- 改动是**增量**的：没给的字段保持原值，不会被清空；给空串才清掉。
+- `--quality`：featured / standard / draft / pending。`--summary` 与 `--note` 同一种 markdown，
+  显示在正文前。分类不是参数：写在 `--note` 里的 `{{category|名}}`，服务端会抽出来。
+- `--language` 不用给：channel 里的术语语言跟随 channel。
 - 译名应与社区术语表（`wikipali terms`）一致；不一致时要在 `--note` 里说明理由。
 
 ## 批注

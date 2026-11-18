@@ -37,12 +37,12 @@
 
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
-| 术语表（社区总表） | ✅ | `terms` → `GET /v2/term-vocabulary?view=&lang=`（17074 条，本地缓存后过滤） |
+| 术语表（社区总表） | ✅ | `terms` → `GET /v3/glossaries/{community|grammar}?lang=`（整表，本地缓存后过滤） |
 | **单个术语查询** | 🔧 | `GET /v2/terms?view=word&word={词}` —— **2026-08-10 实测：不需要登录**，返回各 channel 下该词的译义 |
 | **按 tag 查术语** | 🔧 | `GET /v2/terms?view=tag&tag={tag}` —— 同样无需登录（`vinaya` 21 条） |
 | ~~`system-term`~~ | — | `GET /v2/system-term/{lang}/{word}` 实测报 `no channel`；上面两个已够用，不再需要它 |
 
-⚠ `term-vocabulary` 与 `terms` 是**两套东西**：前者是社区总表（一次拉全量），
+⚠ `glossaries`（原 v2 `term-vocabulary`）与用户自己的术语表是**两套东西**：前者是社区总表（一次拉全量），
 后者是 `dhamma_terms`，按 channel / studio / 用户组织，同一个词在不同 channel 下
 可以有不同译义。
 
@@ -142,10 +142,10 @@
 
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
-| 读我的术语 | 🔧 | `GET /v2/terms?view=user&search={关键词}` —— **需登录**，实测 test161 为 0 条 |
-| 读某 studio 的术语 | 🔧 | `GET /v2/terms?view=studio&name={studio}` —— 需登录 |
-| 读某 channel 的术语 | 🔧 | `GET /v2/terms?view=channel&id={channel}` |
-| 新建 / 修改 / 删除术语 | ⬜ | `POST/PUT/DELETE /v2/terms`。**缺字段说明** |
+| 读我的术语 | ✅ | `wikipali my-terms` → `GET /v3/studios/{me}/terms?search=` —— 需登录 |
+| 读某 studio 的术语 | ✅ | `my-terms --studio` → `GET /v3/studios/{uuid}/terms` —— 需登录（本人或团队成员） |
+| 读某 channel 的术语 | ✅ | `my-terms --channel` → `GET /v3/channels/{uid}/terms` |
+| 新建 / 修改 / 删除术语 | ✅ / ✅ / ⬜ | `term-add` → `POST /v3/channels/{uid}/terms`、`term-edit` → `PATCH /v3/terms/{guid}`（模型 + `X-Agent-Grant`，改要 `If-Match`）。删除只给人类，插件不做 |
 | 按 channel 批量建术语 | ⬜ | `GET /v2/terms?view=create-by-channel` |
 | 导入 / 导出 | ⬜ | `/v2/terms-export`、`GET /v2/terms-import` |
 | 常用译义统计 | ⬜ | `GET /v2/terms?view=hot-meaning` |
