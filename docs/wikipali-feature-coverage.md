@@ -29,7 +29,7 @@
 
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
-| 词形展开 | ✅ | `forms` → `GET /v2/case/{词}` |
+| 词形展开 | ✅ | `forms` → `GET /v3/pali-word-forms/{词}` |
 | 词典释义与形态分析 | ✅ | `word` → `GET /v2/dict?word=&lang=` |
 | 词频合计 | ✅ | `count` → 同 `case` |
 
@@ -51,17 +51,17 @@
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
 | 分类目录（按 tag 找书） | ✅ | `books` → `GET /v2/book-title`（服务端已扩展返回 toc/tags/related_name） |
-| 某本书的章节目录 | ✅ | `toc` → `GET /v3/tipitaka-chapters?book=`（带中文译名与字符数） |
-| 按章节名找坐标（经名 / 品名 / 偈名 / 中文译名，容错） | ✅ | `locate` → `GET /v3/tipitaka-chapters?q=` |
+| 某本书的章节目录 | ✅ | `toc` → `GET /v3/tipitaka-titles?book=`（带中文译名与字符数） |
+| 按章节名找坐标（经名 / 品名 / 偈名 / 中文译名，容错） | ✅ | `locate` → `GET /v3/tipitaka-titles?q=` |
 | 章节体量与导航 | ✅ | `chapter` → `GET /v2/palitext/{book}-{para}` |
 | 整章内容 | ✅ | `chapter --fetch` → `GET /v3/tipitaka-reading/{channel}`（默认）；`--via tipitaka-content` → `GET /v2/tipitaka-content/{book}-{para}`（夹版本页码） |
 | 按坐标取句 | ✅ | `get` → `GET /v2/sentence?view=paragraph` |
 | 某坐标有哪些版本 | ✅ | `versions` → `GET /v2/channel?view=paragraphs` |
 | 某章有哪些版本 + 完成度 | ✅ | `versions --chapter` → `GET /v3/tipitaka-chapter-channels/{book}/{para}` |
-| 检索 | ✅ | `search` → `GET /v2/search-pali-wbw` |
-| 出处分布 | ✅ | `dist` → `GET /v2/search-pali-wbw-books` |
+| 检索 | ✅ | `search` → `GET /v3/tipitaka-word-paragraphs` |
+| 出处分布 | ✅ | `dist` → `GET /v3/tipitaka-word-paragraphs/aggregate` |
 | 多词 / 短语检索 | ✅ | `phrase` → `GET /v3/search`（`search_mode=definition` / `fuzzy`） |
-| 多路融合检索 | ✅ | `find` → `search-pali-wbw`（逐词）＋ `v3/search`（fuzzy），RRF 合并、前 3 段保留逐词排序 |
+| 多路融合检索 | ✅ | `find` → `v3/tipitaka-word-paragraphs`（逐词）＋ `v3/search`（fuzzy），RRF 合并、前 3 段保留逐词排序 |
 | 相似句 | ⬜ | `GET /v2/sent-sim`？实测 500 |
 
 ### 4. 相关经文（根本 ↔ 义注 ↔ 复注）

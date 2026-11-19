@@ -3,16 +3,17 @@
 读端**全部不需要凭据**。响应统一是 `{ ok, data, message }`。
 坐标、引用、层次等通用规矩见 `conventions.md`。
 
-## 1. 词形展开 —— `GET /v2/case/{词}`
+## 1. 词形展开 —— `GET /v3/pali-word-forms/{词}`
 
-输入任意变格形或词根，返回候选词典原型，按可能性排序。
+输入任意变格形或词根，返回候选词根（v3 端点，响应是 `{data, meta}`，失败看 HTTP 状态码）。
 
 ```
-data: { rows: [ { word, count, case: [ {word, count, bold}, ... ] } ], count }
+data: [ { base, forms: [ {word, count, bold}, ... ] } ]   meta: { total }
 ```
 
-`rows[0]` 是可能性最高的候选；`case` 是**该词根在语料中实际出现过的全部词形**，
-每项带出现次数与其中的黑体次数。
+`data[0]` 是输入的词本身（可能性最高），其后是推导出的词根；`forms` 是**该词根在语料中实际出现过的全部词形**，
+按出现次数降序，每项带出现次数与其中的黑体次数。没有任何词形出现过的词根不列，查无此词就是空数组。
+（取代 v2 `case/{词}`：字段 `rows[].word`→`base`、`rows[].case`→`forms`。）
 
 **这是一切检索的前置**：`wbw_templates` 索引的是变格形，拿词典形直接查会返回 0 条
 且不报错。
@@ -31,38 +32,43 @@ data.words[].words[] = {
 内容。`note` 里可能夹着 `<MdTpl …></MdTpl>` 模板标记，要清掉。
 
 `case`/`grammar` 的方向是 **形 → 根**，用来确认"我选对了词根"；**根 → 全部形**是
-`/v2/case` 的活。
+`/v3/pali-word-forms` 的活。
 
-## 3. 检索 —— `GET /v2/search-pali-wbw`
+## 3. 检索 —— `GET /v3/tipitaka-word-paragraphs`（`wikipali search`）
+
+在逐词表里**精确匹配词形**（连音已拆开）。取代 v2 `search-pali-wbw`。
 
 | 参数 | 说明 |
 |---|---|
-| `key` | **逗号分隔的词形列表**（不是词根）。多个词形之间是 OR |
-| `bold` | `on` 只要黑体命中、`off` 只要非黑体。黑体是注释书标出词条的地方 |
-| `book` | 限定书，值用 `search-pali-wbw-books` 返回的 `pcdBookId` |
-| `tags` | 范围限定，`tag1,tag2;tag3` —— 组间 OR、组内 AND |
-| `limit` / `offset` | 分页。`limit=200` 实测正常 |
-| ~~`view`~~ / ~~`type`~~ | **实测无影响**，源码也没读，可省略 |
+| `words` | **逗号分隔的词形列表**（不是词根），最多 200 个。多个词形之间是 OR；空词形 422 |
+| `bold` | `only` 只要黑体命中、`exclude` 只要非黑体；不给则不限。黑体是注释书标出词条的地方 |
+| `book_id` | 限定书，逗号分隔，值用第 4 节返回的 `book_id` |
+| `page` / `per_page` | 分页，`per_page` 上限 100 |
 
 ```
-data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle, highlight, link, ref } ] }
+{ data: [ {id, book, para, score, hits, title, level, path, text, refs} ],
+  meta: {current_page, per_page, total, last_page, …} }
 ```
 
-- `link` 是该段的网页阅读地址（`…/library/tipitaka/{book}-{章节起始段}/read#{paragraph}`），
-  给用户核对原文时直接给它；
-- `ref` 是**各印本的页码**，`[{type, page, title}]`：
-  - `WP`：`title` 是 WikiPali 的书名缩写（如 `dī.ni.ṭī.2.`），`page` **就是段落号**，不是页码；
-  - `My`（缅甸第六次结集版）/ `PTS` / `VRI` / `Thai`：该段所在的印本页码，`title` 是
-    该版的书名缩写（如 PTS `DnT II`、缅 `dī-ṭī 2`），VRI 常为 `null`；
+- `id` = `{book}-{para}`；`score` = `sum(weight)`，黑体权重更高；同分按经文顺序；
+- `path` 是章节路径数组，每项 `{book, para, title, level}`，第一项是书系（level 0）；
+- `title`：标题段是它自己的标题，正文段是所在章节的标题；
+- `text` 是整段正文，**只有 `<b>`（原文黑体）与 `<mark>`（命中的词形）两种标签**，其余已转义。
+  黑体是判断"这段是不是定义"的唯一线索，清洗时不能丢；
+- `refs` 是**各印本的页码**，`[{type, volume, page, title}]`：
+  - `My`（缅甸第六次结集版）/ `PTS` / `VRI` / `Thai`：该段所在的印本页码（每种取段内第一个），
+    `title` 是该版的书名缩写（只有缅、PTS 有）；
+  - 最后一条恒为 `WP`：`title` 是 WikiPali 的书名缩写（如 `dī.ni.ṭī.2.`），`page` **就是段落号**；
   - 哪些版本有，逐段不同，**没有就是没有，不要推算**。与正文里 `[M2.241]` 这类标记同源。
-- **只有检索结果带 `ref`**，没有「段落 → 页码」的接口。`wikipali ref` / `get --ref` 的做法：
-  `palitext/{book}-{para}` 取 `pcd_book_id` 与正文，拿段里最长的词限定本书检索，从结果里挑出
-  这一段。每段约 2 次请求；段落太短、词不在索引里时取不到，如实报「取不到」。
-
-- `rank` = `sum(weight)`，黑体权重更高；
-- `path` 是章节路径数组，每项 `{book, paragraph, title, level}`；
-- `highlight` 里命中词包在 `<span class='hl'>`，**并保留原文的 `<span class="bld">`**——
-  后者是黑体，判断"这段是不是定义"要靠它，清洗 HTML 时不能一并丢掉。
+- 不带网页链接。CLI 用坐标拼旧版阅读地址 `…/library/tipitaka/{book}-{章节起始段}/read#{para}`
+  （服务端永久 301 到新版），输出里仍叫 `link`。
+- **只有检索结果带页码**，没有「段落 → 页码」的接口。`wikipali ref` / `get --ref` 的做法：
+  `palitext/{book}-{para}` 取 `pcd_book_id` 与正文，拿段里最长的词限定本书检索（取前 200 条），
+  从结果里挑出这一段。段落太短、词不在索引里时取不到，如实报「取不到」。
+- v3 没有 `tags` 参数。`search --tags` 由 CLI 先调第 4 节拿每本书的 tag，筛出符合的书再按 `book_id`
+  检索（口径同 v2：`tag1,tag2;tag3` 组间 OR、组内 AND）。
+- **CLI 的 `--json` 输出沿用旧字段名**（`paragraph`、`paliTitle`、`rank`、`ref`、`link`、`highlight`），
+  上层 skill 按这些名字取值，接口换了它不变。
 
 ## 3b. 多词检索 —— `GET /v3/search`（`wikipali phrase`）
 
@@ -73,32 +79,38 @@ data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle
 | `q` | 空格分隔的巴利词 |
 | `search_mode` | `definition`：黑体定义优先——每个词命中单独黑体字 +100、多词黑体 +30，命中的单独黑体字越多越前；`fuzzy`：词序与拼写越一致越前（整句原样 > 乱序但拼写相同 > 同义词） |
 | `resource_type=tipitaka` + `granularity=paragraph` | 只搜三藏段落 |
-| `page` / `page_size` | 分页，`page_size` 上限 100 |
+| `page` / `per_page` | 分页，`per_page` 上限 100 |
 
 ```
-data.hits: { total: {value, relation}, hits: [ { _score, _source: {related_id, title, bold_single, …}, highlight } ] }
+{ data: [ {id, related_id, title, content, highlight, bold: [...], score, path, …} ],
+  meta: {current_page, per_page, total, total_relation, last_page} }
 ```
 
-- `related_id` = `{book}-{paragraph}`；命中片段在 `highlight['content.text.pali']`，命中词包 `<mark>`；
+- `related_id` = `{book}-{paragraph}`；命中片段在 `highlight`（命中词包 `<mark>`，没有则 null）；
+  `total_relation=gte` 表示至少这么多；参数非法 422，搜索服务不可用 503；
 - **不带 `ref` / `link` / `path`**，出处用 `wikipali ref` 补（或 `phrase --ref`）；
 - 部分词命中也会召回，只是分数低；`na ca vā` 这类停用词单独不召回；
-- 与 `search-pali-wbw` 的召回在 10 个词根上实测 98.7%–100%（2026-11），缺的是同义词词典
+- 与逐词检索（第 3 节，当时还是 v2 `search-pali-wbw`）的召回在 10 个词根上实测 98.7%–100%（2026-11），缺的是同义词词典
   没收的词形与正文里粘了连音的词。**单词查全仍以 `search` 为准**，`phrase` 用于多词。
 
 `wikipali find` 把第 3 节（逐词）与本节的合并 fuzzy 两路结果按名次融合（RRF，k=60），
 前 3 段沿用逐词的排序；回答具体问题时用它做第一轮检索。
 
-## 4. 出处分布 —— `GET /v2/search-pali-wbw-books?key={词形,…}`
+## 4. 出处分布 —— `GET /v3/tipitaka-word-paragraphs/aggregate?words={词形,…}`（`wikipali dist`）
+
+取代 v2 `search-pali-wbw-books`。参数同第 3 节的 `words` / `bold`，不分页，按段落数降序。
 
 ```
-data.rows[] = { pcdBookId, count, book, paragraph, paliTitle, tags: [{name}] }
+data[] = { book_id, book, para, title, layer, tags: [...], paragraphs, occurrences }
+meta   = { total: 书数, paragraphs: 段落总数, occurrences: 词次总数 }
 ```
 
-⚠ **`count` 数的是词次，不是段落数**。同一段里出现多次算多次。段落数要看
-`search-pali-wbw` 的 `count`。实测 `parivāsa`：词次 449、段落 281。方法论陈述里
-写错这两个数是硬伤。
+**`occurrences` 是词次，`paragraphs` 是段落数**，同一段里出现多次只算一段。实测 `parivāsa`：
+词次 449、段落 281。方法论陈述里写错这两个数是硬伤。（v2 只给词次 `count`。）
 
-`tags` 含 `mūla` / `aṭṭhakathā` / `ṭīkā`，用来区分根本、义注、复注。
+`layer` 取自书的 tag（`mula` / `atthakatha` / `tika` / `anna`，没有为 null），`tags` 是书的全部 tag，
+用来区分根本、义注、复注。CLI 的 `--json` 输出沿用旧字段名（`pcdBookId`、`count`=词次、`paliTitle`、
+`tags[].name`），另加 `paragraphs`。
 
 ## 5. 取文 —— `GET /v2/sentence`
 
@@ -122,7 +134,7 @@ word_start, word_end, editor, channel, updated_at}`。按 `word_start` 排序拼
 `view=book-toc` / `chapter` / `chapter_children` / `children` / `paragraph`，
 参数 `book` / `para` / `series`。
 
-## 7. 章节标题 —— `GET /v3/tipitaka-chapters`
+## 7. 章节标题 —— `GET /v3/tipitaka-titles`
 
 两种用法，可叠加：`q=<章节名>` 按名字找（不分变音符号、容错、可用中文译名），按匹配度排序；
 `book=<书号>`（可加 `para=<章节起始段>`、`max_level`）按经文顺序列出全部标题。`layer=mula|atthakatha|tika|anna`
@@ -174,7 +186,7 @@ data.rows[] = { book, paragraph, toc, level, length, chapter_len, book_name, cs_
 | `chapter_strlen` | 章节字符数——**取整章前报体量就靠它** |
 | `next_chapter` / `prev_chapter` / `parent` | 导航 |
 | `path` | 面包屑。⚠ **这个端点返回的是 JSON 字符串，而 search 返回的是数组**，客户端两种都要能吃 |
-| `pcd_book_id` | 另一套书号，**等于 `search-pali-wbw` 的 `book` 参数值**（实测 216 → 278，与 dist 输出的 `--book 278` 一致）|
+| `pcd_book_id` | 另一套书号，**等于 `tipitaka-word-paragraphs` 的 `book_id` 参数值**（实测 216 → 278，与 dist 输出的 `--book 278` 一致）|
 
 从正文段找所属章节：取 `path` 的**末项**，那就是直接父章节；没有 path 才退回 `parent`。
 
@@ -334,7 +346,7 @@ PTS 页码是西方巴利学界的标准引用依据，别丢。
  {"book":65,"paragraph":1460,"title":"Sammasanañāṇakathā","level":"3"}]
 ```
 
-**引用时的章节路径直接取它，不要自己拼。** `search-pali-wbw` 与 `related` 的返回里
+**引用时的章节路径直接取它，不要自己拼。** 逐词检索（`tipitaka-word-paragraphs`）与 `related` 的返回里
 也带同一个 `path`（都取自 `pali_texts.path`）。
 
 ## 已知故障
@@ -344,7 +356,7 @@ PTS 页码是西方巴利学界的标准引用依据，别丢。
 | `GET /v2/search?view=pali` | **500**。走 gRPC 的 `tulip` 服务，线上不可达 |
 | `GET /v2/search-book-list` | **500**，同上 |
 
-这两个是**词组/短语**检索（多词按全文匹配）。单词检索走 `search-pali-wbw`，不受影响。
+这两个是**词组/短语**检索（多词按全文匹配）。单词检索走 `tipitaka-word-paragraphs`，不受影响。
 多词检索改用 `GET /v3/search`（见 3b，`wikipali phrase`）。
 
 `GET /v2/search?view=title`（按标题）与 `view=page`（按页码）不走 gRPC，可用。

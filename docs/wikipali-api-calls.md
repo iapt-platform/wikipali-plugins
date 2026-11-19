@@ -30,15 +30,15 @@
 
 | 类别 | API（方法 + 路径） | 一句话说明 |
 |---|---|---|
-| 读 | `GET {API}/v2/case/{词}` | 输入变格形/词根，返回候选词典原型及全部词形，是一切检索的前置 |
+| 读 | `GET {API}/v3/pali-word-forms/{词}` | 输入变格形/词根，返回候选词根及全部词形，是一切检索的前置 |
 | 读 | `GET {API}/v2/dict` | 查词典释义与形态分析（形→根），用于确认选对了词根 |
-| 读 | `GET {API}/v2/search-pali-wbw` | 按词形列表检索命中的段落，带页码出处与黑体高亮 |
-| 读 | `GET {API}/v2/search-pali-wbw-books` | 统计词形在各部书里的词次分布（数词次，不是段落数） |
+| 读 | `GET {API}/v3/tipitaka-word-paragraphs` | 按词形列表检索命中的段落，带页码出处与黑体高亮 |
+| 读 | `GET {API}/v3/tipitaka-word-paragraphs/aggregate` | 统计词形在各部书里的分布（段落数与词次分开给） |
 | 读 | `GET {API}/v3/search` | 多词检索（OpenSearch）：几个词一起搜，黑体定义优先，不用先展开词形 |
 | 读 | `GET {API}/v2/sentence` | 按坐标取原文/译文句子（view=paragraph / chapter） |
 | 读 | `GET {API}/v2/sentence/{uid}` | 取单句，拿到它所属的 channel 与 book、原始 content |
 | 读 | `GET {API}/v2/palitext` | 目录类查询（view=paragraphs-info 旧段落清单回退） |
-| 读 | `GET {API}/v3/tipitaka-chapters` | 章节标题：按名字找章节（容错、可用中文译名，`locate`），或列出一本书的全部标题（`toc`） |
+| 读 | `GET {API}/v3/tipitaka-titles` | 章节标题：按名字找章节（容错、可用中文译名，`locate`），或列出一本书的全部标题（`toc`） |
 | 读 | `GET {API}/v2/para-info` | 取某章辖区的段落清单（每段是标题还是正文、多长） |
 | 读 | `GET {API}/v2/palitext/{book}-{para}` | 段落/章节元信息（chapter_len / strlen / pcd_book_id / path） |
 | 读 | `GET {API}/v2/chapter-content/{book}-{para}` | 整章内容（嵌套 JSON，逐句带 origin/translation） |
@@ -97,14 +97,14 @@
 
 # 一、读侧（无需凭据）
 
-## 1. 词形展开 —— `GET {API}/v2/case/{词}`
+## 1. 词形展开 —— `GET {API}/v3/pali-word-forms/{词}`
 
-输入任意变格形或词根，返回候选词典原型，按可能性排序。
+输入任意变格形或词根，返回候选词根（取代 v2 `case/{词}`）。
 
-- **入参**：路径参数 `{词}`（可含巴利变音符号，客户端已做百分号编码）。
-- **返回**：`data: { rows: [ { word, count, case: [ {word, count, bold}, … ] } ], count }`
-  - `rows[0]` 是可能性最高的候选；`case` 是该词根在语料中实际出现过的全部词形。
-  - ⚠ 查无此词会返回一个 `case` 为空的候选行，客户端据此判定「没找到」。
+- **入参**：路径参数 `{词}`（可含巴利变音符号，客户端已做百分号编码；不区分大小写；超过 64 字符 404）。
+- **返回**：`data: [ { base, forms: [ {word, count, bold}, … ] } ]`，`meta: { total }`
+  - `data[0]` 是输入的词本身，其后是推导出的词根；`forms` 是该词根在语料中实际出现过的全部词形，按次数降序。
+  - 查无此词返回空数组（v2 会给一个 `case` 为空的候选行）。客户端仍过滤空组，避免空词形串发给检索。
 
 ## 2. 词典 —— `GET {API}/v2/dict`
 
@@ -122,31 +122,35 @@
   - ⚠ 释义在 `note`；`description` 是词典介绍不是词条内容。`note` 里可能夹 `<MdTpl>`
     模板标记，需清掉。
 
-## 3. 检索 —— `GET {API}/v2/search-pali-wbw`
+## 3. 检索 —— `GET {API}/v3/tipitaka-word-paragraphs`
 
-按词形列表检索命中的段落（多词形之间是 OR）。
+按词形列表检索命中的段落（多词形之间是 OR）。取代 v2 `search-pali-wbw`（2026-11-19）。
 
 - **入参**：
   | 参数 | 说明 |
   |---|---|
-  | `key` | 逗号分隔的**词形**列表（不是词根），多个词形之间 OR |
-  | `bold` | `on` 只要黑体命中、`off` 只要非黑体 |
-  | `book` | 限定书，值用 `search-pali-wbw-books` 返回的 `pcdBookId` |
-  | `tags` | 范围限定，`tag1,tag2;tag3`（组间 OR、组内 AND） |
-  | `limit` / `offset` | 分页，`limit=200` 实测正常 |
-- **返回**：`data: { count: 命中段落数, rows: [ { book, paragraph, rank, path, paliTitle, highlight, link, ref } ] }`
-  - `link` 是网页阅读地址；`ref` 是各印本页码 `[{type, page, title}]`（`WP` 的 `page` 就是段落号）；
-  - `path` 是章节路径数组 `[{book, paragraph, title, level}]`；`rank = sum(weight)`；
-  - `highlight` 里命中词包在 `<span class='hl'>`，并保留原文的 `<span class="bld">`（黑体）。
+  | `words` | 逗号分隔的**词形**列表（不是词根），最多 200 个，多个词形之间 OR；空词形 422 |
+  | `bold` | `only` 只要黑体命中、`exclude` 只要非黑体；不给则不限 |
+  | `book_id` | 限定书，逗号分隔，值用第 4 节返回的 `book_id` |
+  | `page` / `per_page` | 分页，`per_page` 上限 100（`search --offset` 必须是 `--limit` 的整数倍） |
+- **返回**：`{ data: [ {id, book, para, score, hits, title, level, path, text, refs} ], meta: {total, …} }`（`v3=True, envelope=True`）
+  - `refs` 是各印本页码 `[{type, volume, page, title}]`，最后一条恒为 `WP`（`page` 就是段落号）；
+  - `path` 是章节路径数组 `[{book, para, title, level}]`；`score = sum(weight)`；
+  - `text` 是整段正文，只有 `<b>`（黑体）与 `<mark>`（命中词）两种标签，其余已转义；
+  - 不带网页链接，CLI 用坐标拼旧版阅读地址（服务端永久 301）；
+  - 没有 `tags` 参数：`search --tags` 先调第 4 节，按书的 tag 筛出 `book_id` 再检索（口径同 v2：组间 OR、组内 AND）；
+  - CLI 的 `--json` 输出沿用旧字段名（`paragraph`、`paliTitle`、`rank`、`ref`、`link`、`highlight`）。
 
-## 4. 出处分布 —— `GET {API}/v2/search-pali-wbw-books`
+## 4. 出处分布 —— `GET {API}/v3/tipitaka-word-paragraphs/aggregate`
 
-统计词形在各部书里的词次分布。
+统计词形在各部书里的分布。取代 v2 `search-pali-wbw-books`。
 
-- **入参**：`key`（词形列表，同检索）、`tags`（可选）。
-- **返回**：`data.rows[] = { pcdBookId, count, book, paragraph, paliTitle, tags: [{name}] }`
-  - ⚠ `count` 数的是**词次**，不是段落数；段落数看 `search-pali-wbw` 的 `count`。
-  - `tags` 含 `mūla` / `aṭṭhakathā` / `ṭīkā`，区分根本、义注、复注。
+- **入参**：`words`、`bold`（同检索），不分页。
+- **返回**：`data[] = { book_id, book, para, title, layer, tags: [...], paragraphs, occurrences }`，
+  `meta = { total, paragraphs, occurrences }`，按段落数降序。
+  - `paragraphs` 是段落数，`occurrences` 是**词次**（v2 只有词次 `count`）；
+  - `layer` 取自书的 tag（`mula` / `atthakatha` / `tika` / `anna`）；`dist --tags` 在 CLI 里按 `tags` 筛；
+  - CLI 的 `--json` 输出沿用旧字段名（`pcdBookId`、`count`=词次、`paliTitle`、`tags[].name`），另加 `paragraphs`。
 
 ## 4b. 多词检索 —— `GET {API}/v3/search`
 
@@ -158,21 +162,22 @@
   |---|---|
   | `q` | 空格分隔的巴利词 |
   | `search_mode` | `definition`（默认）：每个词命中单独黑体 +100、多词黑体 +30，命中的单独黑体字越多越前，正文只作次级排序；`fuzzy`：整句原样 +20、相邻两词原样 +5、拼写相同 +10、同义词 +2，逐项累加 |
-  | `page` / `page_size` | 分页，`page_size` 上限 100 |
-- **返回**：OpenSearch 原始结果 `data.hits = { total: {value, relation}, hits: [ {_score, _source, highlight} ] }`
-  - `_source.related_id` 是 `{book}-{paragraph}`；`_source.title.text.pali` 是段落标题；
-    `_source.bold_single` 是该段的单独黑体字；
-  - `highlight['content.text.pali'][0]` 是命中片段，命中词包在 `<mark>`；
-  - `total.relation=gte` 表示只统计到 10000，实际更多。
+  | `page` / `per_page` | 分页，`per_page` 上限 100；`page × per_page` 超过 10000 → 422 |
+- **返回**（2026-11-19 起为 v3 原生信封，不再是 OpenSearch 原始结果）：
+  `{ data: [hit…], meta: {current_page, per_page, total, total_relation, last_page} }`
+  - 每条 hit：`id`、`related_id`（`{book}-{paragraph}`）、`title`（段落标题）、`content`（正文）、
+    `highlight`（命中片段，命中词包在 `<mark>`，没有则 null）、`bold`（该段的单独黑体字，数组）、`score`、
+    `path`、`category`、`resource_type`、`granularity`、`language`；
+  - `meta.total_relation=gte` 表示只统计到 10000，实际更多；
+  - 插件读 `meta` 要用 `client.call(..., v3=True, envelope=True)`；
+  - 参数非法（未知 `search_mode`、缺 `q`、`per_page` > 100）→ 422；搜索服务不可用 → 503。
   - ⚠ **不带 `ref` / `link` / `path`**：`phrase --ref` 逐条用 `lookup_ref` 补（见第 3 节）。
   - ⚠ 停用词（`na no ca va vā hi pana iva eva`）只参与词序打分，单独不召回。
-  - ⚠ `search_mode=definition` 需要服务端 2026-11 之后的版本；旧版服务端不认识这个值，
-    会静默按旧的模糊检索处理（不报错），排序不是黑体优先。
 
 ### `find`：组合 3 与 4b，不新增接口
 
-`find 词…` 对每个非停用词跑一次 `v2/case` + `v2/search-pali-wbw`（`limit=8`，命中超过 1000 再补一次
-`bold=on`），再跑一次 `v3/search`（`search_mode=fuzzy`，取 30），按名次做 Reciprocal Rank Fusion
+`find 词…` 对每个非停用词跑一次 `v3/pali-word-forms` + `v3/tipitaka-word-paragraphs`（`per_page=8`，命中超过 1000 再补一次
+`bold=only`），再跑一次 `v3/search`（`search_mode=fuzzy`，取 `max(--limit, 30)`，上限 100），按名次做 Reciprocal Rank Fusion
 （每个列表给 `1/(60+名次)` 相加）。排序的前 3 段沿用逐词结果轮流取的顺序，其余按 RRF。
 `v3/search` 失败时只用逐词结果。请求数 ≈ 2×词数 + 1（命中过多的词再 +1）。
 
@@ -207,7 +212,7 @@
 `{book, paragraph, toc, level, length, chapter_len, book_name, cs_para}`，见 §8 的字段说明。
 `toc` 原来走的 `view=book-toc` 已改用 §7b。
 
-## 7b. 章节标题 —— `GET {API}/v3/tipitaka-chapters`
+## 7b. 章节标题 —— `GET {API}/v3/tipitaka-titles`
 
 取代 `v2/search-title-index`（只回标题文字、不带坐标）与 `toc` 原来用的 `v2/palitext?view=book-toc`。
 mint 2026-11 起；旧站点 404，命令提示切 `next`。
@@ -249,7 +254,7 @@ mint 2026-11 起；旧站点 404，命令提示切 `next`。
   - `class`：`chapter` / `subhead` / `bodytext` …；
   - `chapter_len` 章节段数、`chapter_strlen` 章节字符数（取整章前报体量）；
   - `path` 是面包屑，⚠ 这个端点返回的是 **JSON 字符串**（search 返回的是数组）；
-  - `pcd_book_id` 等于 `search-pali-wbw` 的 `book` 参数值。
+  - `pcd_book_id` 等于 `tipitaka-word-paragraphs` 的 `book_id` 参数值。
 
 ## 10. 整章内容（JSON）—— `GET {API}/v2/chapter-content/{book}-{para}`
 

@@ -70,6 +70,7 @@ def strip_markup(raw, hl='【】', bold='**'):
         return ''
     text = raw
     text = re.sub(r"<span class='hl'>(.*?)</span>", hl[0] + r'\1' + hl[1], text, flags=re.S)
+    text = re.sub(r'<mark>(.*?)</mark>', hl[0] + r'\1' + hl[1], text, flags=re.S)
     text = re.sub(r'<span class="bld">(.*?)</span>', bold + r'\1' + bold, text, flags=re.S)
     text = re.sub(r'<(strong|b)>(.*?)</\1>', bold + r'\2' + bold, text, flags=re.S)
     # <code>M1.1</code> 是版本页码（M=缅甸版 V=VRI P=PTS T=泰版），标的是页在正文里
@@ -120,14 +121,15 @@ def emit(args, payload, render):
 
 
 def fetch_forms(client, word):
-    """展开词形。**0 个词形的候选等同于没找到**——服务端对查无此词会返回一个
-    case 为空的行，若把它当成命中，后续 search 会拿到空 key 而返回整个语料库。"""
+    """展开词形（GET /v3/pali-word-forms/{word}）：[{base, forms: [{word, count, bold}]}]。
+
+    第一组是输入的词本身，其后是推导出的词根；服务端只列有词形出现过的组，组内按次数降序。
+    仍然过滤一遍空组：空的词形串发给 search 会被当成「不限」，返回整个语料库。"""
     try:
-        data = client.call('GET', f'v2/case/{word}', timeout=READ_TIMEOUT)
+        rows = client.call('GET', f'v3/pali-word-forms/{word}', timeout=READ_TIMEOUT, v3=True)
     except ApiError as exc:
         raise explain_api_error(exc, f'展开词形 {word}')
-    rows = (data or {}).get('rows') or []
-    return [r for r in rows if r.get('case')]
+    return [r for r in (rows or []) if r.get('forms')]
 
 
 def cmd_forms(args):
@@ -141,11 +143,11 @@ def cmd_forms(args):
 
     def render():
         for idx, row in enumerate(rows[: args.limit], 1):
-            forms = row.get('case') or []
+            forms = row.get('forms') or []
             total = sum(int(f.get('count') or 0) for f in forms)
             bold = sum(int(f.get('bold') or 0) for f in forms)
             mark = '  ← 可能性最高' if idx == 1 else ''
-            print(f'[{idx}] {row.get("word")}  {len(forms)} 形 / 共 {total} 次（黑体 {bold}）{mark}')
+            print(f'[{idx}] {row.get("base")}  {len(forms)} 形 / 共 {total} 次（黑体 {bold}）{mark}')
             for f in sorted(forms, key=lambda x: -int(x.get('count') or 0)):
                 print(f'      {f.get("word"):<20} {f.get("count"):>5} 次   黑体 {f.get("bold")}')
         print()
@@ -160,7 +162,7 @@ def cmd_forms(args):
 
 def forms_arg(row):
     """把一个候选的全部词形拼成 search 要的逗号串。"""
-    return ','.join(f.get('word') for f in (row.get('case') or []) if f.get('word'))
+    return ','.join(f.get('word') for f in (row.get('forms') or []) if f.get('word'))
 
 
 # ---------------------------------------------------------------------------
@@ -224,19 +226,20 @@ def resolve_key(client, args):
 def cmd_search(args):
     client = make_client(args)
     key = resolve_key(client, args)
-    query = {'key': key, 'limit': args.limit, 'offset': args.offset}
-    if args.bold:
-        query['bold'] = 'on'
-    if args.book:
-        query['book'] = args.book
+    per_page = min(args.limit, WORD_PAGE_MAX)
+    if args.offset % per_page:
+        raise WpError(f'--offset 要是 --limit（{per_page}）的整数倍：服务端按页取，不支持任意偏移。')
+    book = args.book
     if args.tags:
-        query['tags'] = args.tags
-    try:
-        data = client.call('GET', 'v2/search-pali-wbw', query=query, timeout=READ_TIMEOUT)
-    except ApiError as exc:
-        raise explain_api_error(exc, '检索')
-    rows = (data or {}).get('rows') or []
-    total = (data or {}).get('count', 0)
+        ids = books_matching_tags(word_books(client, key, args.bold), args.tags)
+        if args.book:
+            ids = [i for i in ids if str(i) in str(args.book).split(',')]
+        book = ','.join(str(i) for i in ids)
+    if args.tags and not book:
+        rows, total = [], 0   # 没有一本书符合 --tags；不能发空的 book_id，那等于不限
+    else:
+        rows, total = word_paragraphs(client, key, bold=args.bold, book=book, per_page=per_page,
+                                      page=args.offset // per_page + 1)
 
     def render():
         scope = []
@@ -266,10 +269,75 @@ def cmd_search(args):
 
 
 # ---------------------------------------------------------------------------
+# 逐词检索（v3 /tipitaka-word-paragraphs，取代 v2 search-pali-wbw）
+# ---------------------------------------------------------------------------
+
+WORD_PAGE_MAX = 100  # 服务端 per_page 上限
+
+
+def site_root(client):
+    """站点根地址：API 地址去掉末尾的 /api。"""
+    return re.sub(r'/api/?$', '', client.api_url.rstrip('/'))
+
+
+def word_row(client, r):
+    """把一条 v3 命中压成 CLI 一直以来输出的形状（book / paragraph / paliTitle / path / ref / link /
+    highlight / rank）——上层 skill 按这些字段名取值，CLI 是两层之间的契约，接口换了它不变。"""
+    path = [{'book': p.get('book'), 'paragraph': p.get('para'), 'title': p.get('title'), 'level': p.get('level')}
+            for p in (r.get('path') or [])]
+    book, para = r.get('book'), r.get('para')
+    # 链接：标题段读它自己，正文段读所在章节并定位到本段（旧版地址，服务端永久 301 到新版）
+    if (r.get('level') or 100) < 100 or not path:
+        link = f'{site_root(client)}/library/tipitaka/{book}-{para}/read'
+    else:
+        link = f'{site_root(client)}/library/tipitaka/{path[-1]["book"]}-{path[-1]["paragraph"]}/read#{para}'
+    return {'book': book, 'paragraph': para, 'rank': r.get('score'), 'paliTitle': r.get('title'),
+            'path': path, 'ref': r.get('refs') or [], 'link': link, 'highlight': r.get('text') or ''}
+
+
+def word_paragraphs(client, key, bold=False, book=None, per_page=20, page=1, context='检索'):
+    """GET /v3/tipitaka-word-paragraphs。返回 (CLI 形状的行, 命中段落总数)。"""
+    query = {'words': key, 'per_page': min(per_page, WORD_PAGE_MAX), 'page': page}
+    if bold:
+        query['bold'] = 'only'
+    if book:
+        query['book_id'] = book
+    try:
+        res = client.call('GET', 'v3/tipitaka-word-paragraphs', query=query, timeout=READ_TIMEOUT,
+                          v3=True, envelope=True) or {}
+    except ApiError as exc:
+        raise explain_api_error(exc, context)
+    rows = [word_row(client, r) for r in res.get('data') or []]
+    return rows, int((res.get('meta') or {}).get('total') or 0)
+
+
+def word_books(client, key, bold=False, context='统计出处分布'):
+    """GET /v3/tipitaka-word-paragraphs/aggregate：每本书命中的段落数与词次。"""
+    query = {'words': key}
+    if bold:
+        query['bold'] = 'only'
+    try:
+        return client.call('GET', 'v3/tipitaka-word-paragraphs/aggregate', query=query,
+                           timeout=READ_TIMEOUT, v3=True) or []
+    except ApiError as exc:
+        raise explain_api_error(exc, context)
+
+
+def books_matching_tags(books, tags):
+    """`--tags` 的口径（同 v2）：分号分组、组内逗号「全部命中」、组间「任一」，返回命中书的 book_id。
+
+    v3 不收 tags，改为在 aggregate 的结果里按每本书的 tag 筛，再用 book_id 过滤。"""
+    groups = [{t.strip() for t in g.split(',') if t.strip()} for g in tags.split(';')]
+    groups = [g for g in groups if g]
+    return [b.get('book_id') for b in books
+            if any(g <= set(b.get('tags') or []) for g in groups)]
+
+
+# ---------------------------------------------------------------------------
 # phrase —— 多词检索（v3 /search，OpenSearch）
 # ---------------------------------------------------------------------------
 
-PHRASE_MAX_PAGE_SIZE = 100  # 服务端 page_size 上限
+PHRASE_MAX_PAGE_SIZE = 100  # 服务端 per_page 上限
 
 
 def mark_to_hl(raw, hl='【】'):
@@ -282,24 +350,18 @@ def mark_to_hl(raw, hl='【】'):
 
 
 def phrase_row(hit):
-    """把一条 OpenSearch 命中压成与 search 结果相近的形状。"""
-    src = hit.get('_source') or {}
-    book, _, para = str(src.get('related_id') or '').partition('-')
-    title = ((src.get('title') or {}).get('text') or {}).get('pali')
-    highlight = (hit.get('highlight') or {}).get('content.text.pali') or []
-    content = ((src.get('content') or {}).get('text') or {}).get('pali') or ''
-    bold_single = src.get('bold_single') or ''
-    if isinstance(bold_single, list):
-        bold_single = ' '.join(bold_single)
+    """把一条 v3 检索命中（`/v3/search` 的 data[]）压成与 search 结果相近的形状。"""
+    book, _, para = str(hit.get('related_id') or '').partition('-')
+    highlight = hit.get('highlight')
     return {
         'book': int(book) if book.isdigit() else None,
         'paragraph': int(para) if para.isdigit() else None,
-        'score': hit.get('_score'),
-        'paliTitle': title,
-        'bold': bold_single.split(),
-        'highlight': highlight[0] if highlight else None,
+        'score': hit.get('score') or 0.0,
+        'paliTitle': hit.get('title') or None,
+        'bold': list(hit.get('bold') or []),
+        'highlight': highlight or None,
         # 有高亮片段就不带整段原文，免得 --json 把上下文撑爆；要全文用 wikipali get
-        'text': None if highlight else content,
+        'text': None if highlight else (hit.get('content') or ''),
     }
 
 
@@ -315,19 +377,18 @@ def cmd_phrase(args):
         'search_mode': args.mode,
         'resource_type': 'tipitaka',
         'granularity': 'paragraph',
-        'page_size': args.limit,
+        'per_page': args.limit,
         'page': args.page,
     }
     try:
-        data = client.call('GET', 'v3/search', query=query, timeout=READ_TIMEOUT, v3=True) or {}
+        page = client.call('GET', 'v3/search', query=query, timeout=READ_TIMEOUT, v3=True, envelope=True) or {}
     except ApiError as exc:
         raise explain_api_error(exc, '多词检索')
-    hits = (data.get('hits') or {})
-    total_info = hits.get('total') or {}
-    total = total_info.get('value', 0)
-    # 服务端默认只精确统计到 10000，relation=gte 表示「至少这么多」
-    total_label = f'{total}+' if total_info.get('relation') == 'gte' else str(total)
-    rows = [phrase_row(h) for h in hits.get('hits') or []]
+    meta = page.get('meta') or {}
+    total = meta.get('total', 0)
+    # 服务端只精确统计到 10000，total_relation=gte 表示「至少这么多」
+    total_label = f'{total}+' if meta.get('total_relation') == 'gte' else str(total)
+    rows = [phrase_row(h) for h in page.get('data') or []]
 
     if args.ref:
         for r in rows:
@@ -399,7 +460,7 @@ def round_robin(lists):
 
 
 def cmd_find(args):
-    """逐词（search-pali-wbw，每词全部词形）+ 合并查询（v3 fuzzy），RRF 合并。
+    """逐词（v3 tipitaka-word-paragraphs，每词全部词形）+ 合并查询（v3 fuzzy），RRF 合并。
 
     逐词检索擅长「这个词最重要的段落」，合并查询擅长「几个概念同时出现的段落」，
     两者各有对方漏掉的题。排序：前 FIND_HEAD 段沿用逐词检索各词轮流取的顺序（各词的
@@ -433,21 +494,17 @@ def cmd_find(args):
             unresolved.append(word)
             continue
         passes = [False]
-        try:
-            data = client.call('GET', 'v2/search-pali-wbw', query={'key': key, 'limit': args.per}, timeout=READ_TIMEOUT)
-        except ApiError as exc:
-            raise explain_api_error(exc, f'逐词检索 {word}')
-        if int((data or {}).get('count') or 0) > FIND_TOO_MANY:
+        rows, total = word_paragraphs(client, key, per_page=args.per, context=f'逐词检索 {word}')
+        if total > FIND_TOO_MANY:
             passes.append(True)
         for bold in passes:
             if bold:
                 try:
-                    data = client.call('GET', 'v2/search-pali-wbw',
-                                       query={'key': key, 'limit': args.per, 'bold': 'on'}, timeout=READ_TIMEOUT)
-                except ApiError:
+                    rows, _ = word_paragraphs(client, key, bold=True, per_page=args.per)
+                except WpError:
                     continue
             coords = []
-            for r in (data or {}).get('rows') or []:
+            for r in rows:
                 coord = fmt_coord(r.get('book'), r.get('paragraph'))
                 coords.append(coord)
                 info.setdefault(coord, {'book': r.get('book'), 'paragraph': r.get('paragraph'),
@@ -459,14 +516,15 @@ def cmd_find(args):
     phrase_ok = True
     for mode, label in (('fuzzy', '合并'),):
         query = {'q': ' '.join(words), 'search_mode': mode, 'resource_type': 'tipitaka',
-                 'granularity': 'paragraph', 'page_size': max(args.limit, FIND_PHRASE_DEPTH)}
+                 'granularity': 'paragraph',
+                 'per_page': min(max(args.limit, FIND_PHRASE_DEPTH), PHRASE_MAX_PAGE_SIZE)}
         try:
-            data = client.call('GET', 'v3/search', query=query, timeout=READ_TIMEOUT, v3=True) or {}
+            hits = client.call('GET', 'v3/search', query=query, timeout=READ_TIMEOUT, v3=True) or []
         except ApiError:
             phrase_ok = False
             break
         coords = []
-        for hit in (data.get('hits') or {}).get('hits') or []:
+        for hit in hits:
             r = phrase_row(hit)
             if r['book'] is None:
                 continue
@@ -525,26 +583,26 @@ def cmd_find(args):
 def cmd_dist(args):
     client = make_client(args)
     key = resolve_key(client, args)
-    query = {'key': key}
+    books = word_books(client, key)
     if args.tags:
-        query['tags'] = args.tags
-    try:
-        data = client.call('GET', 'v2/search-pali-wbw-books', query=query, timeout=READ_TIMEOUT)
-    except ApiError as exc:
-        raise explain_api_error(exc, '统计出处分布')
-    rows = (data or {}).get('rows') or []
+        keep = set(books_matching_tags(books, args.tags))
+        books = [b for b in books if b.get('book_id') in keep]
+    # 输出沿用 CLI 一直以来的字段（pcdBookId / count=词次 / paliTitle / tags[].name），另加段落数
+    rows = [{'pcdBookId': b.get('book_id'), 'count': b.get('occurrences'), 'paragraphs': b.get('paragraphs'),
+             'book': b.get('book'), 'paragraph': b.get('para'), 'paliTitle': b.get('title'),
+             'tags': [{'name': t} for t in (b.get('tags') or [])]} for b in books]
 
     def render():
         total = sum(int(r.get('count') or 0) for r in rows)
-        print(f'{len(rows)} 部书，共 {total} 次词命中\n'
-              '（注意：这里数的是词次，不是段落数。段落数用 search 的 count，'
-              '两者不相等——同一段里出现多次只算一段。）\n')
+        paras = sum(int(r.get('paragraphs') or 0) for r in rows)
+        print(f'{len(rows)} 部书，共 {total} 次词命中、{paras} 段\n'
+              '（词次与段落数不相等——同一段里出现多次只算一段。）\n')
         by_layer = {}
         for r in sorted(rows, key=lambda x: -int(x.get('count') or 0))[: args.limit]:
             layer = text_layer(r.get('tags'))
             by_layer[layer] = by_layer.get(layer, 0) + int(r.get('count') or 0)
             tags = ' '.join(t.get('name') for t in (r.get('tags') or []) if t.get('name'))
-            print(f'{r.get("count"):>5}  {str(r.get("paliTitle"))[:38]:<40} '
+            print(f'{r.get("count"):>5} 次 {r.get("paragraphs"):>5} 段  {str(r.get("paliTitle"))[:38]:<40} '
                   f'--book {r.get("pcdBookId")}   [{tags}]')
         print('\n按文献层次：', end='')
         for layer in ('mūla', 'aṭṭhakathā', 'ṭīkā', ''):
@@ -620,22 +678,22 @@ def cmd_get(args):
 # ---------------------------------------------------------------------------
 
 
-CHAPTERS_PAGE = 1000      # /v3/tipitaka-chapters 每页上限
+CHAPTERS_PAGE = 1000      # /v3/tipitaka-titles 每页上限
 LAYER_LABEL = {'mula': '根本', 'atthakatha': '义注', 'tika': '复注', 'anna': '其他'}
 
 
 def fetch_chapters(client, query, what, limit=None):
-    """GET /v3/tipitaka-chapters，翻页取齐（或取到 limit 条）。返回 (rows, total)。"""
+    """GET /v3/tipitaka-titles，翻页取齐（或取到 limit 条）。返回 (rows, total)。"""
     rows, page, total = [], 1, 0
     while True:
         per_page = CHAPTERS_PAGE if limit is None else min(CHAPTERS_PAGE, limit - len(rows))
         try:
-            body = client.call('GET', 'v3/tipitaka-chapters', v3=True, envelope=True, timeout=READ_TIMEOUT,
+            body = client.call('GET', 'v3/tipitaka-titles', v3=True, envelope=True, timeout=READ_TIMEOUT,
                                query={**query, 'page': page, 'per_page': per_page}) or {}
         except ApiError as exc:
             if exc.status == 404:
                 raise WpError(
-                    f'站点 {client.api_url} 还没有章节标题接口（v3/tipitaka-chapters，mint 2026-11 起）。\n'
+                    f'站点 {client.api_url} 还没有章节标题接口（v3/tipitaka-titles，mint 2026-11 起）。\n'
                     '切到最新版再试：wikipali endpoint next，或本次调用加 --api next。'
                 )
             raise explain_api_error(exc, what)
@@ -1270,9 +1328,9 @@ def cmd_count(args):
             out.append({'word': word, 'found': False})
             continue
         top = rows[0]
-        forms = top.get('case') or []
+        forms = top.get('forms') or []
         out.append({
-            'word': word, 'found': True, 'lemma': top.get('word'),
+            'word': word, 'found': True, 'lemma': top.get('base'),
             'forms': len(forms),
             'total': sum(int(f.get('count') or 0) for f in forms),
             'bold': sum(int(f.get('bold') or 0) for f in forms),
@@ -1594,14 +1652,16 @@ def lookup_ref(client, book, para, tries=3):
     pcd = meta.get('pcd_book_id')
     words = sorted(set(PALI_WORD.findall((meta.get('text') or '').lower())), key=len, reverse=True)
     for word in words[:tries]:
-        query = {'key': word, 'limit': 200}
-        if pcd:
-            query['book'] = pcd
-        try:
-            data = client.call('GET', 'v2/search-pali-wbw', query=query, timeout=READ_TIMEOUT)
-        except ApiError:
-            continue
-        for r in (data or {}).get('rows') or []:
+        rows = []
+        for page in (1, 2):   # 前 200 条（服务端每页最多 100）
+            try:
+                got, total = word_paragraphs(client, word, book=pcd, per_page=WORD_PAGE_MAX, page=page)
+            except WpError:
+                break
+            rows += got
+            if page * WORD_PAGE_MAX >= total:
+                break
+        for r in rows:
             if int(r.get('book', -1)) == book and int(r.get('paragraph', -1)) == para:
                 return {'book': book, 'paragraph': para, 'ref': r.get('ref') or [],
                         'link': r.get('link'), 'path': r.get('path') or meta.get('path'),
