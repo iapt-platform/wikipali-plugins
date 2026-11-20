@@ -314,7 +314,8 @@ mint 2026-11 起；旧站点 404，命令提示切 `next`。
 
 - **入参**：路径 `{kind}` = `community`（社区译名，`terms` 默认）/ `grammar`（语法术语），对应命令的 `--view`；
   查询 `lang`（如 `zh-Hans`，缺省按 `Accept-Language`）。
-- **返回**：`{ data: [ { id, word, tag, meaning, other_meaning } ], meta: { kind, lang, total } }`，按词排序、整表不分页。
+- **返回**：`{ data: [ { id?, word, tag, meaning, other_meaning } ], meta: { kind, lang, total } }`，按词排序、整表不分页。
+  - `id`（术语 guid）只有 `grammar` 表给，`community` 表不给（2026-11-20 起，省流量）。
   - `meta.lang` 是实际用到的语言：该语言没有这张表时回退到 `en`，命令会提示。
   - ⚠ 不支持按词查询，只能拉全表（zh-Hans 上万条），客户端缓存后本地过滤。
   - 与批注的 `glossary` 类型（外挂术语）不是一回事。

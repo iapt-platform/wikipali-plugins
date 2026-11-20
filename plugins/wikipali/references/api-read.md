@@ -199,8 +199,8 @@ data.rows[] = { book, paragraph, toc, level, length, chapter_len, book_name, cs_
 ## 10. 术语表 —— `GET /v3/glossaries/community?lang=zh-Hans`
 
 权威译名对照（取代 v2 `term-vocabulary`）。`community` 是社区译名，`grammar` 是语法术语。
-返回 `{ data: [...], meta: { kind, lang, total } }`；行字段：`id`（术语 guid）/ `word`（巴利词形）/ `tag` /
-`meaning` / `other_meaning`。该语言没有这张表时回退到英文，`meta.lang` 是实际用到的语言。
+返回 `{ data: [...], meta: { kind, lang, total } }`；行字段：`word`（巴利词形）/ `tag` /
+`meaning` / `other_meaning`；`id`（术语 guid）只有 `grammar` 表给，`community` 表不给。该语言没有这张表时回退到英文，`meta.lang` 是实际用到的语言。
 
 ⚠ **不支持按词查询**，只能拉全表（zh-Hans 上万条），客户端要缓存后本地过滤。
 
