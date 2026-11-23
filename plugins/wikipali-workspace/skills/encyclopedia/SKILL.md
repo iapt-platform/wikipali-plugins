@@ -60,9 +60,10 @@ description: "Use this skill to write a Chinese Wikipedia-style encyclopedia ent
 5. **取全句原文** — 搜索结果里 **没有** 完整正文，`highlight` 是被 `--width`
    截断的 HTML 片段，**禁止直接引用**。把工作集的坐标批量喂给：
    ```
-   wikipali get <book>:<para> <book>:<para> … --json --limit 200
+   wikipali get <book>:<para> <book>:<para> … --json
    ```
-   一次可给多个坐标。取 `content` 字段，剥掉 `<span>` 标签后才是可引用的巴利原文。
+   一次可给多个坐标，**总会取全**（按服务端总数自动翻页，`--page-size` 只影响请求次数，不必给）。
+   取 `content` 字段，剥掉 `<span>` 标签后才是可引用的巴利原文。
 
    原文里混着两类**非正文标记**，引用时静默剔除、不加省略号：
    - 页码锚点，形如 `M0.402` / `V1.244` / `P0.24` / `T5.91`（紧贴词尾，易被误读进引文）
@@ -162,18 +163,18 @@ description: "Use this skill to write a Chinese Wikipedia-style encyclopedia ent
 ## 词条结构
 
 ```
-{{quality|pending}}
+{{ai}}
 <紧接正文，中间不留空行>
 
 <简短定义段落，无标题>
 
-## 目录
+{{toc}}
 
 ## 词源与定义
 
 ## <按文献实际内容分出的主题小节，可多个>
 
-## 参考文献
+{{ref}}
 
 ## 相关条目
 

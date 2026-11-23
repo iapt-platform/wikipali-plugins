@@ -3,6 +3,14 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [wikipali-workspace 0.3.0] - 2026-11-23
+
+### 变更
+- **encyclopedia：词条模板改用站内模板**——开头 `{{quality|pending}}` 改为 `{{ai}}`，`## 目录` 改为 `{{toc}}`，
+  `## 参考文献` 改为 `{{ref}}`。
+- encyclopedia 取全句原文的示例去掉 `--limit 200`：底层 `get` 现在总会翻页取全（需 wikipali ≥ 0.29.0）。
+- 翻译风格默认文案微调（去掉「易读」等措辞）。
+
 ## [0.29.0] - 2026-11-23
 
 ### 变更

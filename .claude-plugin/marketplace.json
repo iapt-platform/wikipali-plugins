@@ -31,7 +31,7 @@
     {
       "name": "wikipali-workspace",
       "description": "WikiPali 的应用层：翻译（translate）、审稿（review）、修订（revise）、三层统稿（harmonize）、外挂注释（note）、外挂术语（glossary）、讨论（discuss）、百科词条（encyclopedia）、注释书对应（commentary-align）、写论文（paper）、翻译风格设置（style）。依赖底层插件 wikipali，装它会自动装上底层。译文风格写在项目或个人的 .wikipali/styles/translation.md 里，没有就用插件默认。",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "visuddhinanda"
       },
