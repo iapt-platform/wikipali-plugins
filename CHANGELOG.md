@@ -3,6 +3,25 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [0.29.0] - 2026-11-23
+
+### 变更
+- **检索改走 v3**，CLI 输出字段名不变：`forms` / `count` / `search --lemma` / `find` 的词形展开改走
+  `GET /v3/pali-word-forms/{word}`；`search` / `find` / `dist` / `ref` 改走 `GET /v3/tipitaka-word-paragraphs`
+  （及 `/aggregate`），`--tags` 先经 `/aggregate` 按书的 tag 筛 book_id，出处链接按坐标自己拼；`phrase` 与
+  `find` 的多词一路适配 `/v3/search` 新响应 `{data, meta}`（`page_size` → `per_page`，≤100）；`locate` / `toc`
+  改走 `/v3/tipitaka-titles`。
+- **`get` 的 `--limit` 改名 `--page-size`**（默认 200）：它只是每页行数，不限制总量。旧名留作隐藏别名，
+  用了会提示改名。
+- API 调用清单补上 `v2/sentence` 的 `offset` 参数、`{count, rows}` 返回与翻页说明；`/v3/glossaries/community`
+  不再返回 `id`（`terms` 本就不读）；research skill 同步。
+
+### 修复
+- **按段取句子不再静默截断**：`get` / `discuss` / `notes` / `page` 统一经 `fetch_sentences` 按服务端 `count`
+  用 `offset` 翻页取全。以前只发一次请求（`get` 200 行、`page` 500、`notes` 1000、`discuss` 200），超出部分
+  被丢掉、退出码仍是 0；长段落后半截的句子 `discuss` 找不到。中途某页失败或取到的行数少于 `count` 时整次报错，
+  不给半截。
+
 ## [0.28.0] - 2026-11-18
 
 ### 新增

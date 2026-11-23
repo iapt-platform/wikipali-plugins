@@ -127,7 +127,11 @@ def build_parser():
     p.add_argument('coords', nargs='+', help='book:paragraph，可给多个')
     p.add_argument('--channel', action='append',
                    help='channel uid，可重复；缺省取巴利原文')
-    p.add_argument('--limit', type=int, default=200, help='每次请求最多取几句')
+    p.add_argument('--page-size', type=int, default=cmd_read.SENTENCE_PAGE_SIZE, dest='page_size',
+                   help=f'每页行数（行 = 句 × channel），默认 {cmd_read.SENTENCE_PAGE_SIZE}。'
+                        '只影响请求次数、不限制总量：总会按服务端 count 翻页取全')
+    # 旧名 --limit 读起来像「最多取几条」，实际从来只是每页大小——留作隐藏别名，用了就提示改名
+    p.add_argument('--limit', type=int, dest='legacy_limit', help=argparse.SUPPRESS)
     p.add_argument('--ref', action='store_true', help='附上每段的印本页码与链接（每段多 2 次请求）')
     p.set_defaults(func=cmd_read.cmd_get)
 

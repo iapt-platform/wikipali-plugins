@@ -56,6 +56,8 @@ MACHINE_HINTS = ('ai', 'gpt', 'chatgpt', 'claude', 'deepseek', 'gemini', 'qwen',
 
 # 服务端的 sentence?view=paragraph 不带 channels 会 500，所以永远要给一个默认值。
 READ_TIMEOUT = 60
+# v2/sentence 每次请求取几行（行 = 句 × channel）。只影响请求次数，不限制总量——见 fetch_sentences。
+SENTENCE_PAGE_SIZE = 200
 
 
 def strip_markup(raw, hl='【】', bold='**'):
@@ -619,21 +621,57 @@ def cmd_dist(args):
 # ---------------------------------------------------------------------------
 
 
+def fetch_sentences(client, book, paras, channels, page_size=SENTENCE_PAGE_SIZE):
+    """取一本书若干段在指定 channel 下的**全部**句子（`GET v2/sentence?view=paragraph`）。
+
+    `page_size` 是每页行数（行 = 句 × channel），只决定发几次请求、不限制总量：
+    按服务端返回的 `count` 用 `offset` 翻页，有多少返回多少，行多就多等几次请求。
+    以前各处只发一次、丢掉 count（`get` 默认 200 行、`page` 500、`notes` 1000），
+    超出的部分被静默截掉、退出码仍是 0——调用方读到一部分却当成全部。
+    中途某页失败、或取到的行数少于 count，就整次报错，不给半截。
+    所有按段取句子的地方都走这里。
+
+    `channels` 给逗号分隔的字符串或 uid 列表都行。
+    """
+    if not isinstance(channels, str):
+        channels = ','.join(channels)
+    paras = paras if isinstance(paras, (list, tuple)) else [paras]
+    # 服务端不带 channels 会 500，所以 channels 永远要给。
+    # 服务端的参数名叫 limit，语义是每页行数——别和「总共取几条」混了。
+    base = {'view': 'paragraph', 'book': book, 'para': ','.join(str(p) for p in paras),
+            'channels': channels, 'limit': max(1, int(page_size))}
+    rows, total = [], None
+    while True:
+        try:
+            data = client.call('GET', 'v2/sentence', query={**base, 'offset': len(rows)},
+                               timeout=READ_TIMEOUT) or {}
+        except ApiError as exc:
+            raise explain_api_error(exc, f'取 {book} 的段落（已取 {len(rows)} 行）')
+        page = data.get('rows') or []
+        rows.extend(page)
+        if data.get('count') is not None:
+            total = int(data['count'])
+        if total is None or not page or len(rows) >= total:
+            break
+        note(f'  {book}：已取 {len(rows)}/{total} 行')
+    if total is not None and len(rows) < total:
+        raise WpError(f'取 {book} 的段落：服务端报 {total} 行，只取到 {len(rows)} 行——'
+                      '不要把这当成全部，稍后重试')
+    return rows
+
+
 def cmd_get(args):
     client = make_client(args)
     grouped = parse_coords(args.coords)
     channels = ','.join(args.channel) if args.channel else pali_channel(client)
 
+    if getattr(args, 'legacy_limit', None) is not None:
+        note('⚠ get 的 --limit 已改名 --page-size（它只是每页行数，不限制总量；总会翻页取全）')
+        args.page_size = args.legacy_limit
+
     collected = []
     for book, paras in grouped.items():
-        # 服务端不带 channels 会 500，所以 channels 永远要给
-        query = {'view': 'paragraph', 'book': book, 'para': ','.join(str(p) for p in paras),
-                 'channels': channels, 'limit': args.limit}
-        try:
-            data = client.call('GET', 'v2/sentence', query=query, timeout=READ_TIMEOUT)
-        except ApiError as exc:
-            raise explain_api_error(exc, f'取 {book} 的段落')
-        collected.extend((data or {}).get('rows') or [])
+        collected.extend(fetch_sentences(client, book, paras, channels, args.page_size))
 
     def render():
         if not collected:

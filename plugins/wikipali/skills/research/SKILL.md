@@ -281,7 +281,7 @@ wikipali search --lemma parivāsa --tags vinaya --limit 200
 ### 5. 取原文
 
 ```bash
-wikipali get 216:35 216:36 216:41       # 按坐标精确取，缺省是巴利原文
+wikipali get 216:35 216:36 216:41       # 按坐标精确取，缺省是巴利原文；多少都取全（自动翻页）
 wikipali get 216:35 --ref               # 同时给出各印本页码与网页链接
 wikipali ref 216:35 141:63              # 只要出处：WikiPali 缩写 + 缅/PTS/VRI/泰页码 + 链接
 wikipali toc 216:512                    # 看这本书的章节结构

@@ -189,11 +189,20 @@
 按坐标取原文/译文句子。
 
 - **入参**：
-  - `view=paragraph`：`book`、`para`（逗号分隔多个段号）、`channels`（逗号分隔多个 uid）、`limit`。
+  - `view=paragraph`：`book`、`para`（逗号分隔多个段号）、`channels`（逗号分隔多个 uid）、`limit`、`offset`。
+    - 服务端的 `limit` 是**每页行数**（行 = 句 × channel 数），不是总量；`offset` 从 0 起；
+      返回按段、词位排序，翻页不重叠。
+    - CLI 侧一律经 `cmd_read.fetch_sentences` 按返回的 `count` 翻页取全（`get` / `discuss` /
+      `notes` / `page` 都走它）。`get` 的 `--page-size`（默认 200）只影响请求次数、不限制总量；
+      旧名 `--limit` 留作隐藏别名，用了会提示改名。
+    - 中途某页失败、或取到的行数少于 `count`，就整次报错，不给半截。
+    - 以前只发一次、丢掉 `count`（`get` 默认 200、`page` 500、`notes` 1000、`discuss` 200），
+      超出的部分被静默截掉、退出码仍是 0。
   - `view=chapter`：`book`、`para`（章节段号）、`channels`。
   - ⚠ **`channels` 必填**，不带会 500。巴利原文 channel uid 默认
     `00b577c0-13b9-11ee-a05a-b7307efd9ee6`（`_System_Pali_VRI_`）。
-- **返回**：每行是一句：`{id, content, content_type, html, book, paragraph, word_start, word_end, editor, channel, updated_at}`。
+- **返回**：`{count, rows}`。`count` 是总行数，`rows` 是这一页（至多 `limit` 行）。
+  每行是一句：`{id, content, content_type, html, book, paragraph, word_start, word_end, editor, channel, updated_at}`。
   - ⚠ 字段名是 `book`（不是 `book_id`）；按 `word_start` 排序拼接才是整段。
   - `id` 即 `sentences.uid`（挂批注用）。
 

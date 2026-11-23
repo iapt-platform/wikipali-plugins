@@ -17,7 +17,7 @@ import os
 import re
 
 from client import make_client
-from cmd_read import pali_channel, row_text
+from cmd_read import fetch_sentences, pali_channel, row_text
 from errors import ApiError, WpError, explain_api_error
 
 REF_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'references')
@@ -88,14 +88,9 @@ def fetch_meta(client, book, para):
 
 
 def fetch_text(client, book, start, end):
+    # 走 fetch_sentences 翻页取全：以前写死 limit 500，一页印本对应的段多了就静默缺尾
     paras = list(range(start, (end if end and end >= start else start) + 1))
-    query = {'view': 'paragraph', 'book': book, 'para': ','.join(str(p) for p in paras),
-             'channels': pali_channel(client), 'limit': 500}
-    try:
-        data = client.call('GET', 'v2/sentence', query=query, timeout=60) or {}
-    except ApiError as exc:
-        raise explain_api_error(exc, f'取 {book}:{start}–{paras[-1]} 的原文')
-    return data.get('rows') or []
+    return fetch_sentences(client, book, paras, pali_channel(client))
 
 
 def work_of(book, para, works):

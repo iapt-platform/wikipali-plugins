@@ -19,7 +19,7 @@ import time
 
 from anchors import anchor, check_glossary
 from client import TOKEN_REFRESH_MARGIN, WRITE_TIMEOUT, make_client, note, token_expiry
-from cmd_read import READ_TIMEOUT, pali_channel, row_text
+from cmd_read import READ_TIMEOUT, fetch_sentences, pali_channel, row_text
 from cmd_write import confirm, iso_now, pick_channel, refresh_model_token
 from coords import fmt_coord, parse_coord
 from errors import ApiError, WpError, explain_api_error
@@ -213,14 +213,8 @@ def resolve_sentence(args, client):
 
     book, para = parse_coord(args.coord)
     channel_uid, channel_name = resolve_channel(client, args.channel)
-    try:
-        data = client.call('GET', 'v2/sentence',
-                           query={'view': 'paragraph', 'book': book, 'para': para,
-                                  'channels': channel_uid, 'limit': 200},
-                           timeout=READ_TIMEOUT)
-    except ApiError as exc:
-        raise explain_api_error(exc, f'取 {args.coord} 的句子')
-    rows = (data or {}).get('rows') or []
+    # 走 fetch_sentences 翻页取全：以前写死 limit 200，长段的后半截句子会找不到
+    rows = fetch_sentences(client, book, [para], channel_uid)
     if not rows:
         raise WpError(
             f'{fmt_coord(book, para)} 在该 channel 下没有句子，无法批注。\n'
