@@ -29,7 +29,7 @@
 
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
-| 词形展开 | ✅ | `forms` → `GET /v2/case/{词}` |
+| 词形展开 | ✅ | `forms` → `GET /v3/pali-word-forms/{词}` |
 | 词典释义与形态分析 | ✅ | `word` → `GET /v2/dict?word=&lang=` |
 | 词频合计 | ✅ | `count` → 同 `case` |
 
@@ -37,12 +37,12 @@
 
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
-| 术语表（社区总表） | ✅ | `terms` → `GET /v2/term-vocabulary?view=&lang=`（17074 条，本地缓存后过滤） |
+| 术语表（社区总表） | ✅ | `terms` → `GET /v3/glossaries/{community|grammar}?lang=`（整表，本地缓存后过滤） |
 | **单个术语查询** | 🔧 | `GET /v2/terms?view=word&word={词}` —— **2026-08-10 实测：不需要登录**，返回各 channel 下该词的译义 |
 | **按 tag 查术语** | 🔧 | `GET /v2/terms?view=tag&tag={tag}` —— 同样无需登录（`vinaya` 21 条） |
 | ~~`system-term`~~ | — | `GET /v2/system-term/{lang}/{word}` 实测报 `no channel`；上面两个已够用，不再需要它 |
 
-⚠ `term-vocabulary` 与 `terms` 是**两套东西**：前者是社区总表（一次拉全量），
+⚠ `glossaries`（原 v2 `term-vocabulary`）与用户自己的术语表是**两套东西**：前者是社区总表（一次拉全量），
 后者是 `dhamma_terms`，按 channel / studio / 用户组织，同一个词在不同 channel 下
 可以有不同译义。
 
@@ -51,14 +51,17 @@
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
 | 分类目录（按 tag 找书） | ✅ | `books` → `GET /v2/book-title`（服务端已扩展返回 toc/tags/related_name） |
-| 某本书的章节目录 | ✅ | `toc` → `GET /v2/palitext?view=book-toc` |
+| 某本书的章节目录 | ✅ | `toc` → `GET /v3/tipitaka-titles?book=`（带中文译名与字符数） |
+| 按章节名找坐标（经名 / 品名 / 偈名 / 中文译名，容错） | ✅ | `locate` → `GET /v3/tipitaka-titles?q=` |
 | 章节体量与导航 | ✅ | `chapter` → `GET /v2/palitext/{book}-{para}` |
-| 整章内容 | ✅ | `chapter --fetch` → `GET /v2/tipitaka-content/{book}-{para}` |
+| 整章内容 | ✅ | `chapter --fetch` → `GET /v3/tipitaka-reading/{channel}`（默认）；`--via tipitaka-content` → `GET /v2/tipitaka-content/{book}-{para}`（夹版本页码） |
 | 按坐标取句 | ✅ | `get` → `GET /v2/sentence?view=paragraph` |
 | 某坐标有哪些版本 | ✅ | `versions` → `GET /v2/channel?view=paragraphs` |
-| 检索 | ✅ | `search` → `GET /v2/search-pali-wbw` |
-| 出处分布 | ✅ | `dist` → `GET /v2/search-pali-wbw-books` |
-| 短语检索 | ⬜ | `/v3/search`（OpenSearch）调试中 |
+| 某章有哪些版本 + 完成度 | ✅ | `versions --chapter` → `GET /v3/tipitaka-chapter-channels/{book}/{para}` |
+| 检索 | ✅ | `search` → `GET /v3/tipitaka-word-paragraphs` |
+| 出处分布 | ✅ | `dist` → `GET /v3/tipitaka-word-paragraphs/aggregate` |
+| 多词 / 短语检索 | ✅ | `phrase` → `GET /v3/search`（`search_mode=definition` / `fuzzy`） |
+| 多路融合检索 | ✅ | `find` → `v3/tipitaka-word-paragraphs`（逐词）＋ `v3/search`（fuzzy），RRF 合并、前 3 段保留逐词排序 |
 | 相似句 | ⬜ | `GET /v2/sent-sim`？实测 500 |
 
 ### 4. 相关经文（根本 ↔ 义注 ↔ 复注）
@@ -139,10 +142,10 @@
 
 | 功能 | 状态 | 命令 → 端点 |
 |---|---|---|
-| 读我的术语 | 🔧 | `GET /v2/terms?view=user&search={关键词}` —— **需登录**，实测 test161 为 0 条 |
-| 读某 studio 的术语 | 🔧 | `GET /v2/terms?view=studio&name={studio}` —— 需登录 |
-| 读某 channel 的术语 | 🔧 | `GET /v2/terms?view=channel&id={channel}` |
-| 新建 / 修改 / 删除术语 | ⬜ | `POST/PUT/DELETE /v2/terms`。**缺字段说明** |
+| 读我的术语 | ✅ | `wikipali my-terms` → `GET /v3/studios/{me}/terms?search=` —— 需登录 |
+| 读某 studio 的术语 | ✅ | `my-terms --studio` → `GET /v3/studios/{uuid}/terms` —— 需登录（本人或团队成员） |
+| 读某 channel 的术语 | ✅ | `my-terms --channel` → `GET /v3/channels/{uid}/terms` |
+| 新建 / 修改 / 删除术语 | ✅ / ✅ / ⬜ | `term-add` → `POST /v3/channels/{uid}/terms`、`term-edit` → `PATCH /v3/terms/{guid}`（模型 + `X-Agent-Grant`，改要 `If-Match`）。删除只给人类，插件不做 |
 | 按 channel 批量建术语 | ⬜ | `GET /v2/terms?view=create-by-channel` |
 | 导入 / 导出 | ⬜ | `/v2/terms-export`、`GET /v2/terms-import` |
 | 常用译义统计 | ⬜ | `GET /v2/terms?view=hot-meaning` |
@@ -221,8 +224,9 @@
 版本会撑爆上下文，而研究本来就是逐个版本读。`versions` → `get/chapter --channel`
 这条链就是最终形态。
 
-**`versions` 的粒度缺口。** 它按段落查，而实际用法常是按章节查，目前用章节起始段
-近似。同一章内不同段落的版本覆盖可能不同（某译本只译半章）。
+**`versions` 的粒度缺口（已补）。** 默认按段落查；按章查用 `versions --chapter`
+（v3 `tipitaka-chapter-channels`，带完成度，只列公开 channel）。某译本只译了半章时，
+完成度会小于 100%，引用前仍要 `get` 确认那一段确实有译文。
 
 **站点不是同一个库。** 线上四站共享库与密钥；`staging` 与 `local` 各是另一个库，
 凭据与本地缓存都按桶隔离，自动 fallback 只在线上四站之间发生。**在 staging 上查到

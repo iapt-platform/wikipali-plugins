@@ -8,6 +8,7 @@ import argparse
 import sys
 
 import cmd_admin
+import cmd_credits
 import cmd_page
 import cmd_discuss
 import cmd_guide
@@ -65,6 +66,9 @@ def build_parser():
     p.add_argument('--check', action='store_true', help='额外向服务端校验用户 token')
     p.set_defaults(func=cmd_site.cmd_whoami)
 
+    p = add('credit-policy', 'AI 对话积分策略：每日赠送、提问价格、读经 / 编辑换积分（公开，不需要登录）')
+    p.set_defaults(func=cmd_credits.cmd_credit_policy)
+
     p = add('guide', '打印共享约定与端点参考（供上层插件读取）', needs_json=False)
     p.add_argument('topic', nargs='?', choices=sorted(cmd_guide.TOPICS), help='不给就列出全部主题')
     p.set_defaults(func=cmd_guide.cmd_guide)
@@ -93,6 +97,25 @@ def build_parser():
     p.add_argument('--width', type=int, default=200, help='每条摘要的字符数')
     p.set_defaults(func=cmd_read.cmd_search)
 
+    p = add('find', '回答问题的第一轮检索：逐词 + 多词合并两路一起搜，按名次融合（RRF）')
+    p.add_argument('words', nargs='+', help='一个或多个巴利词，空格分隔；给词根或任一词形均可')
+    p.add_argument('--limit', type=int, default=20, help='合并后取几段，默认 20')
+    p.add_argument('--per', type=int, default=8, help='逐词检索每个词取几段，默认 8')
+    p.add_argument('--ref', action='store_true', help='给没有出处的段逐条补出处（每条多 2–4 次请求）')
+    p.add_argument('--width', type=int, default=200, help='每条摘要的字符数')
+    p.set_defaults(func=cmd_read.cmd_find)
+
+    p = add('phrase', '多词检索：几个词一起搜，黑体定义优先（不用先展开词形）')
+    p.add_argument('words', nargs='+', help='一个或多个巴利词，空格分隔；给词根或任一词形均可')
+    p.add_argument('--mode', choices=['definition', 'fuzzy'], default='definition',
+                   help='definition（默认）：命中的单独黑体字越多越前，找定义段落；'
+                        'fuzzy：词序与拼写越一致越前，找某句话出现在哪')
+    p.add_argument('--limit', type=int, default=20, help='本页条数，默认 20，最大 100')
+    p.add_argument('--page', type=int, default=1, help='页码，从 1 起')
+    p.add_argument('--ref', action='store_true', help='逐条补出处（citation + 链接），每条多 2–4 次请求')
+    p.add_argument('--width', type=int, default=200, help='每条摘要的字符数')
+    p.set_defaults(func=cmd_read.cmd_phrase)
+
     p = add('dist', '出处分布：命中散布在哪些书、各多少、什么层次')
     p.add_argument('forms', nargs='*')
     p.add_argument('--lemma')
@@ -104,7 +127,11 @@ def build_parser():
     p.add_argument('coords', nargs='+', help='book:paragraph，可给多个')
     p.add_argument('--channel', action='append',
                    help='channel uid，可重复；缺省取巴利原文')
-    p.add_argument('--limit', type=int, default=200, help='每次请求最多取几句')
+    p.add_argument('--page-size', type=int, default=cmd_read.SENTENCE_PAGE_SIZE, dest='page_size',
+                   help=f'每页行数（行 = 句 × channel），默认 {cmd_read.SENTENCE_PAGE_SIZE}。'
+                        '只影响请求次数、不限制总量：总会按服务端 count 翻页取全')
+    # 旧名 --limit 读起来像「最多取几条」，实际从来只是每页大小——留作隐藏别名，用了就提示改名
+    p.add_argument('--limit', type=int, dest='legacy_limit', help=argparse.SUPPRESS)
     p.add_argument('--ref', action='store_true', help='附上每段的印本页码与链接（每段多 2 次请求）')
     p.set_defaults(func=cmd_read.cmd_get)
 
@@ -112,11 +139,17 @@ def build_parser():
     p.add_argument('coords', nargs='+', help='book:paragraph，可给多个')
     p.set_defaults(func=cmd_read.cmd_ref)
 
-    p = add('toc', '章节目录')
-    p.add_argument('coord', help='book:paragraph，任意段号即可，服务端会找到所属丛书')
-    p.add_argument('--depth', type=int, default=4, help='最多显示到第几层，默认 4')
-    p.add_argument('--all', action='store_true', help='显示整套丛书而不只当前这本')
+    p = add('toc', '一本书（或其中一章）的全部标题，按经文顺序，带中文译名与字符数')
+    p.add_argument('coord', help='书号（如 162），或 book:para 只列这一章下面的标题')
+    p.add_argument('--depth', type=int, default=4, help='只列层级不深于它的标题（1 是书名），默认 4')
     p.set_defaults(func=cmd_read.cmd_toc)
+
+    p = add('locate', '按章节名找坐标：经名 / 品名 / 偈名 / 律的章节名，或中文译名；不分变音符号，容错')
+    p.add_argument('name', nargs='+', help='章节名，如 mahāparinibbāna、ānandattheragāthā、大般涅槃经')
+    p.add_argument('--layer', help='只要某几层，逗号分隔：mula（根本）/ atthakatha（义注）/ tika（复注）/ anna')
+    p.add_argument('--book', type=int, help='只在这本书里找')
+    p.add_argument('--limit', type=int, default=10, help='最多列几个，默认 10')
+    p.set_defaults(func=cmd_read.cmd_locate)
 
     p = add('paras', '章节内全部段落的清单：标题层级 + 每段字符数（不取正文）')
     p.add_argument('coord', help='book:paragraph，正文段也行，会自动向上找章节')
@@ -132,15 +165,17 @@ def build_parser():
     p.add_argument('--channel', action='append', help='channel uid，可重复；缺省取巴利原文')
     p.add_argument('--warn-at', type=int, default=8000, help='超过多少字符就提示，默认 8000')
     p.add_argument('--text', action='store_true', help='输出纯文本而非 html（黑体转成 **）')
-    p.add_argument('--via', choices=['tipitaka-content', 'chapter-content'],
-                   default='tipitaka-content',
-                   help='取文走哪个端点。默认 tipitaka-content；chapter-content 返回逐句的'
-                        '多版本结构，写入侧需要它')
+    p.add_argument('--via', choices=['tipitaka-reading', 'tipitaka-content', 'chapter-content'],
+                   default='tipitaka-reading',
+                   help='取文走哪个端点。默认 tipitaka-reading（直接读库，取全章）；tipitaka-content 是'
+                        '预建 HTML，正文里夹版本页码（M1.1 等）；chapter-content 返回逐句的多版本结构，写入侧需要它')
     p.add_argument('--limit', type=int, default=200)
     p.set_defaults(func=cmd_read.cmd_chapter)
 
     p = add('versions', '某坐标有哪些译本，以及没有哪些')
-    p.add_argument('coord', help='book:paragraph')
+    p.add_argument('coord', help='book:paragraph；加 --chapter 时 paragraph 是章节起始段')
+    p.add_argument('--chapter', action='store_true',
+                   help='按章查：这一章有哪些公开 channel 及各自完成度（v3/tipitaka-chapter-channels）')
     p.set_defaults(func=cmd_read.cmd_versions)
 
     p = add('count', '词频合计（词次，不是段落数）')
@@ -150,17 +185,18 @@ def build_parser():
     p = add('terms', '术语表：权威译名对照')
     p.add_argument('keyword', nargs='?', help='按巴利词形过滤；省略则列全表')
     p.add_argument('--lang', default='zh-Hans')
-    p.add_argument('--view', default='community')
+    p.add_argument('--view', default='community', choices=['community', 'grammar'],
+                   help='community 社区译名（默认）/ grammar 语法术语')
     p.add_argument('--limit', type=int, default=30)
     p.add_argument('--refresh', action='store_true', help='强制重新拉取（全表有缓存）')
     p.set_defaults(func=cmd_read.cmd_terms)
 
     p = add('my-terms', '自己的术语表：列出 studio / channel 名下的术语（与只读的 terms 不同）')
-    p.add_argument('keyword', nargs='?', help='按词/释义过滤（服务端前缀匹配）')
+    p.add_argument('keyword', nargs='?', help='按词/释义过滤（服务端包含匹配，不分大小写）')
     p.add_argument('--channel', help='只看某个 channel（uid / 序号 / 名字片段）')
-    p.add_argument('--studio', help='只看某个 studio（studio 名）')
+    p.add_argument('--studio', help='只看某个 studio（uuid / 自己的用户名 / 所在团队的名字）')
     p.add_argument('--tag', help='按 tag 过滤（本地过滤）')
-    p.add_argument('--order', default='updated_at')
+    p.add_argument('--order', default='updated_at', choices=['updated_at', 'created_at', 'word'])
     p.add_argument('--dir', default='desc', choices=['asc', 'desc'])
     p.add_argument('--limit', type=int, default=50)
     p.add_argument('--offset', type=int, default=0)
@@ -246,26 +282,36 @@ def build_parser():
     p.add_argument('--force', action='store_true', help='即使缓存未过期也重新签发')
     p.set_defaults(func=cmd_write.cmd_grant)
 
-    p = add('term-add', '新建术语（AI 身份，必须指定 channel）', needs_json=False)
-    p.add_argument('word', help='巴利词')
+    p = add('term-add', '新建术语（AI 身份，必须指定 channel；word + tag 建立后不能改）', needs_json=False)
+    p.add_argument('word', help='巴利词（建立后不能改）')
     p.add_argument('meaning', help='译名')
     p.add_argument('--channel', help='目标 channel（uid / 序号 / 名字片段）；省略则交互选择')
     p.add_argument('--other-meaning', dest='other_meaning', help='备选译名，逗号分隔')
-    p.add_argument('--note', help='注解（markdown）')
-    p.add_argument('--tag')
-    p.add_argument('--language', help='缺省跟随 channel 的语言')
+    p.add_argument('--note', help='正文（分类写成 {{category|名}}，服务端会抽出来）')
+    p.add_argument('--summary', help='摘要，格式与 note 相同，显示在正文前；不给就用正文第一段')
+    p.add_argument('--quality', help='质量：featured / standard / draft / pending')
+    p.add_argument('--content-type', dest='content_type',
+                   help='正文方言：markdown-e2（服务端默认）/ markdown（旧方言）')
+    p.add_argument('--redirect', help='重定向到 word 或 word@tag（同一词条的另一种拼写）')
+    p.add_argument('--tag', help='义项（同词多义时区分，不能含 @；建立后不能改）')
+    p.add_argument('--language', help='不再使用：channel 里的术语语言跟随 channel，给了也不提交')
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true', help='跳过交互确认（非交互环境必须显式给）')
     p.set_defaults(func=cmd_terms.cmd_term_add)
 
-    p = add('term-edit', '修改术语（AI 身份，只能改 channel 内的术语）', needs_json=False)
+    p = add('term-edit', '修改术语（AI 身份，只能改 channel 内的术语；只改给出的字段，空串 = 清掉）',
+            needs_json=False)
     p.add_argument('guid', help='术语 guid，用 my-terms 查')
-    p.add_argument('--word')
+    p.add_argument('--word', help='不能改：会报错并提示用新建 + --redirect')
     p.add_argument('--meaning')
     p.add_argument('--other-meaning', dest='other_meaning')
-    p.add_argument('--note')
-    p.add_argument('--tag')
-    p.add_argument('--language')
+    p.add_argument('--note', help='正文（分类写成 {{category|名}}，服务端会重新抽取）')
+    p.add_argument('--summary', help='摘要，格式与 note 相同')
+    p.add_argument('--quality', help='质量：featured / standard / draft / pending')
+    p.add_argument('--content-type', dest='content_type', help='正文方言：markdown-e2 / markdown')
+    p.add_argument('--redirect', help='重定向到 word 或 word@tag')
+    p.add_argument('--tag', help='不能改：会报错并提示用新建 + --redirect')
+    p.add_argument('--language', help='不能改：channel 里的术语语言跟随 channel')
     p.add_argument('--dry-run', action='store_true', help='只校验与回显，不发请求')
     p.add_argument('-y', '--yes', action='store_true')
     p.set_defaults(func=cmd_terms.cmd_term_edit)

@@ -18,7 +18,7 @@
 | modelToken | `GET /v2/ai-model-token/{uid}` | AI 模型身份 | **写句子时的 `Authorization`** | 30 天，可撤销 |
 | accessToken | `POST /v2/access-token` | 被委托的 channel 编辑权 | **写句子时的 body 字段** | 7 天 |
 
-写句子时两者同时出现：`Authorization: Bearer <modelToken>`，句子对象里带 `access_token: <accessToken>`。用错会让 `editor_uid` 落成人类用户，署名与审计就废了。
+写句子时两者同时出现：`Authorization: Bearer <modelToken>`，句子对象里带 `access_token: <accessToken>`（术语与批注不用 access token，改用 v3 写入授权，见第 7、8 节）。用错会让 `editor_uid` 落成人类用户，署名与审计就废了。
 
 ---
 
@@ -68,13 +68,14 @@
 
 ## 4. 可编辑 channel 列表
 
-`GET {API}/v2/channel?view=user-edit`（Bearer = userToken）→ `data: { rows: [...], count }`
+`GET {API}/v3/channels/editable`（Bearer = userToken）→ `{ data: [...], meta }`
 
-- 语义：owner 是自己的 channel ∪ 协作权限 power ≥ 20 的 channel。
-- 行内含 `uid / name / summary / type / owner_uid / lang / status / updated_at / created_at / role / studio`。
-- 支持 `order` / `dir` / `limit`（默认 200）/ `offset` / `search`。
+- 语义：本人名下的 ∪ 本人是团队 editor 及以上的团队名下的 ∪ 共享权限 power ≥ 20 的。
+- 行内含 `id / name / summary / type / lang / status / owner{kind,id,nickName,…} / abilities{read,write,update,delete}`。
+- 支持 `order` / `dir` / `per_page`（最大 200）/ `search`（v2 那条的搜索一直不生效，v3 修好了）。
+- channels 表本身（建、改、删 channel）不支持 AI 模型代写，模型 token 调会 403；写句子不受影响。
 
-`GET {API}/v2/channel/{uid}` 可用于回显单个 channel 的名字。
+`GET {API}/v3/channels/{uid}` 可用于回显单个 channel 的名字。
 
 ## 5. 签发 channel access token
 
@@ -128,66 +129,73 @@
 
 ---
 
-## 7. 术语（用户自己的术语表）
+## 7. 术语（用户自己的术语表）——v3
 
-与只读的**社区权威译名表**（`v2/term-vocabulary`，对应 `wikipali terms`）不是一回事。
-这里是 `v2/terms`，自己 studio / channel 名下、可增可改的术语。
+与只读的**社区权威译名表**（`v3/glossaries`，对应 `wikipali terms`）不是一回事。
+这里是 v3 术语接口，自己 studio / channel 名下、可增可改的术语。v3 约定同批注（第 8 节）：
+成功 `{data: …}`、失败 Problem Details、**成败只看状态码**。
 
 ### 铁律：AI 写术语必须落在 channel 里
 
-模型的权限全部由人类签出的 **channel access token** 代持，而 access token 是
-channel 级的，代持不了 studio 权限。因此**不属于任何 channel 的术语（studio 级），
-模型一律 403**——建不了也改不了，只能由 studio 本人在网站上操作。不要试图绕过。
+模型写术语靠人类签的**写入授权**（`POST /v3/agent-grants`，与批注共用，见第 8 节），授权是
+channel 级的，代持不了 studio 权限。因此**不属于任何 channel 的术语（studio 级），模型一律 403**——
+建不了也改不了，只能由 studio 本人在网站上操作。不要试图绕过。授权要签 `book: 0`：
+按 book 限定的授权不覆盖术语（术语不属于某本书）。
 
 ### 列出
 
-`GET {API}/v2/terms`（Bearer = **userToken**，人类身份）
+Bearer = **userToken**（人类身份）。
 
-| view | 额外参数 | 含义 |
-|---|---|---|
-| `user` | 无 | 当前账号名下全部术语 |
-| `studio` | `name`=studio 名 | 某个 studio 的 |
-| `channel` | `id`=channel uid | 某个 channel 的 |
+| 范围 | 接口 |
+|---|---|
+| 当前账号名下全部 | `GET {API}/v3/studios/{当前账号 id}/terms`（id 取自 `GET /v3/me`） |
+| 某个 studio（本人或所在团队） | `GET {API}/v3/studios/{uuid}/terms`；只要 studio 级的加 `general=1` |
+| 某个 channel | `GET {API}/v3/channels/{uid}/terms` |
 
-通用参数：`search`（对 word / word_en 前缀匹配、对 meaning 子串匹配）、`order`、
-`dir`、`offset`、`limit`。→ `data: { rows: [...], count }`。
+查询参数：`search`（词 / 释义包含匹配，不分大小写）、`quality`、`category`、`order`
+（`updated_at`/`created_at`/`word`）、`dir`、`page`、`per_page`（≤200）。→ `{ data: [...], meta: { total } }`。
 
 ### 新建
 
-`POST {API}/v2/terms`（Bearer = **modelToken**）
+`POST {API}/v3/channels/{uid}/terms`（Bearer = **modelToken**，请求头 `X-Agent-Grant: <授权>`）
 
 ```json
 {
   "word": "satipaṭṭhāna",
   "meaning": "念处",
-  "other_meaning": "念住",
-  "note": "markdown 注解",
   "tag": "abhidhamma",
-  "channel": "<channel uid>",
-  "access_token": "<第 5 步签出的 JWT>"
+  "other_meaning": "念住",
+  "note": "正文 {{category|法义}}",
+  "summary": "摘要，格式与 note 相同",
+  "quality": "draft",
+  "content_type": "markdown-e2",
+  "redirect": "word@tag"
 }
 ```
 
-- 参数名是 **`channel`**（不是 `channel_uid`）；库里的列名是 **`channal`**（服务端拼写如此）。
-- `word_en` 由服务端从 `word` 生成，不要自己提交。
-- `language` 有 channel 时跟随 channel，给了也会被覆盖。
-- `owner` 是 channel 所属的 studio，不是写入者。
-- 唯一性：同一 channel 下 `word + tag` 唯一。**冲突时服务端拒绝而不是覆盖**——这点与句子相反。
+- `word` + `meaning` 必填。**`language` 不能给**：跟随 channel。`word_en` 由服务端生成。
+- `content_type` 缺省 `markdown-e2`；`quality` 取 `featured`/`standard`/`draft`/`pending`。
+- **分类不是字段**：写在 `note` 里的 `{{category|…}}`，服务端抽出来存（不限取值）。
+- 唯一性：同一 channel 下 `word + tag` 唯一。**冲突时 409 拒绝而不是覆盖**——这点与句子相反。
+- **`word` + `tag` 建立后不能改**（引用方写 `[[word@tag]]`）。拿不准拼写先 `--dry-run`；
+  拼错了只能新建一条，再把旧的 `redirect` 到新的。
+- 成功 **201**。
 
 ### 修改
 
-`PUT {API}/v2/terms/{guid}`（Bearer = **modelToken**），body 同上但**只提交要改的字段**，
-另带 `access_token`。路由参数是 **guid**（uuid），不是 `id`（雪花）。
+`PATCH {API}/v3/terms/{guid}`（Bearer = **modelToken**，请求头 `X-Agent-Grant` 与 **`If-Match: <etag>`**），
+body **只提交要改的字段**，给 `null` 清掉。路由参数是 **guid**（uuid），不是雪花 id。
 
-服务端是增量更新：没提交的字段保持原值，`create_time` 不会被刷新。
+- 先 `GET {API}/v3/terms/{guid}` 读原值与 `etag`。不带 `If-Match` **428**；读取之后被别人改过
+  **412**——重新读取再改，**不要自动重试**（会覆盖别人的修改）。
+- `word`、`tag` 给了就 **422**；channel 里的术语不能改 `language`。
+- 改了 `note` 会重新抽取分类。
 
 ### 署名
 
-写入落到 `editor_uid`（uuid），模型写入即模型的 uid；返回的 `editor` 已解析成
-模型信息。核对写入结果就看它。
-
-`editor_id` 存的是人类用户的自增 sn，模型没有，一律记 **-1**（0 与「缺省/未知」
-撞车，分不清是模型写的还是数据有问题）。判断是不是模型写的，看 `editor_uid`。
+记录上 `editor` 是**授权人**（对内容负责的人），`co_editor` 是模型（仿 git 的 Co-Authored-By）；
+人亲自在网站上改内容时 `co_editor` 清空。核对写入结果就看这两个字段。
+存量数据里 AI 写的行没有 `co_editor`，`editor` 直接是模型。
 
 ---
 
@@ -297,7 +305,7 @@ channel / book 里的句子上的批注。模型不带授权写入一律 403。�
 没有开 / 关状态，不能与其它类型互转，不发通知。
 
 `glossary`（外挂术语）**不改译文**，给一段译文临时挂上术语，供讨论该词值不值得正式收进术语表；
-与术语表（`v2/terms`，`term-add`）是两回事。只能挂在句子上，只有该句所在 channel 的编辑者能建。
+与术语表（v3 术语接口，`term-add`）是两回事。只能挂在句子上，只有该句所在 channel 的编辑者能建。
 词头与被挂的那段原文里都不能有 `[ ] { } | #`，那段原文也不能和句中已有的 `[[…]]` / `{{…}}` /
 粗体等标记重叠——否则渲染不了，服务端会直接不显示这条。CLI 对**完全落在 `**…**` 之内**的摘录放行
 （替换成 `**[[词头#原文]]**` 不切断粗体）；服务端 `AnnotationLayout` 的注释仍写着碰到受保护区间就放弃，

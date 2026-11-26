@@ -30,6 +30,7 @@ from anchors import anchor
 from client import WRITE_TIMEOUT, make_client
 from cmd_discuss import call_as_agent, call_as_model, resolve_channel, who
 from cmd_read import READ_TIMEOUT, pali_channel, fetch_related_cs, row_text
+from cmd_read import fetch_sentences as read_sentences
 from cmd_write import confirm
 from errors import ApiError, WpError, explain_api_error
 
@@ -99,15 +100,8 @@ def locate(client, book_name, cs_para):
 
 
 def fetch_sentences(client, book, paras, channels):
-    try:
-        data = client.call('GET', 'v2/sentence',
-                           query={'view': 'paragraph', 'book': book,
-                                  'para': ','.join(str(p) for p in paras),
-                                  'channels': ','.join(channels), 'limit': 1000},
-                           timeout=READ_TIMEOUT)
-    except ApiError as exc:
-        raise explain_api_error(exc, f'取 {book} 的句子')
-    return (data or {}).get('rows') or []
+    # 翻页取全交给 cmd_read.fetch_sentences：以前写死 limit 1000，超出的句子静默丢掉
+    return read_sentences(client, book, paras, channels)
 
 
 def channel_of(row):

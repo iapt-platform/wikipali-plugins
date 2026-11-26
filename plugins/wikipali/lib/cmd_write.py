@@ -118,15 +118,29 @@ def cmd_revoke(args):
     return 0
 
 
+def channel_role(abilities):
+    """v3 的 abilities → 列表里显示的身份：能删 = owner，能改信息 = manager，能写 = editor。"""
+    abilities = abilities or {}
+    if abilities.get("delete"):
+        return "owner"
+    if abilities.get("update"):
+        return "manager"
+    return "editor" if abilities.get("write") else "member"
+
+
 def fetch_channels(client, search=None):
+    """当前账号能写内容的 channel（本人的、团队的、共享权限 ≥20 的），按更新时间倒序。
+
+    v3 `channels/editable`；行里的 `id` 映射成本工具一直用的 `uid`，`role` 由 abilities 推出。
+    """
     try:
         data = client.call(
-            "GET", "v2/channel", token=client.user_token,
-            query={"view": "user-edit", "order": "updated_at", "dir": "desc", "limit": 200, "search": search},
+            "GET", "v3/channels/editable", token=client.user_token, v3=True,
+            query={"order": "updated_at", "dir": "desc", "per_page": 200, "search": search},
         )
     except ApiError as exc:
         raise explain_api_error(exc, "获取可编辑 channel 列表")
-    return (data or {}).get("rows") or []
+    return [{**r, "uid": r.get("id"), "role": channel_role(r.get("abilities"))} for r in (data or [])]
 
 
 def cmd_channels(args):
@@ -442,7 +456,7 @@ def cmd_write(args):
 
 def channel_display_name(client, uid):
     try:
-        data = client.call("GET", f"v2/channel/{uid}", token=client.user_token)
+        data = client.call("GET", f"v3/channels/{uid}", token=client.user_token, v3=True)
     except (ApiError, WpError):
         return None
     if isinstance(data, dict):

@@ -3,6 +3,115 @@
 本项目的重要变更都记录在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。最新版本在最前面。
 
+## [wikipali-workspace 0.3.0] - 2026-11-23
+
+### 变更
+- **encyclopedia：词条模板改用站内模板**——开头 `{{quality|pending}}` 改为 `{{ai}}`，`## 目录` 改为 `{{toc}}`，
+  `## 参考文献` 改为 `{{ref}}`。
+- encyclopedia 取全句原文的示例去掉 `--limit 200`：底层 `get` 现在总会翻页取全（需 wikipali ≥ 0.29.0）。
+- 翻译风格默认文案微调（去掉「易读」等措辞）。
+
+## [0.29.0] - 2026-11-23
+
+### 变更
+- **检索改走 v3**，CLI 输出字段名不变：`forms` / `count` / `search --lemma` / `find` 的词形展开改走
+  `GET /v3/pali-word-forms/{word}`；`search` / `find` / `dist` / `ref` 改走 `GET /v3/tipitaka-word-paragraphs`
+  （及 `/aggregate`），`--tags` 先经 `/aggregate` 按书的 tag 筛 book_id，出处链接按坐标自己拼；`phrase` 与
+  `find` 的多词一路适配 `/v3/search` 新响应 `{data, meta}`（`page_size` → `per_page`，≤100）；`locate` / `toc`
+  改走 `/v3/tipitaka-titles`。
+- **`get` 的 `--limit` 改名 `--page-size`**（默认 200）：它只是每页行数，不限制总量。旧名留作隐藏别名，
+  用了会提示改名。
+- API 调用清单补上 `v2/sentence` 的 `offset` 参数、`{count, rows}` 返回与翻页说明；`/v3/glossaries/community`
+  不再返回 `id`（`terms` 本就不读）；research skill 同步。
+
+### 修复
+- **按段取句子不再静默截断**：`get` / `discuss` / `notes` / `page` 统一经 `fetch_sentences` 按服务端 `count`
+  用 `offset` 翻页取全。以前只发一次请求（`get` 200 行、`page` 500、`notes` 1000、`discuss` 200），超出部分
+  被丢掉、退出码仍是 0；长段落后半截的句子 `discuss` 找不到。中途某页失败或取到的行数少于 `count` 时整次报错，
+  不给半截。
+
+## [0.28.0] - 2026-11-18
+
+### 新增
+- **`term-add` / `term-edit`** 新增 `--summary`（摘要）、`--quality`（featured / standard / draft / pending）、
+  `--content-type`（markdown-e2 / markdown）、`--redirect`（重定向到 `word` 或 `word@tag`）；`term-edit`
+  给空串即清掉该字段。分类写在 `--note` 里的 `{{category|名}}`，由服务端抽取。
+- `my-terms --studio` 可给 uuid、自己的用户名或所在团队的名字（经 `GET /v3/me/groups` 按名找团队）。
+
+### 变更
+- **用户术语表改走 v3**：`my-terms` → `GET /v3/studios/{studio}/terms`、`GET /v3/channels/{uid}/terms`；
+  `term-add` → `POST /v3/channels/{uid}/terms`；`term-edit` → `PATCH /v3/terms/{guid}`。写入改用模型 token +
+  人类签的 `X-Agent-Grant`（与批注同一条链路），记录上 editor 是授权人、co_editor 是模型；修改带 `If-Match`
+  乐观锁，被别人改过时回 412 并提示重跑。
+- **word + tag 建立后不能改**：`term-edit --word/--tag` 报错并提示新建 + `--redirect`；`--language` 不再提交，
+  channel 里的术语语言跟随 channel。
+- `terms` 改走 `GET /v3/glossaries/{community|grammar}`（取代 v2 `term-vocabulary`），`--view` 限定两种取值；
+  服务端没有所要语言时提示实际返回的语言。
+- `versions` 改走 `GET /v3/tipitaka-paragraph-channels/{book}/{para}`，登录后能看到有权限的私有 channel。
+- 可写 channel 列表改走 `GET /v3/channels/editable`，channel 回显改走 `GET /v3/channels/{uid}`；
+  非线上站点找巴利原文 channel 改走 `GET /v3/channels?system=true`。
+- `chapter --fetch`（`v3/tipitaka-reading`）登录后带上用户 token，读私有 channel 被拒时给出登录提示。
+- API 调用清单、API 参考、功能覆盖表、write skill 同步。
+
+### 修复
+- 去掉稳定版 `channel?view=paragraphs` 已知缺陷的切站提示（`versions` 已不再用它）。
+
+## [0.27.0] - 2026-11-11
+
+### 新增
+- **`wikipali locate <章节名>`**：按章节名找坐标——经名、品名、偈名、律的章节名，或公开译本里的中文译名。
+  不分变音符号，拼错一两个字母也能找到（标「≈拼写不同」）；同名的根本典、义注、复注一起列出，带段数、
+  字符数与路径。走 `GET /v3/tipitaka-chapters`（mint 2026-11 起）。
+- research skill「2b. 先判断问题类型，选第一条路」：回答具体问题有三条路——检索（`find`）、定位
+  （`locate` → `toc` → `chapter`）、选章（`books` → `toc` → `chapter`），按问题类型决定先走哪条，没有答案
+  再换下一条。依据：148 道真实问题，只用检索 40 题能作答，三条路依次走到有答案为止 90 题。
+
+### 变更
+- **`toc`** 改走 `GET /v3/tipitaka-chapters`：参数是书号或 `book:para`，每个标题带中文译名与字符数，
+  可直接当选章清单；去掉 `--all`（整套丛书用 `books`）。
+- **`chapter --fetch`** 默认改走 `GET /v3/tipitaka-reading/{channel}`：直接读库、翻页取全，`--channel`
+  可给多个；原来的 OpenSearch 预建 HTML 改为 `--via tipitaka-content`（正文夹版本页码）。
+- API 调用清单、API 参考、功能覆盖表同步。
+
+### 修复
+- 没有预建整章文档的章节（多见于小节）`chapter --fetch` 报「该版本在本章无文本」，现在默认路径不再依赖预建文档。
+
+## [0.26.0] - 2026-11-11
+
+### 新增
+- **`wikipali find 词1 词2 …`**：回答具体问题的第一轮检索。逐词（`search-pali-wbw`，各词全部词形，
+  命中过多时补一轮只看黑体）与多词合并（`/v3/search` fuzzy）两路一起搜，按名次融合（RRF，k=60）；
+  前 3 段沿用逐词轮流排序，其余名额按融合结果补。每行标出命中来源。`--per` 每词取几段，`--ref` 补出处。
+  合并检索失败时退回只用逐词结果。在 148 道问藏真实问题上，同样阅读量下命中的引用段落多约 10%，
+  89% 的题更好或持平，前 3 段不变。
+
+### 变更
+- research skill 加「回答具体问题：先选词，再用 `find`」：选答案段落里会出现的词、引文用原文词形、
+  列举类带成员、不用泛用词、没找到就换词再搜。
+- `docs/wikipali-api-calls.md`、`api-read.md`、`wikipali-feature-coverage.md` 补 `find`。
+
+## [0.25.0] - 2026-11-11
+
+### 新增
+- **`wikipali phrase 词1 词2 …`**：多词检索，走 `GET /v3/search`（OpenSearch）。给词根或任一词形即可，
+  不用先跑 `forms`。默认 `definition` 模式黑体定义优先——每个词命中单独黑体字的段落排前，命中越多越前；
+  `--mode fuzzy` 按词序与拼写一致程度排序，用来找某句话出现在哪。`--ref` 逐条补出处。
+  需要服务端支持 `search_mode=definition`（mint 2026-11 起）；旧服务端会静默按模糊检索处理。
+
+### 变更
+- `docs/wikipali-api-calls.md` 加第 4b 节；`api-read.md` 加第 3b 节，删去「短语检索拆词绕行」的说明；
+  research skill 加 `phrase` 用法，单词查全仍以 `search --lemma` 为准。
+
+## [0.24.0] - 2026-11-09
+
+### 新增
+- **`wikipali versions <book>:<para> --chapter`**：按章查版本，列出这一章有哪些公开 channel 及各自的完成度
+  （按完成度降序、按类型分组）。补上了 `versions` 只能按段落查、只能用章节起始段近似整章的缺口。
+  走 `GET /v3/tipitaka-chapter-channels/{book}/{para}`；站点还没有这条路由时提示退回段落粒度。
+
+### 变更
+- `docs/wikipali-api-calls.md` 加第 51 节；功能覆盖清单、research skill、`api-read.md` 同步说明 `--chapter`。
+
 ## [0.23.1 / wikipali-workspace 0.2.0] - 2026-11-06
 
 ### 新增
